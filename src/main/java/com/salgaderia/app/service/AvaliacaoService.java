@@ -1,0 +1,7 @@
+package com.salgaderia.app.service;
+import com.salgaderia.app.model.*;
+public interface AvaliacaoService {
+    long salvar(Avaliacao avaliacao);
+    boolean responder(Usuario admin,long avaliacaoId,String resposta);
+    boolean excluir(Usuario admin,long avaliacaoId);
+}
