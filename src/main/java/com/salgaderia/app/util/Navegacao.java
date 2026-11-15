@@ -21,6 +21,12 @@ public final class Navegacao {
         abrir(stage, usuario.getTelaInicialFxml(), usuario);
     }
 
+    public static void abrirAdmin(Stage stage, Usuario usuario) throws IOException {
+        Objects.requireNonNull(usuario, "usuário");
+        if (!usuario.podeAcessarPainelGerencial()) throw new SecurityException("Acesso gerencial restrito");
+        abrir(stage, "/fxml/admin-dashboard.fxml", usuario);
+    }
+
     public static void abrirAgenda(Stage stage, Usuario usuario) throws IOException {
         Objects.requireNonNull(usuario, "usuário");
         if (!usuario.podeAcessarPainelGerencial()) throw new SecurityException("Acesso gerencial restrito");

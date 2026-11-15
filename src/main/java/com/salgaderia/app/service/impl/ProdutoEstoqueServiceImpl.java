@@ -12,6 +12,7 @@ public class ProdutoEstoqueServiceImpl implements ProdutoEstoqueService {
     private final ProdutoDAO produtos;private final ContatoDAO contatos;private final MovimentacaoEstoqueDAO movimentos;
     public ProdutoEstoqueServiceImpl(){this(new ProdutoDAOImpl(),new ContatoDAOImpl(),new MovimentacaoEstoqueDAOImpl());}
     public ProdutoEstoqueServiceImpl(ProdutoDAO produtos,ContatoDAO contatos,MovimentacaoEstoqueDAO movimentos){this.produtos=Objects.requireNonNull(produtos);this.contatos=Objects.requireNonNull(contatos);this.movimentos=Objects.requireNonNull(movimentos);}
+    @Override public List<Categoria> listarCategorias(){return ConnectionFactory.executarEmTransacao(c->new CategoriaDAOImpl().listar(c));}
     @Override public long cadastrar(Produto produto){
         if(produto.getId()!=null||produto.getEstoqueAtual().signum()!=0)throw new IllegalArgumentException("Novo produto deve iniciar sem ID e com estoque zero");
         long id=ConnectionFactory.executarEmTransacao(c->produtos.inserir(c,produto));produto.setId(id);return id;

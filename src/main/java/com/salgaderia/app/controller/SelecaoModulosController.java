@@ -17,7 +17,10 @@ public class SelecaoModulosController implements TelaAutenticada {
         this.usuario = usuario;
         saudacao.setText("Olá, " + usuario.getNome());
     }
-    @FXML private void abrirPdv() { indisponivel("PDV & Gestão Salgaderia"); }
+    @FXML private void abrirPdv() {
+        try { Navegacao.abrirAdmin((Stage) saudacao.getScene().getWindow(), usuario); }
+        catch (IOException e) { Alert alerta = new Alert(Alert.AlertType.ERROR, "Não foi possível abrir o painel."); alerta.showAndWait(); }
+    }
     @FXML private void abrirAgenda() {
         try { Navegacao.abrirAgenda((Stage) saudacao.getScene().getWindow(), usuario); }
         catch (IOException e) { Alert alerta = new Alert(Alert.AlertType.ERROR, "Não foi possível abrir a agenda."); alerta.showAndWait(); }

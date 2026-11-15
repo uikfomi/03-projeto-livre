@@ -33,6 +33,45 @@ public class PedidoDAOImpl implements PedidoDAO {
         grupos.forEach((id,d)->resultado.add(new Pedido(id,usuario,usuario.getCliente(),d.status(),d.entrega(),d.endereco(),d.data(),d.itens())));
         return resultado;
     }
+    @Override public java.util.List<PedidoFila> listarFila(Connection c) throws SQLException {
+        String sql="SELECT p.id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,COALESCE(ct.nome,u.nome,'Cliente') cliente,"
+                + "i.quantidade,i.preco_unitario,pr.nome produto FROM pedidos p JOIN usuarios u ON u.id=p.usuario_id "
+                + "LEFT JOIN contatos ct ON ct.id=p.contato_id LEFT JOIN pedido_itens i ON i.pedido_id=p.id "
+                + "LEFT JOIN produtos pr ON pr.id=i.produto_id WHERE p.origem='VITRINE' AND u.perfil='CLIENTE' "
+                + "AND p.status IN ('PENDENTE','PREPARANDO','PRONTO') ORDER BY p.criado_em,p.id,i.id";
+        class Grupo {
+            long id;String cliente,endereco;com.salgaderia.app.model.enums.StatusPedido status;com.salgaderia.app.model.enums.TipoEntrega entrega;
+            LocalDateTime data;BigDecimal total=BigDecimal.ZERO;java.util.List<String> itens=new java.util.ArrayList<>();
+        }
+        java.util.Map<Long,Grupo> grupos=new java.util.LinkedHashMap<>();
+        try(PreparedStatement ps=c.prepareStatement(sql);ResultSet rs=ps.executeQuery()){
+            while(rs.next()){
+                long id=rs.getLong("id");Grupo g=grupos.get(id);
+                if(g==null){g=new Grupo();g.id=id;g.cliente=rs.getString("cliente");g.endereco=rs.getString("endereco_entrega");
+                    g.status=com.salgaderia.app.model.enums.StatusPedido.valueOf(rs.getString("status"));g.entrega=com.salgaderia.app.model.enums.TipoEntrega.valueOf(rs.getString("tipo_entrega"));g.data=rs.getTimestamp("criado_em").toLocalDateTime();grupos.put(id,g);}
+                BigDecimal quantidade=rs.getBigDecimal("quantidade");if(quantidade!=null){g.itens.add(quantidade.stripTrailingZeros().toPlainString()+" × "+rs.getString("produto"));g.total=g.total.add(quantidade.multiply(rs.getBigDecimal("preco_unitario")));}
+            }
+        }
+        java.util.List<PedidoFila> resultado=new java.util.ArrayList<>();
+        for(Grupo g:grupos.values())resultado.add(new PedidoFila(g.id,g.cliente,g.status,g.entrega,g.endereco,g.data,g.total,String.join(", ",g.itens)));
+        return resultado;
+    }
+    @Override public void registrarPdv(Connection c,long id,com.salgaderia.app.model.enums.FormaPagamento forma,BigDecimal recebido,BigDecimal troco) throws SQLException {
+        try(PreparedStatement ps=c.prepareStatement("UPDATE pedidos SET origem='PDV',status='ENTREGUE',forma_pagamento=?,valor_recebido=?,troco=? WHERE id=? AND status='PENDENTE'")){
+            ps.setString(1,forma.name());ps.setBigDecimal(2,recebido);ps.setBigDecimal(3,troco);ps.setLong(4,id);if(ps.executeUpdate()!=1)throw new SQLException("Venda PDV não atualizada");
+        }
+    }
+    @Override public java.util.Map<String,BigDecimal> produtosMaisVendidos(Connection c,LocalDateTime inicio,LocalDateTime fim) throws SQLException {
+        return agrupar(c,"SELECT CONCAT(pr.nome,' (#',pr.id,')') rotulo,SUM(i.quantidade) valor FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id WHERE p.status='ENTREGUE' AND p.criado_em>=? AND p.criado_em<? GROUP BY pr.id,pr.nome ORDER BY valor DESC,pr.id LIMIT 10",inicio,fim);
+    }
+    @Override public java.util.Map<String,BigDecimal> receitaPorCategoria(Connection c,LocalDateTime inicio,LocalDateTime fim) throws SQLException {
+        return agrupar(c,"SELECT COALESCE(cat.nome,'Sem categoria') rotulo,SUM(i.quantidade*i.preco_unitario) valor FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id LEFT JOIN categorias cat ON cat.id=pr.categoria_id WHERE p.status='ENTREGUE' AND p.criado_em>=? AND p.criado_em<? GROUP BY cat.id,cat.nome ORDER BY valor DESC",inicio,fim);
+    }
+    private java.util.Map<String,BigDecimal> agrupar(Connection c,String sql,LocalDateTime inicio,LocalDateTime fim) throws SQLException {
+        try(PreparedStatement ps=c.prepareStatement(sql)){ps.setTimestamp(1,Timestamp.valueOf(inicio));ps.setTimestamp(2,Timestamp.valueOf(fim));try(ResultSet rs=ps.executeQuery()){
+            java.util.Map<String,BigDecimal> dados=new java.util.LinkedHashMap<>();while(rs.next())dados.merge(rs.getString("rotulo"),rs.getBigDecimal("valor"),BigDecimal::add);return dados;
+        }}
+    }
     @Override public long inserir(Connection c,Pedido pedido,Map<Long,BigDecimal> custos) throws SQLException {
         long id;
         try(PreparedStatement ps=c.prepareStatement("INSERT INTO pedidos(usuario_id,contato_id,status,tipo_entrega,endereco_entrega,criado_em) VALUES (?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)){

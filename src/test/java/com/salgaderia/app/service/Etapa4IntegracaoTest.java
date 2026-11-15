@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class Etapa4IntegracaoTest {
     @Test void fluxosTransacionais() throws Exception {
         String token=UUID.randomUUID().toString().replace("-","");
-        UsuarioCliente usuario=null; Fornecedor fornecedor=null; Produto produto=null; Long pedidoId=null; Long avaliacaoId=null;
+        UsuarioCliente usuario=null; Fornecedor fornecedor=null; Produto produto=null; Long pedidoId=null; Long avaliacaoId=null; Long pdvId=null; Long pdvPixId=null;
         try {
             var auth=new AutenticacaoServiceImpl();
             Cliente cliente=new Cliente(null,"Teste "+token,null,null,null,null,null);
@@ -43,6 +43,8 @@ class Etapa4IntegracaoTest {
             assertThrows(PersistenciaException.class,()->vendasComFalha.finalizar(pedido));
             assertNull(pedido.getId());assertEquals(0,estoque.buscarPorId(produto.getId()).orElseThrow().getEstoqueAtual().compareTo(new BigDecimal("3")));
             pedidoId=vendas.finalizar(pedido);
+            long pedidoFilaId=pedidoId;
+            assertTrue(vendas.listarFila().stream().anyMatch(f->f.id()==pedidoFilaId && f.itens().contains("Produto "+token)));
             assertEquals(0,estoque.buscarPorId(produto.getId()).orElseThrow().getEstoqueAtual().compareTo(BigDecimal.ONE));
             Pedido outro=new Pedido(null,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,data,List.of(new PedidoItem(null,produto,new BigDecimal("2"),new BigDecimal("8.00"))));
             assertThrows(EstoqueInsuficienteException.class,()->vendas.finalizar(outro));assertNull(outro.getId());
@@ -66,10 +68,35 @@ class Etapa4IntegracaoTest {
             assertEquals(0,relatorio.lucroLiquidoReal().compareTo(relatorio.faturamentoBruto().subtract(relatorio.custoTotalProducao()).subtract(relatorio.perdas())));
             estoque.registrarPerda(produto.getId(),BigDecimal.ONE,"teste");
             assertEquals(0,estoque.buscarPorId(produto.getId()).orElseThrow().getEstoqueAtual().signum());
+            estoque.entradaLote(produto.getId(),fornecedor.getId(),new BigDecimal("2"),"novo lote");
+            Produto atual=estoque.buscarPorId(produto.getId()).orElseThrow();
+            Pedido venda=new Pedido(null,admin,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,atual,BigDecimal.ONE,atual.getPrecoVenda())));
+            assertThrows(IllegalArgumentException.class,()->vendas.finalizarPdv(venda,FormaPagamento.DINHEIRO,new BigDecimal("1.00")));
+            assertThrows(PersistenciaException.class,()->vendasComFalha.finalizarPdv(venda,FormaPagamento.DINHEIRO,new BigDecimal("10.00")));
+            assertNull(venda.getId());
+            assertEquals(0,estoque.buscarPorId(produto.getId()).orElseThrow().getEstoqueAtual().compareTo(new BigDecimal("2")));
+            pdvId=vendas.finalizarPdv(venda,FormaPagamento.DINHEIRO,new BigDecimal("10.00"));
+            try(Connection c=ConnectionFactory.getConnection();PreparedStatement ps=c.prepareStatement("SELECT origem,status,forma_pagamento,troco FROM pedidos WHERE id=?")){
+                ps.setLong(1,pdvId);try(ResultSet rs=ps.executeQuery()){assertTrue(rs.next());assertEquals("PDV",rs.getString(1));assertEquals("ENTREGUE",rs.getString(2));assertEquals("DINHEIRO",rs.getString(3));assertEquals(0,new BigDecimal("2.00").compareTo(rs.getBigDecimal(4)));}
+            }
+            assertEquals(0,estoque.buscarPorId(produto.getId()).orElseThrow().getEstoqueAtual().compareTo(BigDecimal.ONE));
+            Produto restante=estoque.buscarPorId(produto.getId()).orElseThrow();
+            Pedido pix=new Pedido(null,admin,null,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,restante,BigDecimal.ONE,restante.getPrecoVenda())));
+            pdvPixId=vendas.finalizarPdv(pix,FormaPagamento.PIX,new BigDecimal("20.00"));
+            try(Connection c=ConnectionFactory.getConnection();PreparedStatement ps=c.prepareStatement("SELECT forma_pagamento,valor_recebido,troco FROM pedidos WHERE id=?")){
+                ps.setLong(1,pdvPixId);try(ResultSet rs=ps.executeQuery()){assertTrue(rs.next());assertEquals("PIX",rs.getString(1));assertEquals(0,rs.getBigDecimal(2).compareTo(new BigDecimal("8.00")));assertEquals(0,rs.getBigDecimal(3).signum());}
+            }
+            assertTrue(avaliacoes.listar().stream().anyMatch(a->a.produto().equals(atual.getNome())));
+            LocalDateTime inicio=LocalDateTime.now().minusDays(1),fim=LocalDateTime.now().plusDays(1);
+            var financeiro=new RelatorioFinanceiroServiceImpl();
+            assertTrue(financeiro.produtosMaisVendidos(inicio,fim).keySet().stream().anyMatch(nome->nome.contains(atual.getNome())));
+            assertTrue(financeiro.receitaPorCategoria(inicio,fim).containsKey("Sem categoria"));
         } finally {
             try(Connection c=ConnectionFactory.getConnection()) {
                 if(avaliacaoId!=null) excluir(c,"DELETE FROM avaliacoes WHERE id=?",avaliacaoId);
                 if(pedidoId!=null){excluir(c,"DELETE FROM pedido_itens WHERE pedido_id=?",pedidoId);excluir(c,"DELETE FROM pedidos WHERE id=?",pedidoId);}
+                if(pdvId!=null){excluir(c,"DELETE FROM pedido_itens WHERE pedido_id=?",pdvId);excluir(c,"DELETE FROM pedidos WHERE id=?",pdvId);}
+                if(pdvPixId!=null){excluir(c,"DELETE FROM pedido_itens WHERE pedido_id=?",pdvPixId);excluir(c,"DELETE FROM pedidos WHERE id=?",pdvPixId);}
                 if(produto!=null && produto.getId()!=null){excluir(c,"DELETE FROM movimentacoes_estoque WHERE produto_id=?",produto.getId());excluir(c,"DELETE FROM produtos WHERE id=?",produto.getId());}
                 if(usuario!=null){excluir(c,"DELETE FROM usuarios WHERE id=?",usuario.getId());excluir(c,"DELETE FROM contatos WHERE id=?",usuario.getCliente().getId());}
                 if(fornecedor!=null && fornecedor.getId()!=null)excluir(c,"DELETE FROM contatos WHERE id=?",fornecedor.getId());

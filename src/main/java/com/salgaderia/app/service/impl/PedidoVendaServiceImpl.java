@@ -16,7 +16,15 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         if(usuario==null || usuario.getId()==null || !usuario.isAtivo())throw new IllegalArgumentException("Cliente autenticado obrigatório");
         return ConnectionFactory.executarEmTransacao(c->pedidos.listarDoCliente(c,usuario));
     }
-    @Override public long finalizar(Pedido pedido){
+    @Override public List<PedidoFila> listarFila(){return ConnectionFactory.executarEmTransacao(pedidos::listarFila);}
+    @Override public long finalizar(Pedido pedido){ return finalizarInterno(pedido,null,null); }
+    @Override public long finalizarPdv(Pedido pedido,FormaPagamento forma,BigDecimal recebido){
+        Objects.requireNonNull(pedido,"pedido");Objects.requireNonNull(forma,"forma de pagamento");
+        if(!(pedido.getUsuario() instanceof UsuarioAdmin) || pedido.getUsuario().getId()==null || !pedido.getUsuario().isAtivo())throw new IllegalArgumentException("Venda PDV exige administrador ativo");
+        if(forma.isPermiteTroco() && (recebido==null || recebido.scale()>2 || recebido.compareTo(pedido.calcularTotal())<0 || recebido.compareTo(new BigDecimal("99999999.99"))>0)) throw new IllegalArgumentException("Valor recebido insuficiente ou inválido");
+        return finalizarInterno(pedido,forma,forma.isPermiteTroco()?recebido:pedido.calcularTotal());
+    }
+    private long finalizarInterno(Pedido pedido,FormaPagamento forma,BigDecimal recebido){
         Objects.requireNonNull(pedido);if(pedido.getId()!=null||pedido.getStatus()!=StatusPedido.PENDENTE||pedido.getItens().isEmpty())throw new IllegalArgumentException("Pedido deve ser novo, pendente e conter itens");
         if(pedido.getUsuario()!=null && pedido.getUsuario().getId()==null)throw new IllegalArgumentException("Usuário sem ID");
         if(pedido.getCliente()!=null && pedido.getCliente().getId()==null)throw new IllegalArgumentException("Cliente sem ID");
@@ -29,6 +37,10 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             ProdutoEstoqueServiceImpl.validarQuantidade(quantidades.get(id));
         }
         long id=ConnectionFactory.executarEmTransacao(c->{
+            if(forma!=null){
+                Usuario responsavel=new UsuarioDAOImpl(new ContatoDAOImpl()).buscarPorId(c,pedido.getUsuario().getId()).orElseThrow(()->new IllegalArgumentException("Administrador não encontrado"));
+                if(!(responsavel instanceof UsuarioAdmin)||!responsavel.isAtivo())throw new IllegalArgumentException("Venda PDV exige administrador ativo");
+            }
             Map<Long,Produto> bloqueados=new LinkedHashMap<>();Map<Long,BigDecimal> custos=new HashMap<>();
             for(var entrada:quantidades.entrySet()){
                 Produto p=produtos.buscarPorId(c,entrada.getKey(),true).orElseThrow(()->new IllegalArgumentException("Produto não encontrado"));
@@ -36,6 +48,7 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             }
             for(PedidoItem item:pedido.getItens())if(item.getPrecoUnitario().compareTo(bloqueados.get(item.getProduto().getId()).getPrecoVenda())!=0)throw new IllegalArgumentException("Preço do pedido diverge do preço atual");
             long pedidoId=pedidos.inserir(c,pedido,custos);
+            if(forma!=null) pedidos.registrarPdv(c,pedidoId,forma,recebido,forma.isPermiteTroco()?recebido.subtract(pedido.calcularTotal()):BigDecimal.ZERO);
             for(var entrada:bloqueados.entrySet()){
                 Produto p=entrada.getValue();if(!produtos.atualizarEstoque(c,entrada.getKey(),p.getEstoqueAtual()))throw new IllegalStateException("Produto não atualizado");
                 movimentos.inserir(c,new MovimentacaoEstoque(null,p,TipoMovimentacaoEstoque.SAIDA,quantidades.get(entrada.getKey()),"Pedido "+pedidoId,LocalDateTime.now()),null,"VENDA",p.getCustoProducao());

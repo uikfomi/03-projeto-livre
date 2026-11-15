@@ -1,0 +1,18 @@
+/* Painel administrativo complementa global.css. */
+.admin-root { -fx-background-color: #f7f4ef; }
+.admin-sidebar { -fx-background-color: #402b25; -fx-padding: 26 16; }
+.admin-brand { -fx-text-fill: #ffe8dc; -fx-font-weight: bold; -fx-font-size: 15px; }
+.admin-sidebar-caption { -fx-text-fill: #dbc6bb; -fx-font-size: 12px; }
+.admin-menu { -fx-background-color: transparent; -fx-text-fill: #fff4ee; -fx-alignment: CENTER_LEFT; -fx-padding: 12; }
+.admin-menu:hover, .admin-menu:focused { -fx-background-color: #734432; }
+.admin-main { -fx-padding: 26; }
+.admin-scroll { -fx-background-color: transparent; -fx-background: transparent; }
+.admin-card { -fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #e7e0d8; -fx-border-radius: 12; -fx-padding: 16; }
+.admin-subtitulo { -fx-font-size: 18px; -fx-font-weight: bold; }
+.admin-valor { -fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #a34225; }
+.admin-empty { -fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #e7e0d8; -fx-border-radius: 12; -fx-padding: 32; -fx-text-fill: #77716c; -fx-alignment: center; }
+.admin-produto { -fx-background-color: white; -fx-border-color: #e7e0d8; -fx-border-radius: 10; -fx-background-radius: 10; -fx-text-fill: #302521; -fx-padding: 16; -fx-alignment: CENTER_LEFT; }
+.admin-produto:hover { -fx-border-color: #b84d2b; }
+.table-row-cell.estoque-baixo { -fx-background-color: #fae2df; }
+.table-row-cell.estoque-baixo .text { -fx-fill: #a62f27; }
+.table-row-cell.estoque-baixo:selected { -fx-background-color: #eaa49b; }

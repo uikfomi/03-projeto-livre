@@ -112,13 +112,14 @@ class VitrineJavaFXTest {
     private static <T> T fx(Callable<T> c) throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> condicao) throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(condicao.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}
     private record ProdutosTeste(List<Produto> dados) implements ProdutoEstoqueService {
-        public List<Produto> listar(){return dados;}public List<Produto> listarEstoqueBaixo(){return List.of();}public Optional<Produto> buscarPorId(long id){return dados.stream().filter(p->p.getId()==id).findFirst();}
+        public List<Categoria> listarCategorias(){return List.of();} public List<Produto> listar(){return dados;}public List<Produto> listarEstoqueBaixo(){return List.of();}public Optional<Produto> buscarPorId(long id){return dados.stream().filter(p->p.getId()==id).findFirst();}
         public long cadastrar(Produto p){throw new UnsupportedOperationException();}public boolean atualizar(Produto p){throw new UnsupportedOperationException();}public boolean excluir(long id){throw new UnsupportedOperationException();}
         public void entradaLote(long p,long f,BigDecimal q,String o){throw new UnsupportedOperationException();}public void registrarPerda(long p,BigDecimal q,String o){throw new UnsupportedOperationException();}
     }
     private static class PedidosTeste implements PedidoVendaService {
         final List<Pedido> dados;final java.util.concurrent.atomic.AtomicReference<Pedido> enviado=new java.util.concurrent.atomic.AtomicReference<>();
         PedidosTeste(List<Pedido> dados){this.dados=dados;}
+        public List<PedidoFila> listarFila(){return List.of();} public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){throw new UnsupportedOperationException();}
         public List<Pedido> listarDoCliente(UsuarioCliente u){return dados;}public long finalizar(Pedido p){enviado.set(p);return 77;}public void transicionar(long id,StatusPedido s){throw new UnsupportedOperationException();}
     }
     private static class NodeBusca {
@@ -127,6 +128,7 @@ class VitrineJavaFXTest {
         }
     }
     private static class AvaliacoesTeste implements AvaliacaoService {
+        public List<AvaliacaoResumo> listar(){return List.of();}
         final java.util.concurrent.atomic.AtomicReference<Avaliacao> salva=new java.util.concurrent.atomic.AtomicReference<>();
         public Map<Long,BigDecimal> mediasPorProduto(){return Map.of(1L,new BigDecimal("4.5"));}public long salvar(Avaliacao a){salva.set(a);return 1;}
         public boolean responder(Usuario u,long id,String r){throw new UnsupportedOperationException();}public boolean excluir(Usuario u,long id){throw new UnsupportedOperationException();}

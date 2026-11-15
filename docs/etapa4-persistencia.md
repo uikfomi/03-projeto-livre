@@ -2,7 +2,7 @@
 
 ## Banco
 
-Para um banco novo, execute `database/scripts/schema.sql` e depois `database/scripts/etapa4_migracao.sql`. A migração é única, não deve ser repetida, e o MySQL efetiva DDL implicitamente; faça backup antes de aplicá-la em outro banco. Ela vincula o cliente inicial `root` a um contato. Usuários clientes adicionais sem contato e fornecedores antigos sem os novos campos exigem saneamento manual antes de serem carregados.
+Para um banco novo, execute `database/scripts/schema.sql`, depois `database/scripts/etapa4_migracao.sql` e, para o PDV, `database/scripts/etapa8_pdv.sql`. A migração é única, não deve ser repetida, e o MySQL efetiva DDL implicitamente; faça backup antes de aplicá-la em outro banco. Ela vincula o cliente inicial `root` a um contato. Usuários clientes adicionais sem contato e fornecedores antigos sem os novos campos exigem saneamento manual antes de serem carregados.
 
 Custos históricos de itens e perdas anteriores à migração permanecem desconhecidos (`NULL`); o relatório recusa calcular períodos que os incluam, em vez de inventar valores. Novas vendas registram o custo de produção vigente na finalização, e perdas registram o custo vigente na movimentação.
 

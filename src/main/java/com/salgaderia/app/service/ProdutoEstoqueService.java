@@ -3,6 +3,7 @@ import com.salgaderia.app.model.Produto;
 import java.math.BigDecimal;
 import java.util.*;
 public interface ProdutoEstoqueService {
+    java.util.List<com.salgaderia.app.model.Categoria> listarCategorias();
     long cadastrar(Produto produto);
     boolean atualizar(Produto produto);
     boolean excluir(long id);
