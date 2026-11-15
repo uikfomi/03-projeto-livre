@@ -4,6 +4,7 @@ import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.impl.AutenticacaoServiceImpl;
 import com.salgaderia.app.service.impl.PedidoVendaServiceImpl;
+import com.salgaderia.app.service.impl.RelatorioFinanceiroServiceImpl;
 import com.salgaderia.app.util.ConnectionFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -61,10 +62,17 @@ class DescontoIntegracaoTest {
             Pedido pdv=pedido(admin,usuario.getCliente(),produto,100);
             var calculoPdv=servico.simular(pdv,"UIKFOMI10");
             assertEquals("CENTO",calculoPdv.estrategia());
+            var financeiro=new RelatorioFinanceiroServiceImpl();
+            LocalDateTime inicio=LocalDateTime.now().minusDays(1),fim=LocalDateTime.now().plusDays(1);
+            var antes=financeiro.calcular(inicio,fim);
             long idPdv=servico.finalizarPdv(pdv,FormaPagamento.DINHEIRO,new BigDecimal("200.00"),"UIKFOMI10",calculoPdv);pedidosCriados.add(idPdv);
             try(Connection c=ConnectionFactory.getConnection();PreparedStatement ps=c.prepareStatement("SELECT desconto,troco,estrategia_desconto FROM pedidos WHERE id=?")) {
                 ps.setLong(1,idPdv);try(ResultSet rs=ps.executeQuery()){assertTrue(rs.next());assertEquals(0,new BigDecimal("24.00").compareTo(rs.getBigDecimal(1)));assertEquals(0,new BigDecimal("24.00").compareTo(rs.getBigDecimal(2)));assertEquals("CENTO",rs.getString(3));}
             }
+            var depois=financeiro.calcular(inicio,fim);
+            assertEquals(0,new BigDecimal("200.00").compareTo(depois.faturamentoBruto().subtract(antes.faturamentoBruto())));
+            assertEquals(0,new BigDecimal("176.00").compareTo(depois.faturamentoAposDescontos().subtract(antes.faturamentoAposDescontos())));
+            assertEquals(0,new BigDecimal("76.00").compareTo(depois.lucroLiquidoReal().subtract(antes.lucroLiquidoReal())));
         } finally {
             try(Connection c=ConnectionFactory.getConnection()){
                 if(produtoId!=0)excluir(c,"DELETE FROM movimentacoes_estoque WHERE produto_id=?",produtoId);

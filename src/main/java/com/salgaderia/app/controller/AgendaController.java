@@ -8,9 +8,11 @@ import com.salgaderia.app.model.Fornecedor;
 import com.salgaderia.app.model.Usuario;
 import com.salgaderia.app.model.enums.CategoriaInsumo;
 import com.salgaderia.app.service.AgendaService;
+import com.salgaderia.app.service.WhatsAppLinkService;
 import com.salgaderia.app.service.impl.AgendaServiceImpl;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.TelaAutenticada;
+import com.salgaderia.app.util.WhatsAppUi;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -31,7 +33,7 @@ public class AgendaController implements TelaAutenticada {
     @FXML private ListView<Contato> lista;
     @FXML private VBox estado, formulario, camposCliente, camposFornecedor;
     @FXML private Label tituloEstado, descricaoEstado, tituloFormulario;
-    @FXML private Button adicionarPrimeiro, tentarNovamente, editar, excluir;
+    @FXML private Button adicionarPrimeiro, tentarNovamente, editar, excluir, chamarWhatsapp;
     @FXML private ComboBox<String> tipo;
     @FXML private TextField nome, whatsapp, endereco, referencia, cnpj, telefone, prazo;
     @FXML private TextArea observacoes;
@@ -41,6 +43,7 @@ public class AgendaController implements TelaAutenticada {
     private final PauseTransition debounce = new PauseTransition(Duration.millis(250));
     private Usuario usuario;
     private Contato emEdicao;
+    private final WhatsAppLinkService whatsappService = new WhatsAppLinkService();
     private long versaoConsulta;
 
     public AgendaController() { this(new AgendaServiceImpl(new ContatoDAOImpl())); }
@@ -71,6 +74,7 @@ public class AgendaController implements TelaAutenticada {
         });
         editar.disableProperty().bind(lista.getSelectionModel().selectedItemProperty().isNull().or(lista.visibleProperty().not()));
         excluir.disableProperty().bind(lista.getSelectionModel().selectedItemProperty().isNull().or(lista.visibleProperty().not()));
+        chamarWhatsapp.disableProperty().bind(lista.getSelectionModel().selectedItemProperty().isNull().or(lista.visibleProperty().not()));
         mostrarFormulario(false); atualizarCampos();
         mostrarEstado("Carregando contatos...", "Aguarde um instante.", false, false);
     }
@@ -148,6 +152,12 @@ public class AgendaController implements TelaAutenticada {
         tipo.setDisable(true); tituloFormulario.setText("Editar contato"); mostrarFormulario(true); nome.requestFocus();
     }
     @FXML private void cancelar() { emEdicao = null; mostrarFormulario(false); }
+    @FXML private void chamarWhatsapp() {
+        Contato contato=lista.getSelectionModel().getSelectedItem();if(contato==null)return;
+        String numero=contato instanceof Cliente c && c.getWhatsapp()!=null && !c.getWhatsapp().isBlank()?c.getWhatsapp():contato.getTelefone();
+        try { WhatsAppUi.abrir(raiz.getScene().getWindow(),whatsappService,whatsappService.contato(numero,contato.getNome())); }
+        catch(IllegalArgumentException e){avisar(Alert.AlertType.WARNING,"Telefone indisponível",e.getMessage());}
+    }
     private void mostrarFormulario(boolean mostrar) { formulario.setVisible(mostrar); formulario.setManaged(mostrar); }
     private void atualizarCampos() {
         boolean cliente = "Cliente".equals(tipo.getValue());

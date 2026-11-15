@@ -10,6 +10,7 @@ import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.TelaAutenticada;
+import com.salgaderia.app.util.WhatsAppUi;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -22,6 +23,9 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.concurrent.Task;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -36,8 +40,8 @@ import javafx.util.StringConverter;
 /** Painel coordena os serviços; nenhuma consulta SQL é executada pela interface. */
 public class AdminDashboardController implements TelaAutenticada {
     @FXML private BorderPane raiz;
-    @FXML private Label titulo, usuarioNome;
-    @FXML private VBox conteudo;
+    @FXML private Label titulo, usuarioNome, badgePendentes, avisoPedido;
+    @FXML private VBox conteudo, alertasRecentes;
     private final ProdutoEstoqueService produtos;
     private final PedidoVendaService pedidos;
     private final AgendaService agenda;
@@ -45,6 +49,12 @@ public class AdminDashboardController implements TelaAutenticada {
     private final AvaliacaoService avaliacoes;
     private Usuario usuario;
     private long telaAtual;
+    private final WhatsAppLinkService whatsapp = new WhatsAppLinkService();
+    private final Timeline notificacoes = new Timeline(new KeyFrame(Duration.seconds(5),e->atualizarNotificacoes()));
+    private final Set<Long> pedidosConhecidos = new HashSet<>();
+    private boolean primeiraConsulta = true, consultaNotificacoes;
+    private boolean notificacoesAtivas;
+    private final CheckBox notificarStatus = new CheckBox("Notificar via WhatsApp ao mudar status");
     private final Map<Long,ItemVenda> carrinho = new LinkedHashMap<>();
     private static final Locale BR=Locale.forLanguageTag("pt-BR");
     private record ItemVenda(Produto produto,int quantidade) { }
@@ -56,9 +66,37 @@ public class AdminDashboardController implements TelaAutenticada {
     public AdminDashboardController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AgendaService agenda,RelatorioFinanceiroService financeiro,AvaliacaoService avaliacoes){
         this.produtos=Objects.requireNonNull(produtos);this.pedidos=Objects.requireNonNull(pedidos);this.agenda=Objects.requireNonNull(agenda);this.financeiro=Objects.requireNonNull(financeiro);this.avaliacoes=Objects.requireNonNull(avaliacoes);
     }
+    @FXML private void initialize(){
+        notificarStatus.setSelected(true);notificarStatus.setId("notificar-status");
+        notificacoes.setCycleCount(Timeline.INDEFINITE);
+        raiz.sceneProperty().addListener((obs,anterior,cena)->{
+            if(cena==null){notificacoesAtivas=false;notificacoes.stop();return;}
+            cena.windowProperty().addListener((o,velha,janela)->{
+                if(janela==null){notificacoesAtivas=false;notificacoes.stop();}
+                else janela.showingProperty().addListener((x,era,visivel)->{if(!visivel){notificacoesAtivas=false;notificacoes.stop();}});
+            });
+        });
+    }
     @Override public void definirUsuario(Usuario usuario){
         if(usuario==null||!usuario.isAtivo()||!usuario.podeAcessarPainelGerencial())throw new SecurityException("Acesso gerencial restrito");
-        this.usuario=usuario;usuarioNome.setText(usuario.getNome());pdv();
+        this.usuario=usuario;usuarioNome.setText(usuario.getNome());notificacoesAtivas=true;atualizarNotificacoes();notificacoes.playFromStart();pdv();
+    }
+    private void atualizarNotificacoes(){
+        if(!notificacoesAtivas||consultaNotificacoes)return;consultaNotificacoes=true;
+        Task<List<PedidoFila>> tarefa=new Task<>(){@Override protected List<PedidoFila> call(){return pedidos.listarFila();}};
+        tarefa.setOnSucceeded(e->{consultaNotificacoes=false;if(!notificacoesAtivas)return;
+            List<PedidoFila> pendentes=tarefa.getValue().stream().filter(p->p.status()==StatusPedido.PENDENTE).toList();
+            badgePendentes.setText("Pedidos pendentes: "+pendentes.size());
+            for(PedidoFila pedido:pendentes)if(pedidosConhecidos.add(pedido.id())&&!primeiraConsulta){
+                if(alertasRecentes.getChildren().size()==1 && alertasRecentes.getChildren().get(0) instanceof Label l && l.getText().equals("Nenhum alerta recente."))alertasRecentes.getChildren().clear();
+                alertasRecentes.getChildren().add(0,new Label("Novo pedido #"+pedido.id()+" · "+pedido.cliente()));
+                avisoPedido.setText("Novo pedido #"+pedido.id());
+                if(alertasRecentes.getChildren().size()>5)alertasRecentes.getChildren().remove(5);
+            }
+            primeiraConsulta=false;
+        });
+        tarefa.setOnFailed(e->{consultaNotificacoes=false;if(notificacoesAtivas)badgePendentes.setText("Pedidos pendentes: indisponível");});
+        Thread t=new Thread(tarefa,"admin-notificacoes");t.setDaemon(true);t.start();
     }
     private long iniciarTela(String nome){titulo.setText(nome);conteudo.getChildren().setAll(estado("Carregando..."));return ++telaAtual;}
     private <T> void carregar(long versao,Supplier<T> operacao,Consumer<T> sucesso){
@@ -160,16 +198,26 @@ public class AdminDashboardController implements TelaAutenticada {
 
     @FXML private void fila(){
         long versao=iniciarTela("Fila de pedidos");carregar(versao,pedidos::listarFila,lista->{
-            conteudo.getChildren().clear();conteudo.getChildren().add(texto("Pedidos da vitrine aguardando preparo ou entrega.","subtitle"));
+            conteudo.getChildren().clear();conteudo.getChildren().addAll(texto("Pedidos da vitrine aguardando preparo ou entrega.","subtitle"),notificarStatus);
             if(lista.isEmpty()){conteudo.getChildren().add(estado("Nenhum pedido aguardando atendimento."));return;}
             for(PedidoFila p:lista){
                 Label info=new Label("#"+p.id()+"  ·  "+p.cliente()+"  ·  "+p.status()+"  ·  "+p.entrega()+"  ·  "+moeda(p.total())+"\n"+p.itens()+(p.enderecoEntrega()==null||p.enderecoEntrega().isBlank()?"":"\nEndereço: "+p.enderecoEntrega()));info.setWrapText(true);HBox.setHgrow(info,Priority.ALWAYS);
                 StatusPedido proximo=switch(p.status()){case PENDENTE->StatusPedido.PREPARANDO;case PREPARANDO->StatusPedido.PRONTO;case PRONTO->StatusPedido.ENTREGUE;default->null;};
-                Button avancar=botao("Avançar para "+proximo,()->executar(()->{pedidos.transicionar(p.id(),proximo);return null;},x->fila()),"button-primary");
-                Button cancelar=botao("Cancelar",()->{if(confirmar("Cancelar pedido #"+p.id()+"? O estoque será devolvido."))executar(()->{pedidos.transicionar(p.id(),StatusPedido.CANCELADO);return null;},x->fila());},"button-outline");
-                HBox linha=new HBox(10,info,avancar,cancelar);linha.setAlignment(Pos.CENTER_LEFT);linha.getStyleClass().add("admin-card");conteudo.getChildren().add(linha);
+                Button avancar=botao("Avançar para "+proximo,()->mudarStatus(p,proximo),"button-primary");
+                Button cancelar=botao("Cancelar",()->{if(confirmar("Cancelar pedido #"+p.id()+"? O estoque será devolvido."))mudarStatus(p,StatusPedido.CANCELADO);},"button-outline");
+                Button chamar=botao("Chamar no WhatsApp",()->chamarCliente(p,p.status()),"button-secondary");
+                chamar.setDisable(p.telefone()==null||p.telefone().isBlank());
+                HBox linha=new HBox(10,info,avancar,cancelar,chamar);linha.setAlignment(Pos.CENTER_LEFT);linha.getStyleClass().add("admin-card");conteudo.getChildren().add(linha);
             }
         });
+    }
+    private void mudarStatus(PedidoFila pedido,StatusPedido status){
+        boolean notificar=notificarStatus.isSelected();
+        executar(()->{pedidos.transicionar(pedido.id(),status);return null;},x->{if(notificar&&pedido.telefone()!=null&&!pedido.telefone().isBlank())chamarCliente(pedido,status);atualizarNotificacoes();fila();});
+    }
+    private void chamarCliente(PedidoFila pedido,StatusPedido status){
+        try{WhatsAppUi.abrir(raiz.getScene().getWindow(),whatsapp,whatsapp.status(pedido.telefone(),pedido.id(),status));}
+        catch(IllegalArgumentException e){avisar(Alert.AlertType.WARNING,"Telefone indisponível",e.getMessage());}
     }
 
     @FXML private void estoque(){
@@ -229,12 +277,18 @@ public class AdminDashboardController implements TelaAutenticada {
         carregar(versao,()->new DadosFinanceiros(financeiro.calcular(inicio,fim),financeiro.produtosMaisVendidos(inicio,fim),financeiro.receitaPorCategoria(inicio,fim)),dados->{
             conteudo.getChildren().clear();conteudo.getChildren().add(texto("Mês atual · pedidos entregues pela data de criação; perdas pela data da movimentação.","subtitle"));
             var r=dados.totais();FlowPane indicadores=new FlowPane(10,10,indicador("Faturamento após descontos",r.faturamentoAposDescontos()),indicador("Custos de produção",r.custoTotalProducao()),indicador("Perdas",r.perdas()),indicador("Lucro líquido real",r.lucroLiquidoReal()));
-            conteudo.getChildren().add(indicadores);
+            Button exportar=botao("Exportar Balanço (.CSV)",()->exportarBalanco(r),"button-secondary");exportar.setId("exportar-csv");
+            conteudo.getChildren().addAll(indicadores,exportar);
             if(dados.produtos().isEmpty())conteudo.getChildren().add(estado("Nenhuma venda entregue no período para o gráfico de produtos."));
             else{CategoryAxis eixoX=new CategoryAxis();NumberAxis eixoY=new NumberAxis();eixoY.setLabel("Quantidade");BarChart<String,Number> grafico=new BarChart<>(eixoX,eixoY);grafico.setTitle("Produtos mais vendidos");grafico.setLegendVisible(false);XYChart.Series<String,Number> serie=new XYChart.Series<>();dados.produtos().forEach((nome,qtd)->serie.getData().add(new XYChart.Data<>(nome,qtd)));grafico.getData().add(serie);conteudo.getChildren().add(grafico);}
             if(dados.categorias().isEmpty())conteudo.getChildren().add(estado("Nenhuma receita por categoria no período."));
             else{PieChart grafico=new PieChart();grafico.setTitle("Receita por categoria");dados.categorias().forEach((nome,valor)->grafico.getData().add(new PieChart.Data(nome,valor.doubleValue())));conteudo.getChildren().add(grafico);}
         });
+    }
+    private void exportarBalanco(RelatorioFinanceiroService.Relatorio relatorio){
+        FileChooser seletor=new FileChooser();seletor.setTitle("Exportar balanço");seletor.setInitialFileName("balanco.csv");seletor.getExtensionFilters().add(new FileChooser.ExtensionFilter("Arquivo CSV","*.csv"));
+        File arquivo=seletor.showSaveDialog(raiz.getScene().getWindow());if(arquivo==null)return;
+        executar(()->{try{financeiro.exportarCsv(relatorio,arquivo.toPath());return null;}catch(IOException e){throw new java.io.UncheckedIOException(e);}},x->avisar(Alert.AlertType.INFORMATION,"Balanço exportado","Arquivo CSV salvo com sucesso."));
     }
     private Node indicador(String nome,BigDecimal valor){VBox caixa=new VBox(8,texto(nome,"subtitle"),texto(moeda(valor),"admin-valor"));caixa.getStyleClass().add("admin-card");caixa.setPrefWidth(190);return caixa;}
 
@@ -249,7 +303,7 @@ public class AdminDashboardController implements TelaAutenticada {
             conteudo.getChildren().addAll(tabela,new HBox(10,responder,excluir));
         });
     }
-    @FXML private void voltar(){telaAtual++;try{Navegacao.abrirTelaInicial((Stage)raiz.getScene().getWindow(),usuario);}catch(IOException e){avisar(Alert.AlertType.ERROR,"Não foi possível voltar","Tente novamente.");}}
+    @FXML private void voltar(){notificacoesAtivas=false;notificacoes.stop();telaAtual++;try{Navegacao.abrirTelaInicial((Stage)raiz.getScene().getWindow(),usuario);}catch(IOException e){avisar(Alert.AlertType.ERROR,"Não foi possível voltar","Tente novamente.");}}
     private static <T> void coluna(TableView<T> tabela,String titulo,java.util.function.Function<T,String> valor,int largura){TableColumn<T,String> c=new TableColumn<>(titulo);c.setCellValueFactory(d->new SimpleStringProperty(valor.apply(d.getValue())));c.setPrefWidth(largura);tabela.getColumns().add(c);}
     private static Label texto(String texto,String estilo){Label l=new Label(texto);l.setWrapText(true);l.getStyleClass().add(estilo);return l;}
     private static Label estado(String texto){Label l=texto(texto,"admin-empty");l.setMaxWidth(Double.MAX_VALUE);return l;}

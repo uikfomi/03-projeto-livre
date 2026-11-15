@@ -54,6 +54,17 @@ class AdminDashboardJavaFXTest {
             assertNotNull(fx(()->janela.get().getScene().getRoot().lookup(".module-title")));
         }finally{fx(()->{janela.get().close();return null;});}
     }
+    @Test void notificaNovosPedidosPendentes() throws Exception {
+        Produto produto=new Produto(1L,null,"Coxinha",null,new BigDecimal("8"),new BigDecimal("3"),BigDecimal.TEN,BigDecimal.ONE,null);
+        Vendas vendas=new Vendas();AtomicReference<FXMLLoader> loader=new AtomicReference<>();AtomicReference<Stage> janela=new AtomicReference<>();
+        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));l.setControllerFactory(c->new AdminDashboardController(new Produtos(produto),vendas,new Agenda(),new Financeiro(),new Avaliacoes()));Parent root=l.load();Stage stage=new Stage();stage.setScene(new Scene(root,1100,700));stage.show();((AdminDashboardController)l.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));loader.set(l);janela.set(stage);return null;});
+        try{
+            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("badgePendentes")).getText().endsWith("0")));
+            vendas.fila.add(new PedidoFila(123,"Cliente",StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),BigDecimal.TEN,"1 x Coxinha","85999999999"));
+            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("badgePendentes")).getText().endsWith("1")));
+            assertTrue(fx(()->((Label)loader.get().getNamespace().get("avisoPedido")).getText().contains("#123")));
+        }finally{fx(()->{janela.get().close();return null;});}
+    }
     private static <T>T fx(Callable<T> c)throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> c)throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(c.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}
     private record Produtos(Produto produto) implements ProdutoEstoqueService {
@@ -62,8 +73,9 @@ class AdminDashboardJavaFXTest {
         public void entradaLote(long p,long f,BigDecimal q,String o){}public void registrarPerda(long p,BigDecimal q,String o){}
     }
     private static class Vendas implements PedidoVendaService {
+        final List<PedidoFila> fila=new java.util.concurrent.CopyOnWriteArrayList<>();
         final AtomicReference<Pedido> enviado=new AtomicReference<>();final AtomicReference<FormaPagamento> forma=new AtomicReference<>();final AtomicReference<BigDecimal> recebido=new AtomicReference<>();final AtomicReference<String> codigo=new AtomicReference<>();
-        public List<PedidoFila> listarFila(){return List.of();}public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){enviado.set(p);forma.set(f);recebido.set(r);return 1;}
+        public List<PedidoFila> listarFila(){return List.copyOf(fila);}public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){enviado.set(p);forma.set(f);recebido.set(r);return 1;}
         public List<Pedido> listarDoCliente(UsuarioCliente u){return List.of();}public long finalizar(Pedido p){return 1;}public void transicionar(long id,StatusPedido status){}
         public com.salgaderia.app.service.desconto.ResultadoDesconto simular(Pedido p,String c){var cupom="UIKFOMI10".equals(c)?new com.salgaderia.app.service.desconto.Cupom(c,BigDecimal.TEN,BigDecimal.ZERO):null;return new com.salgaderia.app.service.desconto.CalculadoraDescontos().calcular(new com.salgaderia.app.service.desconto.ContextoDesconto(p.getItens(),0,cupom));}
         public long finalizar(Pedido p,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){return finalizar(p);}
@@ -74,7 +86,8 @@ class AdminDashboardJavaFXTest {
         public Optional<Contato> buscarPorId(long id){return Optional.empty();}public List<Contato> buscar(FiltroContato f,String texto){return List.of();}
     }
     private static class Financeiro implements RelatorioFinanceiroService {
-        public Relatorio calcular(LocalDateTime i,LocalDateTime f){return new Relatorio(BigDecimal.TEN,BigDecimal.ONE,BigDecimal.ZERO,new BigDecimal("9"));}
+        public Relatorio calcular(LocalDateTime i,LocalDateTime f){return new Relatorio(BigDecimal.TEN,BigDecimal.TEN,BigDecimal.ONE,BigDecimal.ZERO,new BigDecimal("9"));}
+        public void exportarCsv(Relatorio r,java.nio.file.Path destino){}
         public Map<String,BigDecimal> produtosMaisVendidos(LocalDateTime i,LocalDateTime f){return Map.of("Coxinha",BigDecimal.ONE);}public Map<String,BigDecimal> receitaPorCategoria(LocalDateTime i,LocalDateTime f){return Map.of("Sem categoria",BigDecimal.TEN);}
     }
     private static class Avaliacoes implements AvaliacaoService {

@@ -10,6 +10,7 @@ import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.TelaAutenticada;
+import com.salgaderia.app.util.WhatsAppUi;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -19,6 +20,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import javafx.concurrent.Task;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -51,6 +55,9 @@ public class ClienteVitrineController implements TelaAutenticada {
     private long geracaoProdutos;
     private long geracaoPedidos;
     private boolean carregouProdutos;
+    private final WhatsAppLinkService whatsapp = new WhatsAppLinkService();
+    private final Timeline atualizacaoPedidos = new Timeline(new KeyFrame(Duration.seconds(5), e -> atualizarPedidos(false)));
+    private boolean consultaPedidosEmAndamento;
     private long geracaoDesconto;
     private ResultadoDesconto descontoAtual;
     private static final Locale BR = Locale.forLanguageTag("pt-BR");
@@ -64,6 +71,14 @@ public class ClienteVitrineController implements TelaAutenticada {
     private record Catalogo(List<Produto> produtos,Map<Long,BigDecimal> medias) { }
 
     @FXML private void initialize() {
+        atualizacaoPedidos.setCycleCount(Timeline.INDEFINITE);
+        raiz.sceneProperty().addListener((obs, anterior, cena)->{
+            if(cena==null){atualizacaoPedidos.stop();geracaoPedidos++;return;}
+            cena.windowProperty().addListener((o, velha, janela)->{
+                if(janela==null){atualizacaoPedidos.stop();geracaoPedidos++;}
+                else janela.showingProperty().addListener((x,era,visivel)->{if(!visivel){atualizacaoPedidos.stop();geracaoPedidos++;}});
+            });
+        });
         ToggleGroup grupo=new ToggleGroup();retirada.setToggleGroup(grupo);entrega.setToggleGroup(grupo);retirada.setSelected(true);
         grupo.selectedToggleProperty().addListener((o,a,n)->{if(n==null)grupo.selectToggle(a);atualizarEndereco();});
         categorias.setConverter(new StringConverter<>() {
@@ -80,8 +95,8 @@ public class ClienteVitrineController implements TelaAutenticada {
         if (!(usuario instanceof UsuarioCliente cliente) || !cliente.isAtivo()) throw new SecurityException("Acesso restrito a clientes ativos");
         this.usuario=cliente;saudacao.setText("Olá, "+usuario.getNome()+"!");atualizarEndereco();atualizarCarrinho();carregarProdutos();
     }
-    @FXML private void mostrarVitrine(){mostrarPainel(painelVitrine);}
-    @FXML private void mostrarPedidos(){mostrarPainel(painelPedidos);carregarPedidos();}
+    @FXML private void mostrarVitrine(){atualizacaoPedidos.stop();geracaoPedidos++;mostrarPainel(painelVitrine);}
+    @FXML private void mostrarPedidos(){mostrarPainel(painelPedidos);carregarPedidos();atualizacaoPedidos.playFromStart();}
     private void mostrarPainel(VBox visivel){
         painelVitrine.setVisible(visivel==painelVitrine);painelVitrine.setManaged(visivel==painelVitrine);
         painelPedidos.setVisible(visivel==painelPedidos);painelPedidos.setManaged(visivel==painelPedidos);
@@ -197,20 +212,26 @@ public class ClienteVitrineController implements TelaAutenticada {
         raiz.setDisable(true);
         ResultadoDesconto esperado=descontoAtual;String codigo=cupom.getText();
         Task<Long> tarefa=new Task<>() { @Override protected Long call(){return pedidosService.finalizar(pedido,codigo,esperado);} };
-        tarefa.setOnSucceeded(e->{raiz.setDisable(false);carrinho.clear();cupom.clear();atualizarCarrinho();avisar(Alert.AlertType.INFORMATION,"Pedido enviado","Pedido #"+tarefa.getValue()+" recebido com sucesso.");carregarProdutos();mostrarPedidos();});
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);if(pedido.getId()==null)pedido.setId(tarefa.getValue());pedido.setDesconto(esperado.desconto());carrinho.clear();cupom.clear();atualizarCarrinho();
+            Alert alerta=new Alert(Alert.AlertType.INFORMATION);alerta.initOwner(raiz.getScene().getWindow());alerta.setTitle("Pedido enviado");alerta.setHeaderText(null);alerta.setContentText("Pedido #"+tarefa.getValue()+" recebido com sucesso.");
+            ButtonType acompanhar=new ButtonType("Acompanhar no WhatsApp");alerta.getButtonTypes().add(acompanhar);
+            if(alerta.showAndWait().orElse(ButtonType.OK)==acompanhar)abrirWhatsApp(pedido);
+            carregarProdutos();mostrarPedidos();});
         tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();
             if(erro instanceof EstoqueInsuficienteException estoque)avisar(Alert.AlertType.WARNING,"Estoque insuficiente",estoque.getNomeProduto()+": disponível "+estoque.getEstoqueDisponivel()+", solicitado "+estoque.getQuantidadeSolicitada()+". Revise seu carrinho.");
             else if(erro instanceof IllegalArgumentException)avisar(Alert.AlertType.WARNING,"Pedido não finalizado",erro.getMessage());
             else avisar(Alert.AlertType.ERROR,"Não foi possível finalizar","Verifique sua conexão e tente novamente. Seu carrinho foi preservado.");carregarProdutos();});iniciar(tarefa);
     }
-    @FXML private void carregarPedidos(){
-        if(usuario==null)return;long geracao=++geracaoPedidos;listaPedidos.getChildren().clear();exibir(mensagemPedidos,"Carregando seus pedidos...");
+    @FXML private void carregarPedidos(){atualizarPedidos(true);}
+    private void atualizarPedidos(boolean inicial){
+        if(usuario==null||consultaPedidosEmAndamento)return;consultaPedidosEmAndamento=true;long geracao=++geracaoPedidos;
+        if(inicial){listaPedidos.getChildren().clear();exibir(mensagemPedidos,"Carregando seus pedidos...");}
         Task<List<Pedido>> tarefa=new Task<>() { @Override protected List<Pedido> call(){return pedidosService.listarDoCliente(usuario);} };
-        tarefa.setOnSucceeded(e->{if(geracao!=geracaoPedidos)return;List<Pedido> pedidos=tarefa.getValue();
+        tarefa.setOnSucceeded(e->{consultaPedidosEmAndamento=false;if(geracao!=geracaoPedidos)return;List<Pedido> pedidos=tarefa.getValue();
             if(pedidos.isEmpty()){exibir(mensagemPedidos,"Você ainda não fez nenhum pedido.");return;}
             ocultar(mensagemPedidos);listaPedidos.getChildren().setAll(pedidos.stream().map(this::cardPedido).toList());
         });
-        tarefa.setOnFailed(e->{if(geracao==geracaoPedidos)exibir(mensagemPedidos,"Não foi possível carregar seus pedidos. Verifique a conexão e tente novamente.");});iniciar(tarefa);
+        tarefa.setOnFailed(e->{consultaPedidosEmAndamento=false;if(geracao==geracaoPedidos)exibir(mensagemPedidos,"Não foi possível atualizar seus pedidos. Verifique a conexão e tente novamente.");});iniciar(tarefa);
     }
     private Node cardPedido(Pedido pedido){
         VBox card=new VBox(10);card.getStyleClass().add("pedido-card");
@@ -222,8 +243,11 @@ public class ClienteVitrineController implements TelaAutenticada {
             Button avaliar=new Button("Avaliar produto");avaliar.setId("avaliar-"+pedido.getId()+"-"+item.getProduto().getId());avaliar.getStyleClass().add("button-secondary");avaliar.setDisable(pedido.getStatus()!=StatusPedido.ENTREGUE);avaliar.setOnAction(e->avaliar(item.getProduto()));
             HBox linha=new HBox(8,descricao,avaliar);linha.setAlignment(Pos.CENTER_LEFT);card.getChildren().add(linha);
         }
-        Label totalPedido=new Label("Total: "+moeda(pedido.calcularTotal()));totalPedido.getStyleClass().add("produto-preco");card.getChildren().add(totalPedido);return card;
+        Label totalPedido=new Label("Total: "+moeda(pedido.calcularTotal()));totalPedido.getStyleClass().add("produto-preco");
+        Button whatsappPedido=new Button("Acompanhar no WhatsApp");whatsappPedido.setId("whatsapp-pedido-"+pedido.getId());whatsappPedido.getStyleClass().add("button-secondary");whatsappPedido.setOnAction(e->abrirWhatsApp(pedido));
+        card.getChildren().addAll(totalPedido,whatsappPedido);return card;
     }
+    private void abrirWhatsApp(Pedido pedido){WhatsAppUi.abrir(raiz.getScene().getWindow(),whatsapp,whatsapp.acompanhar(pedido));}
     private void avaliar(Produto produto){
         Dialog<ButtonType> dialog=new Dialog<>();dialog.initOwner(raiz.getScene().getWindow());dialog.setTitle("Avaliar produto");dialog.setHeaderText(produto.getNome());
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL,ButtonType.OK);
@@ -239,7 +263,7 @@ public class ClienteVitrineController implements TelaAutenticada {
         tarefa.setOnFailed(e->{raiz.setDisable(false);if(tarefa.getException() instanceof AvaliacaoNaoPermitidaException)avisar(Alert.AlertType.WARNING,"Avaliação não permitida","Você precisa ter recebido um pedido com este produto para avaliá-lo.");else avisar(Alert.AlertType.ERROR,"Não foi possível avaliar","Verifique sua conexão e tente novamente.");});iniciar(tarefa);
     }
     @FXML private void sair(){
-        geracaoProdutos++;geracaoPedidos++;
+        atualizacaoPedidos.stop();geracaoProdutos++;geracaoPedidos++;
         try {Navegacao.abrirLogin((Stage)raiz.getScene().getWindow());}
         catch(IOException e){avisar(Alert.AlertType.ERROR,"Não foi possível sair","Tente novamente.");}
     }

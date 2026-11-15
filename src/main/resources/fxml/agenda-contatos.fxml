@@ -37,6 +37,7 @@
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <Button fx:id="editar" text="Editar selecionado" onAction="#editar" styleClass="button-secondary" />
                     <Button fx:id="excluir" text="Excluir selecionado" onAction="#excluir" styleClass="button-outline" />
+                    <Button fx:id="chamarWhatsapp" text="Chamar no WhatsApp" onAction="#chamarWhatsapp" styleClass="button-secondary" />
                 </HBox>
             </VBox>
             <VBox fx:id="formulario" prefWidth="360" minWidth="310" maxWidth="400" spacing="12" styleClass="agenda-form">

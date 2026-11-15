@@ -34,26 +34,26 @@ public class PedidoDAOImpl implements PedidoDAO {
         return resultado;
     }
     @Override public java.util.List<PedidoFila> listarFila(Connection c) throws SQLException {
-        String sql="SELECT p.id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.desconto,COALESCE(ct.nome,u.nome,'Cliente') cliente,"
+        String sql="SELECT p.id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.desconto,COALESCE(ct.nome,u.nome,'Cliente') cliente,COALESCE(NULLIF(TRIM(ct.whatsapp),''),NULLIF(TRIM(ct.telefone),'')) telefone,"
                 + "i.quantidade,i.preco_unitario,pr.nome produto FROM pedidos p JOIN usuarios u ON u.id=p.usuario_id "
                 + "LEFT JOIN contatos ct ON ct.id=p.contato_id LEFT JOIN pedido_itens i ON i.pedido_id=p.id "
                 + "LEFT JOIN produtos pr ON pr.id=i.produto_id WHERE p.origem='VITRINE' AND u.perfil='CLIENTE' "
                 + "AND p.status IN ('PENDENTE','PREPARANDO','PRONTO') ORDER BY p.criado_em,p.id,i.id";
         class Grupo {
-            long id;String cliente,endereco;com.salgaderia.app.model.enums.StatusPedido status;com.salgaderia.app.model.enums.TipoEntrega entrega;
+            long id;String cliente,endereco,telefone;com.salgaderia.app.model.enums.StatusPedido status;com.salgaderia.app.model.enums.TipoEntrega entrega;
             LocalDateTime data;BigDecimal total=BigDecimal.ZERO, desconto;java.util.List<String> itens=new java.util.ArrayList<>();
         }
         java.util.Map<Long,Grupo> grupos=new java.util.LinkedHashMap<>();
         try(PreparedStatement ps=c.prepareStatement(sql);ResultSet rs=ps.executeQuery()){
             while(rs.next()){
                 long id=rs.getLong("id");Grupo g=grupos.get(id);
-                if(g==null){g=new Grupo();g.id=id;g.cliente=rs.getString("cliente");g.endereco=rs.getString("endereco_entrega");
+                if(g==null){g=new Grupo();g.id=id;g.cliente=rs.getString("cliente");g.telefone=rs.getString("telefone");g.endereco=rs.getString("endereco_entrega");
                     g.status=com.salgaderia.app.model.enums.StatusPedido.valueOf(rs.getString("status"));g.entrega=com.salgaderia.app.model.enums.TipoEntrega.valueOf(rs.getString("tipo_entrega"));g.data=rs.getTimestamp("criado_em").toLocalDateTime();g.desconto=rs.getBigDecimal("desconto");grupos.put(id,g);}
                 BigDecimal quantidade=rs.getBigDecimal("quantidade");if(quantidade!=null){g.itens.add(quantidade.stripTrailingZeros().toPlainString()+" × "+rs.getString("produto"));g.total=g.total.add(quantidade.multiply(rs.getBigDecimal("preco_unitario")));}
             }
         }
         java.util.List<PedidoFila> resultado=new java.util.ArrayList<>();
-        for(Grupo g:grupos.values())resultado.add(new PedidoFila(g.id,g.cliente,g.status,g.entrega,g.endereco,g.data,g.total.subtract(g.desconto),String.join(", ",g.itens)));
+        for(Grupo g:grupos.values())resultado.add(new PedidoFila(g.id,g.cliente,g.status,g.entrega,g.endereco,g.data,g.total.subtract(g.desconto),String.join(", ",g.itens),g.telefone));
         return resultado;
     }
     @Override public void registrarPdv(Connection c,long id,com.salgaderia.app.model.enums.FormaPagamento forma,BigDecimal recebido,BigDecimal troco) throws SQLException {
@@ -104,8 +104,8 @@ public class PedidoDAOImpl implements PedidoDAO {
         }
     }
     @Override public BigDecimal[] somarVendasEntregues(Connection c,LocalDateTime inicio,LocalDateTime fim) throws SQLException {
-        try(PreparedStatement ps=c.prepareStatement("SELECT COALESCE(SUM(t.subtotal-p.desconto),0),COALESCE(SUM(t.custo),0),COALESCE(SUM(t.sem_custo),0) FROM pedidos p JOIN (SELECT pedido_id,SUM(quantidade*preco_unitario) subtotal,SUM(quantidade*custo_unitario) custo,SUM(custo_unitario IS NULL) sem_custo FROM pedido_itens GROUP BY pedido_id) t ON p.id=t.pedido_id WHERE p.status='ENTREGUE' AND p.criado_em>=? AND p.criado_em<?")){
-            ps.setTimestamp(1,Timestamp.valueOf(inicio));ps.setTimestamp(2,Timestamp.valueOf(fim));try(ResultSet rs=ps.executeQuery()){rs.next();if(rs.getLong(3)>0)throw new SQLException("Vendas sem custo histórico");return new BigDecimal[]{rs.getBigDecimal(1),rs.getBigDecimal(2)};}
+        try(PreparedStatement ps=c.prepareStatement("SELECT COALESCE(SUM(t.subtotal-p.desconto),0),COALESCE(SUM(t.custo),0),COALESCE(SUM(t.sem_custo),0),COALESCE(SUM(t.subtotal),0) FROM pedidos p JOIN (SELECT pedido_id,SUM(quantidade*preco_unitario) subtotal,SUM(quantidade*custo_unitario) custo,SUM(custo_unitario IS NULL) sem_custo FROM pedido_itens GROUP BY pedido_id) t ON p.id=t.pedido_id WHERE p.status='ENTREGUE' AND p.criado_em>=? AND p.criado_em<?")){
+            ps.setTimestamp(1,Timestamp.valueOf(inicio));ps.setTimestamp(2,Timestamp.valueOf(fim));try(ResultSet rs=ps.executeQuery()){rs.next();if(rs.getLong(3)>0)throw new SQLException("Vendas sem custo histórico");return new BigDecimal[]{rs.getBigDecimal(1),rs.getBigDecimal(2),rs.getBigDecimal(4)};}
         }
     }
     @Override public long contarEntreguesDoCliente(Connection c,long clienteId) throws SQLException {

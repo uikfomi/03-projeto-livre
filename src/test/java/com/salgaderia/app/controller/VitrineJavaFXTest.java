@@ -112,6 +112,22 @@ class VitrineJavaFXTest {
             assertEquals(0,fx(()->((FlowPane)loaderRef.get().getNamespace().get("cards")).getChildren().size()));
         } finally {fx(()->{stageRef.get().close();return null;});}
     }
+    @Test void meusPedidosAtualizaStatusAutomaticamente() throws Exception {
+        Categoria categoria=new Categoria(1L,"Fritos",null);
+        Produto produto=new Produto(1L,categoria,"Coxinha",null,BigDecimal.TEN,BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
+        Cliente cliente=new Cliente(10L,"Ana",null,null,"85999999999",null,null);
+        UsuarioCliente usuario=new UsuarioCliente(20L,"Ana","ana","senha",true,cliente);
+        List<Pedido> lista=new CopyOnWriteArrayList<>();
+        lista.add(new Pedido(101L,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,produto,BigDecimal.ONE,BigDecimal.TEN))));
+        var loaderRef=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stageRef=new java.util.concurrent.atomic.AtomicReference<Stage>();
+        fx(()->{FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));loader.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of()),new PedidosTeste(lista),new AvaliacoesTeste()));Parent root=loader.load();Stage stage=new Stage();stage.setScene(new Scene(root,1000,700));stage.show();((ClienteVitrineController)loader.getController()).definirUsuario(usuario);loaderRef.set(loader);stageRef.set(stage);((Button)loader.getNamespace().get("botaoPedidos")).fire();return null;});
+        try{
+            aguardar(()->fx(()->stageRef.get().getScene().getRoot().lookup(".status-pendente")!=null));
+            lista.set(0,new Pedido(101L,usuario,cliente,StatusPedido.PRONTO,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,produto,BigDecimal.ONE,BigDecimal.TEN))));
+            aguardar(()->fx(()->stageRef.get().getScene().getRoot().lookup(".status-pronto")!=null));
+            assertNotNull(fx(()->stageRef.get().getScene().getRoot().lookup("#whatsapp-pedido-101")));
+        }finally{fx(()->{stageRef.get().close();return null;});}
+    }
     private static <T> T fx(Callable<T> c) throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> condicao) throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(condicao.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}
     private record ProdutosTeste(List<Produto> dados) implements ProdutoEstoqueService {

@@ -19,7 +19,14 @@
     </left>
     <center>
         <VBox spacing="18" styleClass="admin-main">
-            <Label fx:id="titulo" styleClass="title" />
+            <HBox alignment="CENTER_LEFT" spacing="14">
+                <Label fx:id="titulo" styleClass="title" HBox.hgrow="ALWAYS" />
+                <Label fx:id="avisoPedido" styleClass="subtitle" />
+                <Label fx:id="badgePendentes" text="Pedidos pendentes: —" styleClass="admin-notificacao" />
+            </HBox>
+            <TitledPane text="Alertas recentes" expanded="false">
+                <content><VBox fx:id="alertasRecentes" spacing="4"><Label text="Nenhum alerta recente." /></VBox></content>
+            </TitledPane>
             <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS" styleClass="admin-scroll">
                 <content><VBox fx:id="conteudo" spacing="14" /></content>
             </ScrollPane>
