@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.salgaderia.app.controller.ClienteVitrineController" styleClass="page">
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="Vitrine de pedidos" styleClass="title" />
+                <Label fx:id="saudacao" styleClass="subtitle" />
+            </VBox>
+            <Button text="Sair" onAction="#sair" styleClass="button-outline" />
+        </HBox>
+    </top>
+    <center>
+        <VBox alignment="CENTER" spacing="12" maxWidth="560" maxHeight="240" styleClass="empty-state" BorderPane.alignment="CENTER">
+            <Label text="A vitrine está em preparação" wrapText="true" styleClass="empty-title" />
+            <Label text="A visualização de produtos e pedidos estará disponível em breve." wrapText="true" styleClass="empty-description" />
+        </VBox>
+    </center>
+</BorderPane>

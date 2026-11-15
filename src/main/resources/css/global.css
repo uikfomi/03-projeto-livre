@@ -1,0 +1,48 @@
+/* Cores reutilizáveis do design system JavaFX (looked-up colors). */
+.root {
+    -cor-fundo: #f7f4ef;
+    -cor-superficie: #ffffff;
+    -cor-texto: #242422;
+    -cor-secundaria: #6d706e;
+    -cor-primaria: #b84d2b;
+    -cor-primaria-hover: #973b20;
+    -cor-borda: #e7e0d8;
+    -cor-suave: #f9ece5;
+    -fx-font-family: "System";
+    -fx-font-size: 14px;
+    -fx-background-color: -cor-fundo;
+}
+.label { -fx-text-fill: -cor-texto; }
+.page { -fx-padding: 32; -fx-background-color: -cor-fundo; }
+.brand-panel { -fx-background-color: linear-gradient(to bottom right, #77331f, #b84d2b); -fx-padding: 52; }
+.brand-name { -fx-text-fill: #ffe4d6; -fx-font-size: 14px; -fx-font-weight: bold; }
+.brand-title { -fx-text-fill: white; -fx-font-size: 34px; -fx-font-weight: bold; }
+.brand-description { -fx-text-fill: #ffe9df; -fx-font-size: 16px; }
+.title { -fx-font-size: 26px; -fx-font-weight: bold; }
+.subtitle { -fx-text-fill: -cor-secundaria; -fx-font-size: 14px; }
+.field-label { -fx-font-size: 13px; -fx-font-weight: bold; }
+.card { -fx-background-color: -cor-superficie; -fx-background-radius: 16; -fx-border-color: -cor-borda; -fx-border-radius: 16; -fx-padding: 28; -fx-effect: dropshadow(gaussian, rgba(37, 25, 19, 0.08), 18, 0.1, 0, 5); }
+.text-field, .password-field, .text-area {
+    -fx-background-color: #fbfaf8; -fx-background-radius: 8;
+    -fx-border-color: -cor-borda; -fx-border-radius: 8; -fx-padding: 10 12;
+    -fx-prompt-text-fill: #999b98;
+}
+.text-field:focused, .password-field:focused, .text-area:focused { -fx-border-color: -cor-primaria; -fx-border-width: 1.5; }
+.button { -fx-background-radius: 8; -fx-padding: 11 18; -fx-cursor: hand; -fx-font-weight: bold; }
+.button-primary { -fx-background-color: -cor-primaria; -fx-text-fill: white; }
+.button-primary:hover { -fx-background-color: -cor-primaria-hover; }
+.button-secondary { -fx-background-color: -cor-suave; -fx-text-fill: -cor-primaria; }
+.button-secondary:hover { -fx-background-color: #f3d9cb; }
+.button-outline { -fx-background-color: transparent; -fx-border-color: -cor-borda; -fx-border-radius: 8; -fx-text-fill: -cor-texto; }
+.button-outline:hover { -fx-background-color: -cor-suave; }
+.check-box { -fx-text-fill: -cor-secundaria; }
+.check-box:selected .box { -fx-background-color: -cor-primaria; }
+.check-box:selected .mark { -fx-background-color: white; }
+.tab-pane > .tab-header-area > .tab-header-background { -fx-background-color: transparent; }
+.tab-pane .tab { -fx-background-color: transparent; -fx-padding: 10 18; }
+.tab-pane .tab:selected { -fx-background-color: -cor-suave; -fx-background-radius: 8 8 0 0; }
+.tab-pane .tab-label { -fx-text-fill: -cor-texto; -fx-font-weight: bold; }
+.empty-state { -fx-background-color: -cor-superficie; -fx-background-radius: 16; -fx-border-color: -cor-borda; -fx-border-radius: 16; -fx-padding: 44; }
+.empty-title { -fx-font-size: 20px; -fx-font-weight: bold; }
+.empty-description { -fx-text-fill: -cor-secundaria; -fx-font-size: 14px; }
+.module-title { -fx-font-size: 18px; -fx-font-weight: bold; }

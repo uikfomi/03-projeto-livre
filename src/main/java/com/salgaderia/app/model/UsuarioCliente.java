@@ -10,6 +10,6 @@ public class UsuarioCliente extends Usuario {
     }
     public Cliente getCliente() { return cliente; }
     public void setCliente(Cliente cliente) { this.cliente = Validacao.obrigatorio(cliente, "cliente"); }
-    @Override public String getTelaInicialFxml() { return "/fxml/cliente.fxml"; }
+    @Override public String getTelaInicialFxml() { return "/fxml/cliente-vitrine.fxml"; }
     @Override public boolean podeAcessarPainelGerencial() { return false; }
 }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.salgaderia.app.controller.SelecaoModulosController" styleClass="page">
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="SALGADERIA PRO" styleClass="brand-name" style="-fx-text-fill: #b84d2b;" />
+                <Label fx:id="saudacao" styleClass="subtitle" />
+            </VBox>
+            <Button text="Voltar / Sair" onAction="#sair" styleClass="button-outline" />
+        </HBox>
+    </top>
+    <center>
+        <VBox alignment="CENTER" spacing="22">
+            <Label text="O que vamos fazer hoje?" styleClass="title" />
+            <Label text="Escolha o módulo que deseja acessar." styleClass="subtitle" />
+            <HBox alignment="CENTER" spacing="20">
+                <VBox maxWidth="330" spacing="14" styleClass="card" HBox.hgrow="ALWAYS">
+                    <Label text="PDV &amp; Gestão Salgaderia" wrapText="true" styleClass="module-title" />
+                    <Label text="Acesse as operações de vendas e gestão." wrapText="true" styleClass="subtitle" />
+                    <Button text="Abrir PDV &amp; Gestão" maxWidth="Infinity" onAction="#abrirPdv" styleClass="button-primary" />
+                </VBox>
+                <VBox maxWidth="330" spacing="14" styleClass="card" HBox.hgrow="ALWAYS">
+                    <Label text="Agenda Estratégica de Contatos" wrapText="true" styleClass="module-title" />
+                    <Label text="Acesse seus clientes e fornecedores." wrapText="true" styleClass="subtitle" />
+                    <Button text="Abrir Agenda" maxWidth="Infinity" onAction="#abrirAgenda" styleClass="button-secondary" />
+                </VBox>
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>

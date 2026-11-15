@@ -12,11 +12,9 @@ import java.util.Properties;
 
 /** Gerencia o pool de conexões JDBC da aplicação. */
 public final class ConnectionFactory {
-    private ConnectionFactory() {
-    }
+    private static volatile HikariDataSource dataSourceCriado;
 
-    private static final class Pool {
-        private static final HikariDataSource DATA_SOURCE = criarDataSource();
+    private ConnectionFactory() {
     }
 
     private static HikariDataSource criarDataSource() {
@@ -39,11 +37,19 @@ public final class ConnectionFactory {
         config.setJdbcUrl(url);
         config.setUsername(propriedades.getProperty("user", ""));
         config.setPassword(propriedades.getProperty("password", ""));
-        return new HikariDataSource(config);
+        HikariDataSource dataSource = new HikariDataSource(config);
+        return dataSource;
     }
 
     public static Connection getConnection() throws SQLException {
-        return Pool.DATA_SOURCE.getConnection();
+        return obterDataSource().getConnection();
+    }
+
+    private static synchronized HikariDataSource obterDataSource() {
+        if (dataSourceCriado == null || dataSourceCriado.isClosed()) {
+            dataSourceCriado = criarDataSource();
+        }
+        return dataSourceCriado;
     }
 
     /** Executa a operação em uma conexão própria e confirma ou reverte a transação. */
@@ -68,8 +74,12 @@ public final class ConnectionFactory {
     }
 
     /** Libera os recursos do pool no encerramento da aplicação. */
-    public static void fechar() {
-        Pool.DATA_SOURCE.close();
+    public static synchronized void fechar() {
+        HikariDataSource dataSource = dataSourceCriado;
+        if (dataSource != null) {
+            dataSource.close();
+            dataSourceCriado = null;
+        }
     }
 
     @FunctionalInterface
