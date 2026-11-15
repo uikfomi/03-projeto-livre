@@ -1,0 +1,6 @@
+target/
+*.class
+.idea/
+*.iml
+database.local.properties
+referencia-professor/
