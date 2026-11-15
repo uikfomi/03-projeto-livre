@@ -130,7 +130,7 @@ public class AdminDashboardController implements TelaAutenticada {
         ComboBox<Contato> cliente=new ComboBox<>();cliente.setId("pdv-cliente");cliente.setPromptText("Cliente opcional");cliente.setMaxWidth(Double.MAX_VALUE);cliente.getItems().setAll(dados.contatos());
         cliente.setConverter(new StringConverter<>(){public String toString(Contato c){return c==null?"Venda sem identificação":c.getNome();}public Contato fromString(String s){return null;}});
         Button limparCliente=botao("Limpar cliente",()->cliente.getSelectionModel().clearSelection(),"button-outline");
-        ComboBox<FormaPagamento> forma=new ComboBox<>();forma.setId("pdv-forma");forma.getItems().setAll(FormaPagamento.values());forma.setValue(FormaPagamento.DINHEIRO);forma.setMaxWidth(Double.MAX_VALUE);
+        ComboBox<FormaPagamento> forma=new ComboBox<>();forma.setId("pdv-forma");forma.getItems().setAll(FormaPagamento.DINHEIRO,FormaPagamento.PIX,FormaPagamento.CARTAO_CREDITO,FormaPagamento.CARTAO_DEBITO);forma.setValue(FormaPagamento.DINHEIRO);forma.setMaxWidth(Double.MAX_VALUE);
         TextField recebido=new TextField();recebido.setId("pdv-recebido");recebido.setPromptText("Valor recebido em dinheiro");Label troco=new Label();troco.setId("pdv-troco");
         TextField cupom=new TextField();cupom.setId("pdv-cupom");cupom.setPromptText("Cupom opcional");
         Label mensagemDesconto=new Label();mensagemDesconto.setWrapText(true);

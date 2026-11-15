@@ -11,6 +11,14 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WhatsAppLinkServiceTest {
+    @org.junit.jupiter.api.io.TempDir java.nio.file.Path diretorio;
+    @Test void configuracaoLocalSobrescrevePadrao() throws Exception {
+        try(var loader=new java.net.URLClassLoader(new java.net.URL[]{diretorio.toUri().toURL()},null)) {
+            assertEquals("5585989095223",WhatsAppLinkService.carregarTelefoneLoja(loader));
+            java.nio.file.Files.writeString(diretorio.resolve("database.local.properties"),"whatsapp.loja=5585111112222\n");
+            assertEquals("5585111112222",WhatsAppLinkService.carregarTelefoneLoja(loader));
+        }
+    }
     @Test void builderCodificaTextoEValidaTelefone() {
         var uri=new WhatsAppLinkService.Builder("(85) 99999-9999").linha("Olá & bom dia!").linha("Pronto?").construir();
         assertEquals("wa.me",uri.getHost());
@@ -22,10 +30,13 @@ class WhatsAppLinkServiceTest {
         Produto produto=new Produto(1L,null,"Coxinha & queijo",null,new BigDecimal("10"),BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
         Pedido pedido=new Pedido(5L,null,null,StatusPedido.PENDENTE,TipoEntrega.ENTREGA,"Rua São José",LocalDateTime.now(),List.of(new PedidoItem(null,produto,new BigDecimal("2"),BigDecimal.TEN)));
         pedido.setDesconto(new BigDecimal("2"));
-        var link=new WhatsAppLinkService().acompanhar(pedido);
+        pedido.setFormaPagamento(FormaPagamento.PIX);
+        var link=new WhatsAppLinkService("5585989095223").acompanhar(pedido);
         String msg=URLDecoder.decode(link.getRawQuery(),StandardCharsets.UTF_8);
-        assertEquals("/5585999999999",link.getPath());assertTrue(msg.contains("#5"));assertTrue(msg.contains("2 x Coxinha & queijo"));
-        assertTrue(msg.contains("Rua São José"));assertTrue(msg.contains("Pagamento: não informado"));assertTrue(msg.contains("18,00"));
+        assertEquals("/5585989095223",link.getPath());assertTrue(msg.contains("#5"));assertTrue(msg.contains("2 x Coxinha & queijo"));
+        assertTrue(msg.contains("Rua São José"));assertTrue(msg.contains("Pagamento: PIX"));assertTrue(msg.contains("18,00"));
+        pedido.setFormaPagamento(null);
+        assertTrue(URLDecoder.decode(new WhatsAppLinkService("5585989095223").acompanhar(pedido).getRawQuery(),StandardCharsets.UTF_8).contains("Pagamento: não informado"));
     }
     @Test void statusUsaTelefoneDoClienteEStatusInformado() {
         String query=URLDecoder.decode(new WhatsAppLinkService().status("5585988887777",42,StatusPedido.CANCELADO).getRawQuery(),StandardCharsets.UTF_8);

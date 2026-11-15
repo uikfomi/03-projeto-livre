@@ -17,7 +17,19 @@ import java.util.Objects;
 
 /** Cria links wa.me; abrir o link não envia mensagens automaticamente. */
 public final class WhatsAppLinkService {
-    public static final String LOJA = "5585999999999";
+    public static final String LOJA = "5585989095223";
+    private final String telefoneLoja;
+    public WhatsAppLinkService() { this(carregarTelefoneLoja(WhatsAppLinkService.class.getClassLoader())); }
+    public WhatsAppLinkService(String telefoneLoja) { this.telefoneLoja = normalizarTelefone(telefoneLoja); }
+
+    static String carregarTelefoneLoja(ClassLoader loader) {
+        try (var arquivo=loader.getResourceAsStream("database.local.properties")) {
+            if(arquivo==null)return LOJA;
+            var propriedades=new java.util.Properties();propriedades.load(arquivo);
+            String telefone=propriedades.getProperty("whatsapp.loja");
+            return telefone==null||telefone.isBlank()?LOJA:telefone;
+        } catch(IOException e) { throw new IllegalStateException("Não foi possível ler a configuração do WhatsApp",e); }
+    }
     public enum ResultadoAbertura { ABERTO, COPIADO, INDISPONIVEL }
 
     public static String normalizarTelefone(String numero) {
@@ -44,10 +56,10 @@ public final class WhatsAppLinkService {
 
     public URI acompanhar(Pedido pedido) {
         if (pedido.getId() == null) throw new IllegalArgumentException("Pedido ainda não registrado");
-        Builder builder = new Builder(LOJA).linha("Olá! Gostaria de acompanhar o pedido #" + pedido.getId() + ".").linha("Itens:");
+        Builder builder = new Builder(telefoneLoja).linha("Olá! Gostaria de acompanhar o pedido #" + pedido.getId() + ".").linha("Itens:");
         pedido.getItens().forEach(i -> builder.linha("- " + i.getQuantidade().stripTrailingZeros().toPlainString() + " x " + i.getProduto().getNome()));
         builder.linha("Entrega: " + (pedido.getTipoEntrega() == TipoEntrega.ENTREGA ? "Entrega - " + pedido.getEnderecoEntrega() : "Retirada"));
-        builder.linha("Pagamento: não informado").linha("Total: " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(pedido.calcularTotal()));
+        builder.linha("Pagamento: " + (pedido.getFormaPagamento()==null?"não informado":pedido.getFormaPagamento().descricao())).linha("Total: " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(pedido.calcularTotal()));
         return builder.construir();
     }
     public URI status(String telefone, long pedido, StatusPedido status) {

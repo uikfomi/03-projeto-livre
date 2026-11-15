@@ -62,6 +62,12 @@ class VitrineJavaFXTest {
             assertEquals(1,fx(()->((FlowPane)loader.getNamespace().get("cards")).getChildren().size()));
             fx(()->{((TextField)loader.getNamespace().get("cupom")).setText("UIKFOMI10");return null;});
             aguardar(()->fx(()->((Label)loader.getNamespace().get("total")).getText().contains("14,40")));
+            fx(()->{
+                assertTrue(((Button)loader.getNamespace().get("finalizar")).isDisabled());
+                @SuppressWarnings("unchecked") ComboBox<FormaPagamento> pagamento=(ComboBox<FormaPagamento>)loader.getNamespace().get("formaPagamento");
+                assertEquals(List.of(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO),List.copyOf(pagamento.getItems()));
+                pagamento.setValue(FormaPagamento.CARTAO);assertFalse(((Button)loader.getNamespace().get("finalizar")).isDisabled());return null;
+            });
             fx(()->{((TextField)loader.getNamespace().get("busca")).setText("nada encontrado");return null;});
             assertTrue(fx(()->((Label)loader.getNamespace().get("mensagemProdutos")).getText().contains("Nenhum salgado encontrado")));
             var timer=fx(()->{
@@ -82,6 +88,7 @@ class VitrineJavaFXTest {
             aguardar(()->pedidos.enviado.get()!=null);
             aguardar(()->fx(()->((Label)loader.getNamespace().get("contador")).getText().equals("0 itens")));
             assertEquals(TipoEntrega.ENTREGA,pedidos.enviado.get().getTipoEntrega());
+            assertEquals(FormaPagamento.CARTAO,pedidos.enviado.get().getFormaPagamento());
             assertEquals("UIKFOMI10",pedidos.codigo.get());
             assertEquals("Rua das Flores",pedidos.enviado.get().getEnderecoEntrega());
             assertEquals(new BigDecimal("2"),pedidos.enviado.get().getItens().get(0).getQuantidade());

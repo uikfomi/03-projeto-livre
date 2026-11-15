@@ -7,13 +7,13 @@ import java.time.LocalDateTime;
 import java.util.Map;
 public class PedidoDAOImpl implements PedidoDAO {
     @Override public java.util.List<Pedido> listarDoCliente(Connection c,UsuarioCliente usuario) throws SQLException {
-        String sql="SELECT p.id pedido_id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.desconto,"
+        String sql="SELECT p.id pedido_id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.desconto,p.forma_pagamento,"
                 + "i.id item_id,i.quantidade,i.preco_unitario,pr.id produto_id,pr.nome produto_nome,pr.descricao produto_descricao,"
                 + "pr.preco_venda,pr.custo_producao,pr.estoque_atual,pr.estoque_minimo,pr.url_imagem,"
                 + "cat.id categoria_id,cat.nome categoria_nome,cat.descricao categoria_descricao "
                 + "FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id "
                 + "LEFT JOIN categorias cat ON cat.id=pr.categoria_id WHERE p.usuario_id=? ORDER BY p.criado_em DESC,p.id DESC,i.id";
-        record Dados(com.salgaderia.app.model.enums.StatusPedido status,com.salgaderia.app.model.enums.TipoEntrega entrega,String endereco,LocalDateTime data,BigDecimal desconto,java.util.List<PedidoItem> itens) { }
+        record Dados(com.salgaderia.app.model.enums.StatusPedido status,com.salgaderia.app.model.enums.TipoEntrega entrega,String endereco,LocalDateTime data,BigDecimal desconto,String pagamento,java.util.List<PedidoItem> itens) { }
         java.util.Map<Long,Dados> grupos=new java.util.LinkedHashMap<>();
         try(PreparedStatement ps=c.prepareStatement(sql)){
             ps.setLong(1,usuario.getId());
@@ -21,7 +21,7 @@ public class PedidoDAOImpl implements PedidoDAO {
                 while(rs.next()){
                     long id=rs.getLong("pedido_id");
                     Dados dados=grupos.get(id);
-                    if(dados==null){dados=new Dados(com.salgaderia.app.model.enums.StatusPedido.valueOf(rs.getString("status")),com.salgaderia.app.model.enums.TipoEntrega.valueOf(rs.getString("tipo_entrega")),rs.getString("endereco_entrega"),rs.getTimestamp("criado_em").toLocalDateTime(),rs.getBigDecimal("desconto"),new java.util.ArrayList<>());grupos.put(id,dados);}
+                    if(dados==null){dados=new Dados(com.salgaderia.app.model.enums.StatusPedido.valueOf(rs.getString("status")),com.salgaderia.app.model.enums.TipoEntrega.valueOf(rs.getString("tipo_entrega")),rs.getString("endereco_entrega"),rs.getTimestamp("criado_em").toLocalDateTime(),rs.getBigDecimal("desconto"),rs.getString("forma_pagamento"),new java.util.ArrayList<>());grupos.put(id,dados);}
                     Long categoriaId=rs.getObject("categoria_id",Long.class);
                     Categoria categoria=categoriaId==null?null:new Categoria(categoriaId,rs.getString("categoria_nome"),rs.getString("categoria_descricao"));
                     Produto produto=new Produto(rs.getLong("produto_id"),categoria,rs.getString("produto_nome"),rs.getString("produto_descricao"),rs.getBigDecimal("preco_venda"),rs.getBigDecimal("custo_producao"),rs.getBigDecimal("estoque_atual"),rs.getBigDecimal("estoque_minimo"),rs.getString("url_imagem"));
@@ -30,7 +30,7 @@ public class PedidoDAOImpl implements PedidoDAO {
             }
         }
         java.util.List<Pedido> resultado=new java.util.ArrayList<>();
-        grupos.forEach((id,d)->{Pedido pedido=new Pedido(id,usuario,usuario.getCliente(),d.status(),d.entrega(),d.endereco(),d.data(),d.itens());pedido.setDesconto(d.desconto());resultado.add(pedido);});
+        grupos.forEach((id,d)->{Pedido pedido=new Pedido(id,usuario,usuario.getCliente(),d.status(),d.entrega(),d.endereco(),d.data(),d.itens());pedido.setDesconto(d.desconto());if(d.pagamento()!=null)pedido.setFormaPagamento(com.salgaderia.app.model.enums.FormaPagamento.valueOf(d.pagamento()));resultado.add(pedido);});
         return resultado;
     }
     @Override public java.util.List<PedidoFila> listarFila(Connection c) throws SQLException {
@@ -74,10 +74,10 @@ public class PedidoDAOImpl implements PedidoDAO {
     }
     @Override public long inserir(Connection c,Pedido pedido,Map<Long,BigDecimal> custos) throws SQLException {
         long id;
-        try(PreparedStatement ps=c.prepareStatement("INSERT INTO pedidos(usuario_id,contato_id,status,tipo_entrega,endereco_entrega,criado_em) VALUES (?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)){
+        try(PreparedStatement ps=c.prepareStatement("INSERT INTO pedidos(usuario_id,contato_id,status,tipo_entrega,endereco_entrega,criado_em,forma_pagamento) VALUES (?,?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)){
             if(pedido.getUsuario()==null)ps.setNull(1,Types.BIGINT);else ps.setLong(1,pedido.getUsuario().getId());
             if(pedido.getCliente()==null)ps.setNull(2,Types.BIGINT);else ps.setLong(2,pedido.getCliente().getId());
-            ps.setString(3,pedido.getStatus().name());ps.setString(4,pedido.getTipoEntrega().name());ps.setString(5,pedido.getEnderecoEntrega());ps.setTimestamp(6,Timestamp.valueOf(pedido.getCriadoEm()));ps.executeUpdate();
+            ps.setString(3,pedido.getStatus().name());ps.setString(4,pedido.getTipoEntrega().name());ps.setString(5,pedido.getEnderecoEntrega());ps.setTimestamp(6,Timestamp.valueOf(pedido.getCriadoEm()));ps.setString(7,pedido.getFormaPagamento()==null?null:pedido.getFormaPagamento().name());ps.executeUpdate();
             try(ResultSet rs=ps.getGeneratedKeys()){if(!rs.next())throw new SQLException("ID de pedido não retornado");id=rs.getLong(1);}
         }
         try(PreparedStatement ps=c.prepareStatement("INSERT INTO pedido_itens(pedido_id,produto_id,quantidade,preco_unitario,custo_unitario) VALUES (?,?,?,?,?)")){

@@ -35,12 +35,15 @@ class DescontoIntegracaoTest {
             PedidoVendaServiceImpl servico=new PedidoVendaServiceImpl();
             for(int i=0;i<3;i++){
                 Pedido anterior=pedido(usuario,usuario.getCliente(),produto,1);
+                anterior.setFormaPagamento(new FormaPagamento[]{FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO}[i]);
                 long id=servico.finalizar(anterior);pedidosCriados.add(id);
                 servico.transicionar(id,StatusPedido.PREPARANDO);
                 servico.transicionar(id,StatusPedido.PRONTO);
                 servico.transicionar(id,StatusPedido.ENTREGUE);
             }
             Pedido compra=pedido(usuario,usuario.getCliente(),produto,100);
+            assertThrows(IllegalArgumentException.class,()->servico.finalizar(compra));
+            compra.setFormaPagamento(FormaPagamento.CARTAO);
             var semCupom=servico.simular(compra,null);
             assertEquals("CENTO",semCupom.estrategia());assertEquals(0,new BigDecimal("24.00").compareTo(semCupom.desconto()));
             var comCupom=servico.simular(compra,"festa15");
@@ -51,6 +54,13 @@ class DescontoIntegracaoTest {
             UsuarioCliente clienteFinal=usuario;
             Pedido recuperado=servico.listarDoCliente(clienteFinal).stream().filter(p->p.getId()==id).findFirst().orElseThrow();
             assertEquals(0,new BigDecimal("170.00").compareTo(recuperado.calcularTotal()));
+            assertEquals(FormaPagamento.CARTAO,recuperado.getFormaPagamento());
+            var historico=servico.listarDoCliente(clienteFinal);
+            for(int i=0;i<3;i++) {
+                final long pedidoId=pedidosCriados.get(i);
+                assertEquals(new FormaPagamento[]{FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO}[i],
+                        historico.stream().filter(p->p.getId()==pedidoId).findFirst().orElseThrow().getFormaPagamento());
+            }
             try(Connection c=ConnectionFactory.getConnection();PreparedStatement ps=c.prepareStatement("SELECT desconto,estrategia_desconto,cupom_codigo FROM pedidos WHERE id=?")) {
                 ps.setLong(1,id);try(ResultSet rs=ps.executeQuery()){assertTrue(rs.next());assertEquals(0,new BigDecimal("30.00").compareTo(rs.getBigDecimal(1)));assertEquals("CUPOM",rs.getString(2));assertEquals("FESTA15",rs.getString(3));}
             }

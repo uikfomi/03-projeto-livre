@@ -70,6 +70,9 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             throw new IllegalArgumentException("Venda PDV exige administrador ativo");
         if(pedido.getCliente()!=null && pedido.getCliente().getId()==null)throw new IllegalArgumentException("Cliente sem ID");
         if(pedido.getUsuario() instanceof UsuarioCliente u && (pedido.getCliente()==null || !Objects.equals(u.getCliente().getId(),pedido.getCliente().getId())))throw new IllegalArgumentException("Cliente não corresponde ao usuário");
+        if(pedido.getUsuario() instanceof UsuarioCliente && (pedido.getFormaPagamento()==null ||
+                (pedido.getFormaPagamento()!=FormaPagamento.PIX && pedido.getFormaPagamento()!=FormaPagamento.DINHEIRO && pedido.getFormaPagamento()!=FormaPagamento.CARTAO)))
+            throw new IllegalArgumentException("Selecione PIX, dinheiro ou cartão");
         Map<Long,BigDecimal> quantidades=new TreeMap<>();
         for(PedidoItem item:pedido.getItens()){
             Long id=item.getProduto().getId();if(id==null)throw new IllegalArgumentException("Produto sem ID");

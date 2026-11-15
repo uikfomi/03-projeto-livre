@@ -2,6 +2,7 @@ package com.salgaderia.app.model;
 
 import com.salgaderia.app.model.enums.StatusPedido;
 import com.salgaderia.app.model.enums.TipoEntrega;
+import com.salgaderia.app.model.enums.FormaPagamento;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ public class Pedido {
     private final LocalDateTime criadoEm;
     private final List<PedidoItem> itens;
     private BigDecimal desconto = BigDecimal.ZERO;
+    private FormaPagamento formaPagamento;
 
     public Pedido(Long id, Usuario usuario, Cliente cliente, StatusPedido status, TipoEntrega tipoEntrega,
                   String enderecoEntrega, LocalDateTime criadoEm, List<PedidoItem> itens) {
@@ -47,6 +49,9 @@ public class Pedido {
         return itens.stream().map(PedidoItem::calcularSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     public BigDecimal getDesconto() { return desconto; }
+    public FormaPagamento getFormaPagamento() { return formaPagamento; }
+    /** Valores nulos representam pedidos históricos anteriores ao registro de pagamento. */
+    public void setFormaPagamento(FormaPagamento formaPagamento) { this.formaPagamento = formaPagamento; }
     public void setDesconto(BigDecimal desconto) {
         if (desconto == null || desconto.signum() < 0 || desconto.compareTo(calcularSubtotal()) > 0)
             throw new IllegalArgumentException("Desconto inválido");

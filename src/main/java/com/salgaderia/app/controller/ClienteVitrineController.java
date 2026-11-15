@@ -5,6 +5,7 @@ import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.StatusPedido;
 import com.salgaderia.app.model.enums.TipoEntrega;
+import com.salgaderia.app.model.enums.FormaPagamento;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
@@ -40,6 +41,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     @FXML private TextField busca, cupom;
     @FXML private Label mensagemDesconto;
     @FXML private ComboBox<FiltroCategoria> categorias;
+    @FXML private ComboBox<FormaPagamento> formaPagamento;
     @FXML private FlowPane cards;
     @FXML private VBox painelVitrine, painelPedidos, listaPedidos, itensCarrinho;
     @FXML private ScrollPane rolagemProdutos;
@@ -72,6 +74,12 @@ public class ClienteVitrineController implements TelaAutenticada {
 
     @FXML private void initialize() {
         atualizacaoPedidos.setCycleCount(Timeline.INDEFINITE);
+        formaPagamento.getItems().setAll(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO);
+        formaPagamento.setConverter(new StringConverter<>() {
+            public String toString(FormaPagamento forma){return forma==null?"":forma.descricao();}
+            public FormaPagamento fromString(String valor){return null;}
+        });
+        formaPagamento.valueProperty().addListener((o,a,n)->finalizar.setDisable(descontoAtual==null||n==null));
         raiz.sceneProperty().addListener((obs, anterior, cena)->{
             if(cena==null){atualizacaoPedidos.stop();geracaoPedidos++;return;}
             cena.windowProperty().addListener((o, velha, janela)->{
@@ -193,7 +201,7 @@ public class ClienteVitrineController implements TelaAutenticada {
         Pedido pedido=pedidoAtual();String codigo=cupom.getText();
         Task<ResultadoDesconto> tarefa=new Task<>(){@Override protected ResultadoDesconto call(){return pedidosService.simular(pedido,codigo);}};
         tarefa.setOnSucceeded(e->{if(geracao!=geracaoDesconto)return;descontoAtual=tarefa.getValue();total.setText(moeda(descontoAtual.total()));
-            mensagemDesconto.setText("Desconto: "+moeda(descontoAtual.desconto())+" ("+descontoAtual.estrategia()+")");finalizar.setDisable(false);});
+            mensagemDesconto.setText("Desconto: "+moeda(descontoAtual.desconto())+" ("+descontoAtual.estrategia()+")");finalizar.setDisable(formaPagamento.getValue()==null);});
         tarefa.setOnFailed(e->{if(geracao!=geracaoDesconto)return;Throwable erro=tarefa.getException();mensagemDesconto.setText(erro instanceof IllegalArgumentException?erro.getMessage():"Não foi possível calcular o desconto. Tente novamente.");});
         iniciar(tarefa);
     }
@@ -203,16 +211,17 @@ public class ClienteVitrineController implements TelaAutenticada {
         endereco.setText(entrega.isSelected()?(valor==null||valor.isBlank()?"Nenhum endereço cadastrado. Cadastre um endereço antes de pedir entrega.":valor):"Retire seu pedido no balcão.");
     }
     @FXML private void finalizar(){
-        if(carrinho.isEmpty()||usuario==null||descontoAtual==null)return;
+        if(carrinho.isEmpty()||usuario==null||descontoAtual==null||formaPagamento.getValue()==null)return;
         TipoEntrega tipo=entrega.isSelected()?TipoEntrega.ENTREGA:TipoEntrega.RETIRADA;
         String enderecoEntrega=tipo==TipoEntrega.ENTREGA?usuario.getCliente().getEndereco():null;
         if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())){avisar(Alert.AlertType.WARNING,"Endereço necessário","Seu cadastro não possui endereço. Escolha retirada ou atualize seu endereço antes de pedir entrega.");return;}
         List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
         Pedido pedido=new Pedido(null,usuario,usuario.getCliente(),StatusPedido.PENDENTE,tipo,enderecoEntrega,LocalDateTime.now(),itens);
+        pedido.setFormaPagamento(formaPagamento.getValue());
         raiz.setDisable(true);
         ResultadoDesconto esperado=descontoAtual;String codigo=cupom.getText();
         Task<Long> tarefa=new Task<>() { @Override protected Long call(){return pedidosService.finalizar(pedido,codigo,esperado);} };
-        tarefa.setOnSucceeded(e->{raiz.setDisable(false);if(pedido.getId()==null)pedido.setId(tarefa.getValue());pedido.setDesconto(esperado.desconto());carrinho.clear();cupom.clear();atualizarCarrinho();
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);if(pedido.getId()==null)pedido.setId(tarefa.getValue());pedido.setDesconto(esperado.desconto());carrinho.clear();cupom.clear();formaPagamento.setValue(null);atualizarCarrinho();
             Alert alerta=new Alert(Alert.AlertType.INFORMATION);alerta.initOwner(raiz.getScene().getWindow());alerta.setTitle("Pedido enviado");alerta.setHeaderText(null);alerta.setContentText("Pedido #"+tarefa.getValue()+" recebido com sucesso.");
             ButtonType acompanhar=new ButtonType("Acompanhar no WhatsApp");alerta.getButtonTypes().add(acompanhar);
             if(alerta.showAndWait().orElse(ButtonType.OK)==acompanhar)abrirWhatsApp(pedido);

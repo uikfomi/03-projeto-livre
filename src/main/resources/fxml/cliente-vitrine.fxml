@@ -64,6 +64,8 @@
             <RadioButton fx:id="entrega" text="Entrega" />
             <Label fx:id="endereco" wrapText="true" styleClass="subtitle" />
             <Separator />
+            <Label text="Forma de pagamento" styleClass="field-label" />
+            <ComboBox fx:id="formaPagamento" promptText="Selecione a forma de pagamento" maxWidth="Infinity" />
             <Label text="Cupom de desconto" styleClass="field-label" />
             <TextField fx:id="cupom" promptText="Código do cupom (opcional)" />
             <Label fx:id="mensagemDesconto" wrapText="true" styleClass="subtitle" />
