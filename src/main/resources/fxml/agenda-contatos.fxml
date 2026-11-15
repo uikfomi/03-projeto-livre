@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane fx:id="raiz" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.salgaderia.app.controller.AgendaController" stylesheets="@../css/agenda.css" styleClass="agenda-page">
+    <top>
+        <VBox spacing="10">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Agenda estratégica" styleClass="agenda-heading" />
+                    <Label text="Clientes e fornecedores em um só lugar." styleClass="subtitle" />
+                </VBox>
+                <Button fx:id="botaoVoltar" text="Voltar aos módulos" onAction="#voltar" styleClass="button-outline" />
+                <Button fx:id="botaoNovo" text="+ Novo contato" onAction="#novo" styleClass="button-primary" />
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="agenda-toolbar">
+                <ToggleButton fx:id="filtroTodos" text="Todos" styleClass="agenda-filter" />
+                <ToggleButton fx:id="filtroClientes" text="Clientes" styleClass="agenda-filter" />
+                <ToggleButton fx:id="filtroFornecedores" text="Fornecedores" styleClass="agenda-filter" />
+                <Region HBox.hgrow="ALWAYS" />
+                <TextField fx:id="pesquisa" promptText="Pesquisar contatos..." accessibleText="Pesquisar contatos" styleClass="agenda-search" />
+            </HBox>
+        </VBox>
+    </top>
+    <center>
+        <HBox spacing="18">
+            <VBox spacing="12" HBox.hgrow="ALWAYS">
+                <StackPane VBox.vgrow="ALWAYS">
+                    <ListView fx:id="lista" styleClass="agenda-list" accessibleText="Lista de contatos" />
+                    <VBox fx:id="estado" alignment="CENTER" spacing="14" styleClass="empty-state">
+                        <Label text="✦" styleClass="agenda-empty-icon" />
+                        <Label fx:id="tituloEstado" wrapText="true" styleClass="empty-title,agenda-status" />
+                        <Label fx:id="descricaoEstado" wrapText="true" styleClass="empty-description,agenda-status" />
+                        <Button fx:id="adicionarPrimeiro" text="+ Adicionar primeiro contato" onAction="#novo" styleClass="button-primary" />
+                        <Button fx:id="tentarNovamente" text="Tentar novamente" onAction="#carregar" styleClass="button-secondary" />
+                    </VBox>
+                </StackPane>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Button fx:id="editar" text="Editar selecionado" onAction="#editar" styleClass="button-secondary" />
+                    <Button fx:id="excluir" text="Excluir selecionado" onAction="#excluir" styleClass="button-outline" />
+                </HBox>
+            </VBox>
+            <VBox fx:id="formulario" prefWidth="360" minWidth="310" maxWidth="400" spacing="12" styleClass="agenda-form">
+                <Label fx:id="tituloFormulario" styleClass="agenda-form-title" />
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-background: transparent;">
+                    <content>
+                        <VBox spacing="8">
+                            <Label text="Tipo de contato" styleClass="field-label" />
+                            <ComboBox fx:id="tipo" maxWidth="Infinity" accessibleText="Tipo de contato" />
+                            <Label text="Nome / Empresa" styleClass="field-label" />
+                            <TextField fx:id="nome" promptText="Informe o nome" accessibleText="Nome ou empresa" />
+                            <VBox fx:id="camposCliente" spacing="8">
+                                <Label text="WhatsApp" styleClass="field-label" />
+                                <TextField fx:id="whatsapp" promptText="WhatsApp do cliente" accessibleText="WhatsApp" />
+                                <Label text="Endereço" styleClass="field-label" />
+                                <TextField fx:id="endereco" promptText="Endereço" accessibleText="Endereço" />
+                                <Label text="Ponto de referência" styleClass="field-label" />
+                                <TextField fx:id="referencia" promptText="Ponto de referência" accessibleText="Ponto de referência" />
+                                <Label text="Observações" styleClass="field-label" />
+                                <TextArea fx:id="observacoes" promptText="Observações" accessibleText="Observações" prefRowCount="3" wrapText="true" />
+                            </VBox>
+                            <VBox fx:id="camposFornecedor" spacing="8">
+                                <Label text="CNPJ" styleClass="field-label" />
+                                <TextField fx:id="cnpj" promptText="00.000.000/0000-00" accessibleText="CNPJ" />
+                                <Label text="Telefone" styleClass="field-label" />
+                                <TextField fx:id="telefone" promptText="Telefone do fornecedor" accessibleText="Telefone" />
+                                <Label text="Categoria de insumo" styleClass="field-label" />
+                                <ComboBox fx:id="categoria" maxWidth="Infinity" promptText="Selecione uma categoria" accessibleText="Categoria de insumo" />
+                                <Label text="Prazo de entrega (dias)" styleClass="field-label" />
+                                <TextField fx:id="prazo" promptText="Ex.: 3" accessibleText="Prazo de entrega em dias" />
+                            </VBox>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+                <HBox spacing="10" alignment="CENTER_RIGHT">
+                    <Button text="Cancelar" onAction="#cancelar" styleClass="button-outline" />
+                    <Button fx:id="botaoSalvar" text="Salvar contato" onAction="#salvar" styleClass="button-primary" />
+                </HBox>
+            </VBox>
+        </HBox>
+    </center>
+</BorderPane>

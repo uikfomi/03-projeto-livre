@@ -11,12 +11,17 @@ import javafx.stage.Stage;
 
 public class SelecaoModulosController implements TelaAutenticada {
     @FXML private Label saudacao;
+    private Usuario usuario;
     @Override public void definirUsuario(Usuario usuario) {
         if (usuario == null || !usuario.podeAcessarPainelGerencial()) throw new SecurityException("Acesso gerencial restrito");
+        this.usuario = usuario;
         saudacao.setText("Olá, " + usuario.getNome());
     }
     @FXML private void abrirPdv() { indisponivel("PDV & Gestão Salgaderia"); }
-    @FXML private void abrirAgenda() { indisponivel("Agenda Estratégica de Contatos"); }
+    @FXML private void abrirAgenda() {
+        try { Navegacao.abrirAgenda((Stage) saudacao.getScene().getWindow(), usuario); }
+        catch (IOException e) { Alert alerta = new Alert(Alert.AlertType.ERROR, "Não foi possível abrir a agenda."); alerta.showAndWait(); }
+    }
     private void indisponivel(String modulo) {
         Alert alerta = new Alert(Alert.AlertType.INFORMATION);
         alerta.initOwner(saudacao.getScene().getWindow()); alerta.setTitle(modulo); alerta.setHeaderText(null);

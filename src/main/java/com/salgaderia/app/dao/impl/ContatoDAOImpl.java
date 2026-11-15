@@ -45,12 +45,16 @@ public class ContatoDAOImpl implements ContatoDAO {
     }
     @Override public List<Contato> buscar(Connection conexao, FiltroContato filtro, String texto) throws SQLException {
         java.util.Objects.requireNonNull(filtro, "filtro");
-        String sql = "SELECT id," + COLUNAS + " FROM contatos WHERE (? IS NULL OR tipo=?) AND (nome LIKE ? OR COALESCE(nome_empresa,'') LIKE ? OR COALESCE(telefone,'') LIKE ? OR COALESCE(documento,'') LIKE ?) ORDER BY nome,id";
+        String sql = "SELECT id," + COLUNAS + " FROM contatos WHERE (? IS NULL OR tipo=?) AND ("
+                + "nome LIKE ? ESCAPE '!' OR COALESCE(nome_empresa,'') LIKE ? ESCAPE '!' OR COALESCE(telefone,'') LIKE ? ESCAPE '!' "
+                + "OR COALESCE(documento,'') LIKE ? ESCAPE '!' OR COALESCE(whatsapp,'') LIKE ? ESCAPE '!' "
+                + "OR COALESCE(endereco,'') LIKE ? ESCAPE '!' OR COALESCE(ponto_referencia,'') LIKE ? ESCAPE '!' "
+                + "OR COALESCE(observacoes,'') LIKE ? ESCAPE '!' OR COALESCE(categoria_insumo,'') LIKE ? ESCAPE '!') ORDER BY nome,id";
         String tipo = switch (filtro) { case TODOS -> null; case CLIENTES -> "CLIENTE"; case FORNECEDORES -> "FORNECEDOR"; };
-        String busca = "%" + (texto == null ? "" : texto) + "%";
+        String busca = "%" + (texto == null ? "" : texto.replace("!", "!!").replace("%", "!%").replace("_", "!_")) + "%";
         try (PreparedStatement ps = conexao.prepareStatement(sql)) {
             ps.setString(1, tipo); ps.setString(2, tipo);
-            for (int i = 3; i <= 6; i++) ps.setString(i, busca);
+            for (int i = 3; i <= 11; i++) ps.setString(i, busca);
             try (ResultSet rs = ps.executeQuery()) {
                 List<Contato> contatos = new ArrayList<>();
                 while (rs.next()) contatos.add(mapear(rs));

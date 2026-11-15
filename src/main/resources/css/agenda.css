@@ -1,0 +1,16 @@
+/* Complementa global.css apenas na agenda. */
+.agenda-page { -fx-padding: 26 32 28 32; }
+.agenda-heading { -fx-font-size: 27px; -fx-font-weight: bold; }
+.agenda-toolbar { -fx-padding: 20 0 16 0; }
+.agenda-filter { -fx-background-color: #f0ece6; -fx-text-fill: #605b55; -fx-background-radius: 8; -fx-padding: 9 14; -fx-cursor: hand; }
+.agenda-filter:selected { -fx-background-color: #b84d2b; -fx-text-fill: white; }
+.agenda-search { -fx-pref-width: 240; }
+.agenda-list { -fx-background-color: white; -fx-border-color: #e7e0d8; -fx-border-radius: 12; -fx-background-radius: 12; -fx-padding: 5; }
+.agenda-list .list-cell { -fx-padding: 14; -fx-background-color: white; -fx-text-fill: #242422; -fx-border-color: transparent transparent #f0ebe5 transparent; }
+.agenda-list .list-cell:filled:hover { -fx-background-color: #fdf4ef; }
+.agenda-list .list-cell:filled:selected { -fx-background-color: #f9ece5; -fx-text-fill: #78341e; }
+.agenda-form { -fx-background-color: white; -fx-background-radius: 14; -fx-border-color: #e7e0d8; -fx-border-radius: 14; -fx-padding: 22; }
+.agenda-form-title { -fx-font-size: 20px; -fx-font-weight: bold; }
+.agenda-form .combo-box { -fx-background-color: #fbfaf8; -fx-border-color: #e7e0d8; -fx-border-radius: 8; -fx-background-radius: 8; }
+.agenda-empty-icon { -fx-font-size: 30px; -fx-text-fill: #b84d2b; -fx-background-color: #f9ece5; -fx-background-radius: 40; -fx-padding: 10 18; }
+.agenda-status { -fx-text-alignment: center; }
