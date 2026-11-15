@@ -16,4 +16,6 @@ public interface PedidoDAO {
     void atualizarStatus(Connection c,long id,com.salgaderia.app.model.enums.StatusPedido status) throws SQLException;
     boolean possuiPedidoEntregue(Connection c,long usuarioId,long produtoId) throws SQLException;
     BigDecimal[] somarVendasEntregues(Connection c,LocalDateTime inicio,LocalDateTime fim) throws SQLException;
+    long contarEntreguesDoCliente(Connection c, long clienteId) throws SQLException;
+    void registrarDesconto(Connection c, long pedidoId, com.salgaderia.app.service.desconto.ResultadoDesconto desconto) throws SQLException;
 }

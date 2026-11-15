@@ -64,6 +64,9 @@
             <RadioButton fx:id="entrega" text="Entrega" />
             <Label fx:id="endereco" wrapText="true" styleClass="subtitle" />
             <Separator />
+            <Label text="Cupom de desconto" styleClass="field-label" />
+            <TextField fx:id="cupom" promptText="Código do cupom (opcional)" />
+            <Label fx:id="mensagemDesconto" wrapText="true" styleClass="subtitle" />
             <HBox alignment="CENTER_LEFT"><Label text="Total" HBox.hgrow="ALWAYS" styleClass="field-label" /><Label fx:id="total" styleClass="produto-preco" /></HBox>
             <Button fx:id="finalizar" text="Finalizar Pedido" maxWidth="Infinity" onAction="#finalizar" styleClass="button-primary" />
         </VBox>

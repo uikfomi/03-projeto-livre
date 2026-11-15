@@ -7,6 +7,7 @@ import com.salgaderia.app.model.enums.StatusPedido;
 import com.salgaderia.app.model.enums.TipoEntrega;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
+import com.salgaderia.app.service.desconto.ResultadoDesconto;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.TelaAutenticada;
 import java.io.IOException;
@@ -32,7 +33,8 @@ import javafx.util.StringConverter;
 public class ClienteVitrineController implements TelaAutenticada {
     @FXML private BorderPane raiz;
     @FXML private Label saudacao, mensagemProdutos, mensagemPedidos, endereco, total, contador;
-    @FXML private TextField busca;
+    @FXML private TextField busca, cupom;
+    @FXML private Label mensagemDesconto;
     @FXML private ComboBox<FiltroCategoria> categorias;
     @FXML private FlowPane cards;
     @FXML private VBox painelVitrine, painelPedidos, listaPedidos, itensCarrinho;
@@ -49,6 +51,8 @@ public class ClienteVitrineController implements TelaAutenticada {
     private long geracaoProdutos;
     private long geracaoPedidos;
     private boolean carregouProdutos;
+    private long geracaoDesconto;
+    private ResultadoDesconto descontoAtual;
     private static final Locale BR = Locale.forLanguageTag("pt-BR");
 
     public ClienteVitrineController() { this(new ProdutoEstoqueServiceImpl(),new PedidoVendaServiceImpl(),new AvaliacaoServiceImpl()); }
@@ -68,12 +72,13 @@ public class ClienteVitrineController implements TelaAutenticada {
         });
         categorias.valueProperty().addListener((o,a,n)->filtrar());
         busca.textProperty().addListener((o,a,n)->filtrar());
+        cupom.textProperty().addListener((o,a,n)->atualizarCarrinho());
         cards.prefWrapLengthProperty().bind(rolagemProdutos.widthProperty().subtract(28));
         mostrarPainel(painelVitrine);atualizarCarrinho();
     }
     @Override public void definirUsuario(Usuario usuario) {
         if (!(usuario instanceof UsuarioCliente cliente) || !cliente.isAtivo()) throw new SecurityException("Acesso restrito a clientes ativos");
-        this.usuario=cliente;saudacao.setText("Olá, "+usuario.getNome()+"!");atualizarEndereco();carregarProdutos();
+        this.usuario=cliente;saudacao.setText("Olá, "+usuario.getNome()+"!");atualizarEndereco();atualizarCarrinho();carregarProdutos();
     }
     @FXML private void mostrarVitrine(){mostrarPainel(painelVitrine);}
     @FXML private void mostrarPedidos(){mostrarPainel(painelPedidos);carregarPedidos();}
@@ -156,7 +161,26 @@ public class ClienteVitrineController implements TelaAutenticada {
             Label quantidade=new Label(Integer.toString(item.quantidade()));HBox linha=new HBox(7,detalhes,menos,quantidade,mais);linha.setAlignment(Pos.CENTER_LEFT);linha.getStyleClass().add("carrinho-item");itensCarrinho.getChildren().add(linha);
         }
         if(carrinho.isEmpty()){Label vazio=new Label("Seu carrinho está vazio. Escolha seus salgados favoritos.");vazio.setWrapText(true);vazio.getStyleClass().add("subtitle");itensCarrinho.getChildren().add(vazio);}
-        total.setText(moeda(soma));contador.setText(qtd+ (qtd==1?" item":" itens"));finalizar.setDisable(carrinho.isEmpty());
+        total.setText(moeda(soma));contador.setText(qtd+ (qtd==1?" item":" itens"));
+        simularDesconto();
+    }
+    private Pedido pedidoAtual(){
+        TipoEntrega tipo=entrega.isSelected()?TipoEntrega.ENTREGA:TipoEntrega.RETIRADA;
+        String enderecoEntrega=tipo==TipoEntrega.ENTREGA?usuario.getCliente().getEndereco():null;
+        if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())) tipo=TipoEntrega.RETIRADA;
+        List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
+        return new Pedido(null,usuario,usuario.getCliente(),StatusPedido.PENDENTE,tipo,enderecoEntrega,LocalDateTime.now(),itens);
+    }
+    private void simularDesconto(){
+        long geracao=++geracaoDesconto;descontoAtual=null;finalizar.setDisable(true);
+        if(usuario==null||carrinho.isEmpty()){mensagemDesconto.setText("");return;}
+        mensagemDesconto.setText("Calculando melhor desconto...");
+        Pedido pedido=pedidoAtual();String codigo=cupom.getText();
+        Task<ResultadoDesconto> tarefa=new Task<>(){@Override protected ResultadoDesconto call(){return pedidosService.simular(pedido,codigo);}};
+        tarefa.setOnSucceeded(e->{if(geracao!=geracaoDesconto)return;descontoAtual=tarefa.getValue();total.setText(moeda(descontoAtual.total()));
+            mensagemDesconto.setText("Desconto: "+moeda(descontoAtual.desconto())+" ("+descontoAtual.estrategia()+")");finalizar.setDisable(false);});
+        tarefa.setOnFailed(e->{if(geracao!=geracaoDesconto)return;Throwable erro=tarefa.getException();mensagemDesconto.setText(erro instanceof IllegalArgumentException?erro.getMessage():"Não foi possível calcular o desconto. Tente novamente.");});
+        iniciar(tarefa);
     }
     private void atualizarEndereco(){
         if(usuario==null)return;
@@ -164,18 +188,19 @@ public class ClienteVitrineController implements TelaAutenticada {
         endereco.setText(entrega.isSelected()?(valor==null||valor.isBlank()?"Nenhum endereço cadastrado. Cadastre um endereço antes de pedir entrega.":valor):"Retire seu pedido no balcão.");
     }
     @FXML private void finalizar(){
-        if(carrinho.isEmpty()||usuario==null)return;
+        if(carrinho.isEmpty()||usuario==null||descontoAtual==null)return;
         TipoEntrega tipo=entrega.isSelected()?TipoEntrega.ENTREGA:TipoEntrega.RETIRADA;
         String enderecoEntrega=tipo==TipoEntrega.ENTREGA?usuario.getCliente().getEndereco():null;
         if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())){avisar(Alert.AlertType.WARNING,"Endereço necessário","Seu cadastro não possui endereço. Escolha retirada ou atualize seu endereço antes de pedir entrega.");return;}
         List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
         Pedido pedido=new Pedido(null,usuario,usuario.getCliente(),StatusPedido.PENDENTE,tipo,enderecoEntrega,LocalDateTime.now(),itens);
         raiz.setDisable(true);
-        Task<Long> tarefa=new Task<>() { @Override protected Long call(){return pedidosService.finalizar(pedido);} };
-        tarefa.setOnSucceeded(e->{raiz.setDisable(false);carrinho.clear();atualizarCarrinho();avisar(Alert.AlertType.INFORMATION,"Pedido enviado","Pedido #"+tarefa.getValue()+" recebido com sucesso.");carregarProdutos();mostrarPedidos();});
+        ResultadoDesconto esperado=descontoAtual;String codigo=cupom.getText();
+        Task<Long> tarefa=new Task<>() { @Override protected Long call(){return pedidosService.finalizar(pedido,codigo,esperado);} };
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);carrinho.clear();cupom.clear();atualizarCarrinho();avisar(Alert.AlertType.INFORMATION,"Pedido enviado","Pedido #"+tarefa.getValue()+" recebido com sucesso.");carregarProdutos();mostrarPedidos();});
         tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();
             if(erro instanceof EstoqueInsuficienteException estoque)avisar(Alert.AlertType.WARNING,"Estoque insuficiente",estoque.getNomeProduto()+": disponível "+estoque.getEstoqueDisponivel()+", solicitado "+estoque.getQuantidadeSolicitada()+". Revise seu carrinho.");
-            else if(erro instanceof IllegalArgumentException)avisar(Alert.AlertType.WARNING,"Pedido não finalizado","Produtos ou preços podem ter mudado. Revise o carrinho e tente novamente.");
+            else if(erro instanceof IllegalArgumentException)avisar(Alert.AlertType.WARNING,"Pedido não finalizado",erro.getMessage());
             else avisar(Alert.AlertType.ERROR,"Não foi possível finalizar","Verifique sua conexão e tente novamente. Seu carrinho foi preservado.");carregarProdutos();});iniciar(tarefa);
     }
     @FXML private void carregarPedidos(){

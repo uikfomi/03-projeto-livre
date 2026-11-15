@@ -17,6 +17,7 @@ public class Pedido {
     private final String enderecoEntrega;
     private final LocalDateTime criadoEm;
     private final List<PedidoItem> itens;
+    private BigDecimal desconto = BigDecimal.ZERO;
 
     public Pedido(Long id, Usuario usuario, Cliente cliente, StatusPedido status, TipoEntrega tipoEntrega,
                   String enderecoEntrega, LocalDateTime criadoEm, List<PedidoItem> itens) {
@@ -42,9 +43,16 @@ public class Pedido {
     public List<PedidoItem> getItens() { return List.copyOf(itens); }
     public void adicionarItem(PedidoItem item) { exigirPendente(); itens.add(Validacao.obrigatorio(item, "item")); }
     public void removerItem(PedidoItem item) { exigirPendente(); itens.remove(Validacao.obrigatorio(item, "item")); }
-    public BigDecimal calcularTotal() {
+    public BigDecimal calcularSubtotal() {
         return itens.stream().map(PedidoItem::calcularSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+    public BigDecimal getDesconto() { return desconto; }
+    public void setDesconto(BigDecimal desconto) {
+        if (desconto == null || desconto.signum() < 0 || desconto.compareTo(calcularSubtotal()) > 0)
+            throw new IllegalArgumentException("Desconto inválido");
+        this.desconto = desconto;
+    }
+    public BigDecimal calcularTotal() { return calcularSubtotal().subtract(desconto); }
     public void transicionarPara(StatusPedido destino) {
         if (!status.podeTransicionarPara(destino)) throw new IllegalStateException("Transição de pedido inválida: " + status + " -> " + destino);
         status = destino;

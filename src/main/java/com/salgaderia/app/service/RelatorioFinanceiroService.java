@@ -6,5 +6,5 @@ public interface RelatorioFinanceiroService {
     Relatorio calcular(LocalDateTime inicio,LocalDateTime fim);
     java.util.Map<String,BigDecimal> produtosMaisVendidos(LocalDateTime inicio,LocalDateTime fim);
     java.util.Map<String,BigDecimal> receitaPorCategoria(LocalDateTime inicio,LocalDateTime fim);
-    record Relatorio(BigDecimal faturamentoBruto,BigDecimal custoTotalProducao,BigDecimal perdas,BigDecimal lucroLiquidoReal) { }
+    record Relatorio(BigDecimal faturamentoAposDescontos,BigDecimal custoTotalProducao,BigDecimal perdas,BigDecimal lucroLiquidoReal) { }
 }

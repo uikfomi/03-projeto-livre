@@ -7,6 +7,7 @@ import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
+import com.salgaderia.app.service.desconto.ResultadoDesconto;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.TelaAutenticada;
 import java.io.File;
@@ -67,12 +68,15 @@ public class AdminDashboardController implements TelaAutenticada {
         Thread t=new Thread(tarefa,"admin-consulta");t.setDaemon(true);t.start();
     }
     private <T> void executar(Supplier<T> operacao,Consumer<T> sucesso){
+        executar(operacao,sucesso,()->{});
+    }
+    private <T> void executar(Supplier<T> operacao,Consumer<T> sucesso,Runnable aoFalhar){
         raiz.setDisable(true);Task<T> tarefa=new Task<>(){@Override protected T call(){return operacao.get();}};
         tarefa.setOnSucceeded(e->{raiz.setDisable(false);sucesso.accept(tarefa.getValue());});
         tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();
             if(erro instanceof EstoqueInsuficienteException estoque)avisar(Alert.AlertType.WARNING,"Estoque insuficiente",estoque.getNomeProduto()+": disponível "+estoque.getEstoqueDisponivel()+", solicitado "+estoque.getQuantidadeSolicitada()+".");
             else if(erro instanceof IllegalArgumentException || erro instanceof IllegalStateException)avisar(Alert.AlertType.WARNING,"Operação não concluída",erro.getMessage());
-            else avisar(Alert.AlertType.ERROR,"Operação não concluída","Verifique os dados, vínculos e conexão com o banco.");});
+            else avisar(Alert.AlertType.ERROR,"Operação não concluída","Verifique os dados, vínculos e conexão com o banco.");aoFalhar.run();});
         Thread t=new Thread(tarefa,"admin-operacao");t.setDaemon(true);t.start();
     }
 
@@ -90,6 +94,14 @@ public class AdminDashboardController implements TelaAutenticada {
         Button limparCliente=botao("Limpar cliente",()->cliente.getSelectionModel().clearSelection(),"button-outline");
         ComboBox<FormaPagamento> forma=new ComboBox<>();forma.setId("pdv-forma");forma.getItems().setAll(FormaPagamento.values());forma.setValue(FormaPagamento.DINHEIRO);forma.setMaxWidth(Double.MAX_VALUE);
         TextField recebido=new TextField();recebido.setId("pdv-recebido");recebido.setPromptText("Valor recebido em dinheiro");Label troco=new Label();troco.setId("pdv-troco");
+        TextField cupom=new TextField();cupom.setId("pdv-cupom");cupom.setPromptText("Cupom opcional");
+        Label mensagemDesconto=new Label();mensagemDesconto.setWrapText(true);
+        ResultadoDesconto[] desconto={null};long[] geracao={0};Button[] botaoConcluir={null};
+        Runnable atualizarTroco=()->{
+            recebido.setDisable(!forma.getValue().isPermiteTroco());
+            try {BigDecimal valor=decimal(recebido.getText());troco.setText(forma.getValue().isPermiteTroco()?(desconto[0]==null?"Calcule o total.":"Troco: "+moeda(valor.subtract(desconto[0].total()).max(BigDecimal.ZERO))):"Sem troco para esta forma.");}
+            catch(RuntimeException e){troco.setText(forma.getValue().isPermiteTroco()?"Informe o valor recebido.":"Sem troco para esta forma.");}
+        };
         Runnable[] atualizador=new Runnable[1];
         Runnable atualizar=()->{
             listaCarrinho.getChildren().clear();BigDecimal soma=BigDecimal.ZERO;
@@ -101,28 +113,44 @@ public class AdminDashboardController implements TelaAutenticada {
                 listaCarrinho.getChildren().add(new HBox(6,nome,menos,mais));
             }
             if(carrinho.isEmpty())listaCarrinho.getChildren().add(estado("Nenhum produto na venda."));
-            total.setText(moeda(soma));recebido.setDisable(!forma.getValue().isPermiteTroco());
-            try {BigDecimal valor=decimal(recebido.getText());troco.setText(forma.getValue().isPermiteTroco()?"Troco: "+moeda(valor.subtract(totalCarrinho()).max(BigDecimal.ZERO)):"Sem troco para esta forma.");}
-            catch(RuntimeException e){troco.setText(forma.getValue().isPermiteTroco()?"Informe o valor recebido.":"Sem troco para esta forma.");}
+            total.setText(moeda(soma));long atual=++geracao[0];desconto[0]=null;
+            if(botaoConcluir[0]!=null)botaoConcluir[0].setDisable(true);atualizarTroco.run();
+            if(carrinho.isEmpty()){mensagemDesconto.setText("");return;}
+            mensagemDesconto.setText("Calculando melhor desconto...");
+            Cliente contato=cliente.getValue() instanceof Cliente c?c:null;
+            List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
+            Pedido pedido=new Pedido(null,usuario,contato,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),itens);
+            String codigo=cupom.getText();
+            Task<ResultadoDesconto> tarefa=new Task<>(){@Override protected ResultadoDesconto call(){return pedidos.simular(pedido,codigo);}};
+            tarefa.setOnSucceeded(e->{if(atual!=geracao[0] || !conteudo.getChildren().contains(subtitulo))return;
+                desconto[0]=tarefa.getValue();total.setText(moeda(desconto[0].total()));
+                mensagemDesconto.setText("Desconto: "+moeda(desconto[0].desconto())+" ("+desconto[0].estrategia()+")");
+                botaoConcluir[0].setDisable(false);atualizarTroco.run();});
+            tarefa.setOnFailed(e->{if(atual!=geracao[0] || !conteudo.getChildren().contains(subtitulo))return;
+                Throwable erro=tarefa.getException();mensagemDesconto.setText(erro instanceof IllegalArgumentException?erro.getMessage():"Não foi possível calcular o desconto.");});
+            Thread t=new Thread(tarefa,"pdv-desconto");t.setDaemon(true);t.start();
         };
         atualizador[0]=atualizar;
-        recebido.textProperty().addListener((o,a,n)->atualizar.run());forma.valueProperty().addListener((o,a,n)->atualizar.run());
+        recebido.textProperty().addListener((o,a,n)->atualizarTroco.run());forma.valueProperty().addListener((o,a,n)->atualizarTroco.run());
+        cliente.valueProperty().addListener((o,a,n)->atualizar.run());cupom.textProperty().addListener((o,a,n)->atualizar.run());
         for(Produto produto:dados.produtos()){
             Button card=botao(produto.getNome()+"\n"+moeda(produto.getPrecoVenda())+"\nEstoque: "+produto.getEstoqueAtual().stripTrailingZeros().toPlainString(),()->{alterar(produto,1);atualizar.run();},"admin-produto");
             card.setId("pdv-produto-"+produto.getId());card.setPrefWidth(160);card.setWrapText(true);card.setDisable(produto.getEstoqueAtual().compareTo(BigDecimal.ONE)<0);grade.getChildren().add(card);
         }
         VBox produtosBox=new VBox(12,texto("Produtos disponíveis","admin-subtitulo"),grade.getChildren().isEmpty()?estado("Nenhum produto cadastrado."):grade);HBox.setHgrow(produtosBox,Priority.ALWAYS);
         Button concluir=botao("Finalizar venda",()->{
-            if(carrinho.isEmpty()){avisar(Alert.AlertType.WARNING,"Carrinho vazio","Adicione produtos antes de finalizar.");return;}
+            if(carrinho.isEmpty()||desconto[0]==null){avisar(Alert.AlertType.WARNING,"Carrinho não calculado","Aguarde o cálculo do desconto.");return;}
             FormaPagamento selecionada=forma.getValue();BigDecimal valor;
-            try{valor=selecionada.isPermiteTroco()?decimal(recebido.getText()):totalCarrinho();if(valor.compareTo(totalCarrinho())<0)throw new IllegalArgumentException();}
+            try{valor=selecionada.isPermiteTroco()?decimal(recebido.getText()):desconto[0].total();if(valor.compareTo(desconto[0].total())<0)throw new IllegalArgumentException();}
             catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Valor inválido","Informe um valor recebido suficiente para a venda.");return;}
             Cliente contato=cliente.getValue() instanceof Cliente c?c:null;
             List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
             Pedido pedido=new Pedido(null,usuario,contato,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),itens);
-            executar(()->pedidos.finalizarPdv(pedido,selecionada,valor),id->{carrinho.clear();avisar(Alert.AlertType.INFORMATION,"Venda concluída","Venda #"+id+" registrada com baixa de estoque.");pdv();});
+            String codigo=cupom.getText();ResultadoDesconto esperado=desconto[0];
+            executar(()->pedidos.finalizarPdv(pedido,selecionada,valor,codigo,esperado),id->{carrinho.clear();avisar(Alert.AlertType.INFORMATION,"Venda concluída","Venda #"+id+" registrada com baixa de estoque.");pdv();},atualizar);
         },"button-primary");concluir.setId("pdv-concluir");concluir.setMaxWidth(Double.MAX_VALUE);
-        VBox resumo=new VBox(10,texto("Venda atual","admin-subtitulo"),listaCarrinho,new Separator(),new Label("Cliente"),cliente,limparCliente,new Label("Pagamento"),forma,recebido,troco,new Label("Total"),total,concluir);resumo.getStyleClass().add("admin-card");resumo.setPrefWidth(290);
+        botaoConcluir[0]=concluir;
+        VBox resumo=new VBox(10,texto("Venda atual","admin-subtitulo"),listaCarrinho,new Separator(),new Label("Cliente"),cliente,limparCliente,new Label("Cupom"),cupom,mensagemDesconto,new Label("Pagamento"),forma,recebido,troco,new Label("Total"),total,concluir);resumo.getStyleClass().add("admin-card");resumo.setPrefWidth(290);
         HBox corpo=new HBox(16,produtosBox,resumo);conteudo.getChildren().addAll(subtitulo,corpo);atualizar.run();
     }
     private BigDecimal totalCarrinho(){return carrinho.values().stream().map(i->i.produto().getPrecoVenda().multiply(BigDecimal.valueOf(i.quantidade()))).reduce(BigDecimal.ZERO,BigDecimal::add);}
@@ -200,7 +228,7 @@ public class AdminDashboardController implements TelaAutenticada {
         LocalDateTime inicio=LocalDate.now().withDayOfMonth(1).atStartOfDay(),fim=LocalDate.now().plusDays(1).atStartOfDay();
         carregar(versao,()->new DadosFinanceiros(financeiro.calcular(inicio,fim),financeiro.produtosMaisVendidos(inicio,fim),financeiro.receitaPorCategoria(inicio,fim)),dados->{
             conteudo.getChildren().clear();conteudo.getChildren().add(texto("Mês atual · pedidos entregues pela data de criação; perdas pela data da movimentação.","subtitle"));
-            var r=dados.totais();FlowPane indicadores=new FlowPane(10,10,indicador("Faturamento bruto",r.faturamentoBruto()),indicador("Custos de produção",r.custoTotalProducao()),indicador("Perdas",r.perdas()),indicador("Lucro líquido real",r.lucroLiquidoReal()));
+            var r=dados.totais();FlowPane indicadores=new FlowPane(10,10,indicador("Faturamento após descontos",r.faturamentoAposDescontos()),indicador("Custos de produção",r.custoTotalProducao()),indicador("Perdas",r.perdas()),indicador("Lucro líquido real",r.lucroLiquidoReal()));
             conteudo.getChildren().add(indicadores);
             if(dados.produtos().isEmpty())conteudo.getChildren().add(estado("Nenhuma venda entregue no período para o gráfico de produtos."));
             else{CategoryAxis eixoX=new CategoryAxis();NumberAxis eixoY=new NumberAxis();eixoY.setLabel("Quantidade");BarChart<String,Number> grafico=new BarChart<>(eixoX,eixoY);grafico.setTitle("Produtos mais vendidos");grafico.setLegendVisible(false);XYChart.Series<String,Number> serie=new XYChart.Series<>();dados.produtos().forEach((nome,qtd)->serie.getData().add(new XYChart.Data<>(nome,qtd)));grafico.getData().add(serie);conteudo.getChildren().add(grafico);}

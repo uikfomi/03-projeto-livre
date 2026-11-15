@@ -6,5 +6,9 @@ public interface PedidoVendaService {
     long finalizarPdv(Pedido pedido,com.salgaderia.app.model.enums.FormaPagamento forma,java.math.BigDecimal recebido);
     /** Compartilhado pelas vendas de PDV e vitrine; grava e baixa estoque atomicamente. */
     long finalizar(Pedido pedido);
+    com.salgaderia.app.service.desconto.ResultadoDesconto simular(Pedido pedido, String codigo);
+    long finalizar(Pedido pedido, String codigo, com.salgaderia.app.service.desconto.ResultadoDesconto esperado);
+    long finalizarPdv(Pedido pedido, com.salgaderia.app.model.enums.FormaPagamento forma, java.math.BigDecimal recebido,
+                      String codigo, com.salgaderia.app.service.desconto.ResultadoDesconto esperado);
     void transicionar(long pedidoId, com.salgaderia.app.model.enums.StatusPedido destino);
 }

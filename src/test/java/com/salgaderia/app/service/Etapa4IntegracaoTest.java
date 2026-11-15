@@ -63,9 +63,9 @@ class Etapa4IntegracaoTest {
             Usuario admin=new UsuarioAdmin(2L,"Admin","admin","nao-usada",true);
             assertTrue(avaliacoes.responder(admin,avaliacaoId,"obrigado"));
             var relatorio=new RelatorioFinanceiroServiceImpl().calcular(data.minusHours(1),data.plusHours(1));
-            assertTrue(relatorio.faturamentoBruto().compareTo(new BigDecimal("16"))>=0);
+            assertTrue(relatorio.faturamentoAposDescontos().compareTo(new BigDecimal("16"))>=0);
             assertTrue(relatorio.custoTotalProducao().compareTo(new BigDecimal("6"))>=0);
-            assertEquals(0,relatorio.lucroLiquidoReal().compareTo(relatorio.faturamentoBruto().subtract(relatorio.custoTotalProducao()).subtract(relatorio.perdas())));
+            assertEquals(0,relatorio.lucroLiquidoReal().compareTo(relatorio.faturamentoAposDescontos().subtract(relatorio.custoTotalProducao()).subtract(relatorio.perdas())));
             estoque.registrarPerda(produto.getId(),BigDecimal.ONE,"teste");
             assertEquals(0,estoque.buscarPorId(produto.getId()).orElseThrow().getEstoqueAtual().signum());
             estoque.entradaLote(produto.getId(),fornecedor.getId(),new BigDecimal("2"),"novo lote");

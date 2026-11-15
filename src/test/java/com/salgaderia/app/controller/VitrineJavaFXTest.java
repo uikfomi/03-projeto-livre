@@ -60,6 +60,8 @@ class VitrineJavaFXTest {
                 ((TextField)loader.getNamespace().get("busca")).setText("FRANGO");return null;
             });
             assertEquals(1,fx(()->((FlowPane)loader.getNamespace().get("cards")).getChildren().size()));
+            fx(()->{((TextField)loader.getNamespace().get("cupom")).setText("UIKFOMI10");return null;});
+            aguardar(()->fx(()->((Label)loader.getNamespace().get("total")).getText().contains("14,40")));
             fx(()->{((TextField)loader.getNamespace().get("busca")).setText("nada encontrado");return null;});
             assertTrue(fx(()->((Label)loader.getNamespace().get("mensagemProdutos")).getText().contains("Nenhum salgado encontrado")));
             var timer=fx(()->{
@@ -80,6 +82,7 @@ class VitrineJavaFXTest {
             aguardar(()->pedidos.enviado.get()!=null);
             aguardar(()->fx(()->((Label)loader.getNamespace().get("contador")).getText().equals("0 itens")));
             assertEquals(TipoEntrega.ENTREGA,pedidos.enviado.get().getTipoEntrega());
+            assertEquals("UIKFOMI10",pedidos.codigo.get());
             assertEquals("Rua das Flores",pedidos.enviado.get().getEnderecoEntrega());
             assertEquals(new BigDecimal("2"),pedidos.enviado.get().getItens().get(0).getQuantidade());
             aguardar(()->fx(()->stageRef.get().getScene().getRoot().lookup("#avaliar-102-1")!=null));
@@ -117,10 +120,13 @@ class VitrineJavaFXTest {
         public void entradaLote(long p,long f,BigDecimal q,String o){throw new UnsupportedOperationException();}public void registrarPerda(long p,BigDecimal q,String o){throw new UnsupportedOperationException();}
     }
     private static class PedidosTeste implements PedidoVendaService {
-        final List<Pedido> dados;final java.util.concurrent.atomic.AtomicReference<Pedido> enviado=new java.util.concurrent.atomic.AtomicReference<>();
+        final List<Pedido> dados;final java.util.concurrent.atomic.AtomicReference<Pedido> enviado=new java.util.concurrent.atomic.AtomicReference<>();final java.util.concurrent.atomic.AtomicReference<String> codigo=new java.util.concurrent.atomic.AtomicReference<>();
         PedidosTeste(List<Pedido> dados){this.dados=dados;}
         public List<PedidoFila> listarFila(){return List.of();} public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){throw new UnsupportedOperationException();}
         public List<Pedido> listarDoCliente(UsuarioCliente u){return dados;}public long finalizar(Pedido p){enviado.set(p);return 77;}public void transicionar(long id,StatusPedido s){throw new UnsupportedOperationException();}
+        public com.salgaderia.app.service.desconto.ResultadoDesconto simular(Pedido p,String c){var cupom="UIKFOMI10".equals(c)?new com.salgaderia.app.service.desconto.Cupom(c,BigDecimal.TEN,BigDecimal.ZERO):null;return new com.salgaderia.app.service.desconto.CalculadoraDescontos().calcular(new com.salgaderia.app.service.desconto.ContextoDesconto(p.getItens(),0,cupom));}
+        public long finalizar(Pedido p,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){codigo.set(c);return finalizar(p);}
+        public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){return finalizarPdv(p,f,r);}
     }
     private static class NodeBusca {
         @SuppressWarnings("unchecked") static void preencherNota(DialogPane pane){

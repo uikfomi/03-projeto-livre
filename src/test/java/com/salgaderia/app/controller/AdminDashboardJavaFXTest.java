@@ -36,10 +36,11 @@ class AdminDashboardJavaFXTest {
         fx(()->{FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));loader.setControllerFactory(c->new AdminDashboardController(produtos,vendas,new Agenda(),new Financeiro(),new Avaliacoes()));Parent raiz=loader.load();Stage stage=new Stage();stage.setScene(new Scene(raiz,1100,700));stage.show();((AdminDashboardController)loader.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));l.set(loader);janela.set(stage);return null;});
         try {
             aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#pdv-produto-1")!=null));
-            fx(()->{Parent root=janela.get().getScene().getRoot();((Button)root.lookup("#pdv-produto-1")).fire();((TextField)root.lookup("#pdv-recebido")).setText("10,00");assertTrue(((Label)root.lookup("#pdv-troco")).getText().contains("2,00"));return null;});
+            fx(()->{Parent root=janela.get().getScene().getRoot();((Button)root.lookup("#pdv-produto-1")).fire();((TextField)root.lookup("#pdv-cupom")).setText("UIKFOMI10");((TextField)root.lookup("#pdv-recebido")).setText("10,00");return null;});
+            aguardar(()->fx(()->((Label)janela.get().getScene().getRoot().lookup("#pdv-troco")).getText().contains("2,80")));
             Timeline timer=fx(()->{Timeline t=new Timeline(new KeyFrame(Duration.millis(50),e->{for(var w:List.copyOf(javafx.stage.Window.getWindows()))if(w instanceof Stage s&&s!=janela.get()&&s.getScene()!=null&&s.getScene().getRoot() instanceof DialogPane d){var ok=d.lookupButton(ButtonType.OK);if(ok instanceof Button b)b.fire();}}));t.setCycleCount(Animation.INDEFINITE);t.play();return t;});
             fx(()->{((Button)janela.get().getScene().getRoot().lookup("#pdv-concluir")).fire();return null;});
-            aguardar(()->vendas.enviado.get()!=null);assertEquals(FormaPagamento.DINHEIRO,vendas.forma.get());assertEquals(new BigDecimal("10.00"),vendas.recebido.get());
+            aguardar(()->vendas.enviado.get()!=null);assertEquals(FormaPagamento.DINHEIRO,vendas.forma.get());assertEquals(new BigDecimal("10.00"),vendas.recebido.get());assertEquals("UIKFOMI10",vendas.codigo.get());
             aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#pdv-produto-1")!=null && !janela.get().getScene().getRoot().isDisabled()));
             fx(()->{timer.stop();((Button)l.get().getNamespace().get("menuFila")).fire();return null;});
             aguardar(()->fx(()->((Label)l.get().getNamespace().get("titulo")).getText().equals("Fila de pedidos") && janela.get().getScene().getRoot().lookup(".admin-empty")!=null));
@@ -61,9 +62,12 @@ class AdminDashboardJavaFXTest {
         public void entradaLote(long p,long f,BigDecimal q,String o){}public void registrarPerda(long p,BigDecimal q,String o){}
     }
     private static class Vendas implements PedidoVendaService {
-        final AtomicReference<Pedido> enviado=new AtomicReference<>();final AtomicReference<FormaPagamento> forma=new AtomicReference<>();final AtomicReference<BigDecimal> recebido=new AtomicReference<>();
+        final AtomicReference<Pedido> enviado=new AtomicReference<>();final AtomicReference<FormaPagamento> forma=new AtomicReference<>();final AtomicReference<BigDecimal> recebido=new AtomicReference<>();final AtomicReference<String> codigo=new AtomicReference<>();
         public List<PedidoFila> listarFila(){return List.of();}public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){enviado.set(p);forma.set(f);recebido.set(r);return 1;}
         public List<Pedido> listarDoCliente(UsuarioCliente u){return List.of();}public long finalizar(Pedido p){return 1;}public void transicionar(long id,StatusPedido status){}
+        public com.salgaderia.app.service.desconto.ResultadoDesconto simular(Pedido p,String c){var cupom="UIKFOMI10".equals(c)?new com.salgaderia.app.service.desconto.Cupom(c,BigDecimal.TEN,BigDecimal.ZERO):null;return new com.salgaderia.app.service.desconto.CalculadoraDescontos().calcular(new com.salgaderia.app.service.desconto.ContextoDesconto(p.getItens(),0,cupom));}
+        public long finalizar(Pedido p,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){return finalizar(p);}
+        public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){codigo.set(c);return finalizarPdv(p,f,r);}
     }
     private static class Agenda implements AgendaService {
         public long cadastrar(Contato c){return 1;}public boolean atualizar(Contato c){return true;}public boolean excluir(long id){return true;}
