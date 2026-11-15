@@ -50,7 +50,14 @@ class Etapa4IntegracaoTest {
             var avaliacoes=new AvaliacaoServiceImpl();
             assertThrows(AvaliacaoNaoPermitidaException.class,()->avaliacoes.salvar(avaliacao));
             vendas.transicionar(pedidoId,StatusPedido.PREPARANDO);vendas.transicionar(pedidoId,StatusPedido.PRONTO);vendas.transicionar(pedidoId,StatusPedido.ENTREGUE);
+            var historico=vendas.listarDoCliente(usuario);
+            assertEquals(1,historico.size());
+            assertEquals(StatusPedido.ENTREGUE,historico.get(0).getStatus());
+            assertEquals(0,historico.get(0).getItens().get(0).getPrecoUnitario().compareTo(new BigDecimal("8.00")));
+            UsuarioCliente outroCliente=new UsuarioCliente(Long.MAX_VALUE,"Outro","outro","senha",true,cliente);
+            assertTrue(vendas.listarDoCliente(outroCliente).isEmpty());
             avaliacaoId=avaliacoes.salvar(avaliacao);
+            assertEquals(0,avaliacoes.mediasPorProduto().get(produto.getId()).compareTo(new BigDecimal("5")));
             Usuario admin=new UsuarioAdmin(2L,"Admin","admin","nao-usada",true);
             assertTrue(avaliacoes.responder(admin,avaliacaoId,"obrigado"));
             var relatorio=new RelatorioFinanceiroServiceImpl().calcular(data.minusHours(1),data.plusHours(1));

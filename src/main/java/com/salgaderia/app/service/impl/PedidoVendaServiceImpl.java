@@ -12,6 +12,10 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
     private final PedidoDAO pedidos;private final ProdutoDAO produtos;private final MovimentacaoEstoqueDAO movimentos;
     public PedidoVendaServiceImpl(){this(new PedidoDAOImpl(),new ProdutoDAOImpl(),new MovimentacaoEstoqueDAOImpl());}
     public PedidoVendaServiceImpl(PedidoDAO pedidos,ProdutoDAO produtos,MovimentacaoEstoqueDAO movimentos){this.pedidos=Objects.requireNonNull(pedidos);this.produtos=Objects.requireNonNull(produtos);this.movimentos=Objects.requireNonNull(movimentos);}
+    @Override public List<Pedido> listarDoCliente(UsuarioCliente usuario){
+        if(usuario==null || usuario.getId()==null || !usuario.isAtivo())throw new IllegalArgumentException("Cliente autenticado obrigatório");
+        return ConnectionFactory.executarEmTransacao(c->pedidos.listarDoCliente(c,usuario));
+    }
     @Override public long finalizar(Pedido pedido){
         Objects.requireNonNull(pedido);if(pedido.getId()!=null||pedido.getStatus()!=StatusPedido.PENDENTE||pedido.getItens().isEmpty())throw new IllegalArgumentException("Pedido deve ser novo, pendente e conter itens");
         if(pedido.getUsuario()!=null && pedido.getUsuario().getId()==null)throw new IllegalArgumentException("Usuário sem ID");

@@ -5,6 +5,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.Map;
 public interface PedidoDAO {
+    java.util.List<Pedido> listarDoCliente(Connection c, com.salgaderia.app.model.UsuarioCliente cliente) throws SQLException;
     long inserir(Connection c, Pedido pedido, Map<Long,BigDecimal> custos) throws SQLException;
     com.salgaderia.app.model.enums.StatusPedido bloquearStatus(Connection c,long id) throws SQLException;
     Map<Long,BigDecimal> quantidades(Connection c,long id) throws SQLException;

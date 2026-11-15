@@ -3,6 +3,12 @@ import com.salgaderia.app.dao.AvaliacaoDAO;
 import com.salgaderia.app.model.Avaliacao;
 import java.sql.*;
 public class AvaliacaoDAOImpl implements AvaliacaoDAO {
+    @Override public java.util.Map<Long,java.math.BigDecimal> mediasPorProduto(Connection c) throws SQLException {
+        try(PreparedStatement ps=c.prepareStatement("SELECT produto_id,AVG(nota) AS media FROM avaliacoes GROUP BY produto_id");ResultSet rs=ps.executeQuery()){
+            java.util.Map<Long,java.math.BigDecimal> medias=new java.util.HashMap<>();
+            while(rs.next())medias.put(rs.getLong("produto_id"),rs.getBigDecimal("media"));return medias;
+        }
+    }
     @Override public long inserir(Connection c,Avaliacao a) throws SQLException {
         try(PreparedStatement ps=c.prepareStatement("INSERT INTO avaliacoes(usuario_id,produto_id,nota,comentario,criado_em) VALUES (?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)){
             ps.setLong(1,a.getUsuario().getId());ps.setLong(2,a.getProduto().getId());ps.setInt(3,a.getNota());ps.setString(4,a.getComentario());ps.setTimestamp(5,Timestamp.valueOf(a.getCriadoEm()));ps.executeUpdate();

@@ -1,20 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.salgaderia.app.controller.ClienteVitrineController" styleClass="page">
+<BorderPane fx:id="raiz" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.salgaderia.app.controller.ClienteVitrineController" stylesheets="@../css/cliente-vitrine.css" styleClass="vitrine-page">
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="16">
-            <VBox spacing="4" HBox.hgrow="ALWAYS">
-                <Label text="Vitrine de pedidos" styleClass="title" />
-                <Label fx:id="saudacao" styleClass="subtitle" />
-            </VBox>
-            <Button text="Sair" onAction="#sair" styleClass="button-outline" />
-        </HBox>
+        <VBox spacing="16" styleClass="vitrine-header">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                    <Label text="Vitrine de pedidos" styleClass="vitrine-titulo" />
+                    <Label fx:id="saudacao" styleClass="subtitle" />
+                </VBox>
+                <Button fx:id="botaoCatalogo" text="Cardápio" onAction="#mostrarVitrine" styleClass="button-outline" />
+                <Button fx:id="botaoPedidos" text="Meus Pedidos" onAction="#mostrarPedidos" styleClass="button-secondary" />
+                <Button text="Sair" onAction="#sair" styleClass="button-outline" />
+            </HBox>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="busca" promptText="Busque pelo nome ou sabor" accessibleText="Buscar por nome ou sabor" HBox.hgrow="ALWAYS" />
+                <ComboBox fx:id="categorias" prefWidth="220" promptText="Todas as categorias" accessibleText="Filtro de categoria" />
+                <Button text="Atualizar" onAction="#carregarProdutos" styleClass="button-outline" />
+            </HBox>
+        </VBox>
     </top>
     <center>
-        <VBox alignment="CENTER" spacing="12" maxWidth="560" maxHeight="240" styleClass="empty-state" BorderPane.alignment="CENTER">
-            <Label text="A vitrine está em preparação" wrapText="true" styleClass="empty-title" />
-            <Label text="A visualização de produtos e pedidos estará disponível em breve." wrapText="true" styleClass="empty-description" />
-        </VBox>
+        <StackPane styleClass="conteudo-vitrine">
+            <VBox fx:id="painelVitrine" spacing="12">
+                <Label text="Escolha seus favoritos" styleClass="secao-titulo" />
+                <ScrollPane fx:id="rolagemProdutos" fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" styleClass="rolagem-transparente">
+                    <content>
+                        <VBox spacing="12">
+                            <Label fx:id="mensagemProdutos" wrapText="true" styleClass="estado-vitrine" />
+                            <FlowPane fx:id="cards" hgap="14" vgap="14" />
+                        </VBox>
+                    </content>
+                </ScrollPane>
+            </VBox>
+            <VBox fx:id="painelPedidos" spacing="12">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="Meus pedidos" styleClass="secao-titulo" HBox.hgrow="ALWAYS" />
+                    <Button text="Atualizar pedidos" onAction="#carregarPedidos" styleClass="button-outline" />
+                </HBox>
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" styleClass="rolagem-transparente">
+                    <content>
+                        <VBox spacing="12">
+                            <Label fx:id="mensagemPedidos" wrapText="true" styleClass="estado-vitrine" />
+                            <VBox fx:id="listaPedidos" spacing="12" />
+                        </VBox>
+                    </content>
+                </ScrollPane>
+            </VBox>
+        </StackPane>
     </center>
+    <right>
+        <VBox prefWidth="295" minWidth="270" spacing="12" styleClass="painel-carrinho">
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="Seu carrinho" styleClass="secao-titulo" HBox.hgrow="ALWAYS" />
+                <Label fx:id="contador" styleClass="subtitle" />
+            </HBox>
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" styleClass="rolagem-transparente">
+                <content><VBox fx:id="itensCarrinho" spacing="8" /></content>
+            </ScrollPane>
+            <Separator />
+            <Label text="Como deseja receber?" styleClass="field-label" />
+            <RadioButton fx:id="retirada" text="Retirada no Balcão" />
+            <RadioButton fx:id="entrega" text="Entrega" />
+            <Label fx:id="endereco" wrapText="true" styleClass="subtitle" />
+            <Separator />
+            <HBox alignment="CENTER_LEFT"><Label text="Total" HBox.hgrow="ALWAYS" styleClass="field-label" /><Label fx:id="total" styleClass="produto-preco" /></HBox>
+            <Button fx:id="finalizar" text="Finalizar Pedido" maxWidth="Infinity" onAction="#finalizar" styleClass="button-primary" />
+        </VBox>
+    </right>
 </BorderPane>

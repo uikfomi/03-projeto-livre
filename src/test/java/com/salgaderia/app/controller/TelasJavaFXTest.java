@@ -20,7 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class TelasJavaFXTest {
     @BeforeAll static void iniciarJavaFX() throws Exception {
         CountDownLatch iniciado = new CountDownLatch(1);
-        Platform.startup(() -> { Platform.setImplicitExit(false); iniciado.countDown(); });
+        try { Platform.startup(() -> { Platform.setImplicitExit(false); iniciado.countDown(); }); }
+        catch (IllegalStateException jaIniciado) { Platform.runLater(iniciado::countDown); }
         assertTrue(iniciado.await(15, TimeUnit.SECONDS));
     }
     @Test void carregaTelasRoteiaPorPerfilEMostraSenha() throws Exception {
@@ -40,7 +41,7 @@ class TelasJavaFXTest {
                 Cliente cliente = new Cliente(null,"Cliente",null,null,null,null,null);
                 Navegacao.abrirTelaInicial(stage, new UsuarioCliente(null,"Cliente","login","senha",true,cliente));
                 stage.getScene().getRoot().applyCss();
-                assertEquals("Vitrine de pedidos", ((javafx.scene.control.Label) ((javafx.scene.layout.VBox) ((javafx.scene.layout.HBox) ((javafx.scene.layout.BorderPane) stage.getScene().getRoot()).getTop()).getChildren().get(0)).getChildren().get(0)).getText());
+                assertEquals("Vitrine de pedidos", ((javafx.scene.control.Label) stage.getScene().getRoot().lookup(".vitrine-titulo")).getText());
                 Navegacao.abrirTelaInicial(stage, new UsuarioAdmin(null,"Admin","login","senha",true));
                 stage.getScene().getRoot().applyCss();
                 assertNotNull(stage.getScene().getRoot().lookup(".module-title"));

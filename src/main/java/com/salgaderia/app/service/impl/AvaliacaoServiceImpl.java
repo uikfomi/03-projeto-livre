@@ -12,6 +12,7 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
     private final PedidoDAO pedidos;private final AvaliacaoDAO avaliacoes;private final UsuarioDAO usuarios;
     public AvaliacaoServiceImpl(){this(new PedidoDAOImpl(),new AvaliacaoDAOImpl(),new UsuarioDAOImpl(new ContatoDAOImpl()));}
     public AvaliacaoServiceImpl(PedidoDAO pedidos,AvaliacaoDAO avaliacoes,UsuarioDAO usuarios){this.pedidos=Objects.requireNonNull(pedidos);this.avaliacoes=Objects.requireNonNull(avaliacoes);this.usuarios=Objects.requireNonNull(usuarios);}
+    @Override public java.util.Map<Long,java.math.BigDecimal> mediasPorProduto(){return ConnectionFactory.executarEmTransacao(avaliacoes::mediasPorProduto);}
     @Override public long salvar(Avaliacao a){
         Objects.requireNonNull(a);if(a.getId()!=null||a.getUsuario().getId()==null||a.getProduto().getId()==null||a.getRespostaAdmin()!=null)throw new IllegalArgumentException("Avaliação inválida");
         long id=ConnectionFactory.executarEmTransacao(c->{Usuario u=usuarios.buscarPorId(c,a.getUsuario().getId()).orElseThrow(()->new AvaliacaoNaoPermitidaException("Usuário inexistente"));

@@ -1,0 +1,30 @@
+/* Vitrine com cores quentes, cards e contraste legível. */
+.vitrine-page { -fx-background-color: #f8f6f3; }
+.vitrine-header { -fx-padding: 20 28 18 28; -fx-background-color: white; -fx-border-color: transparent transparent #eee6df transparent; }
+.vitrine-titulo { -fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #302521; }
+.conteudo-vitrine { -fx-padding: 22 20 22 28; }
+.secao-titulo { -fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: #302521; }
+.rolagem-transparente { -fx-background-color: transparent; -fx-background: transparent; -fx-padding: 0; }
+.produto-card { -fx-background-color: white; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #eee5dd; -fx-padding: 10; }
+.produto-card:hover { -fx-border-color: #d69e87; -fx-effect: dropshadow(gaussian, rgba(100,50,28,0.12), 12, 0.05, 0, 3); }
+.produto-imagem { -fx-background-color: linear-gradient(to bottom right, #f6e1d3, #fbeee4); -fx-background-radius: 10; }
+.imagem-fallback { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #b66c4e; }
+.produto-nome { -fx-font-size: 16px; -fx-font-weight: bold; }
+.produto-descricao { -fx-text-fill: #77706b; -fx-font-size: 12px; }
+.produto-preco { -fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #9c3d20; }
+.produto-estrelas { -fx-text-fill: #a66413; -fx-font-size: 12px; -fx-font-weight: bold; }
+.estoque-disponivel { -fx-background-color: #eaf5ea; -fx-text-fill: #28733e; -fx-background-radius: 10; -fx-padding: 3 7; -fx-font-size: 11px; }
+.estoque-esgotado { -fx-background-color: #f5e7e4; -fx-text-fill: #9b4840; -fx-background-radius: 10; -fx-padding: 3 7; -fx-font-size: 11px; }
+.estado-vitrine { -fx-padding: 36; -fx-background-color: white; -fx-background-radius: 14; -fx-border-radius: 14; -fx-border-color: #eee5dd; -fx-text-fill: #716c67; -fx-font-size: 15px; }
+.painel-carrinho { -fx-padding: 22 18; -fx-background-color: white; -fx-border-color: transparent transparent transparent #eee6df; }
+.carrinho-item { -fx-padding: 10 0; -fx-border-color: transparent transparent #f1ece8 transparent; }
+.carrinho-nome { -fx-font-size: 13px; -fx-font-weight: bold; }
+.quantidade-botao { -fx-background-color: #f9ece5; -fx-text-fill: #a43e22; -fx-padding: 3 8; -fx-font-size: 14px; }
+.pedido-card { -fx-padding: 18; -fx-background-color: white; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #eee5dd; }
+.pedido-titulo { -fx-font-weight: bold; }
+.status-pedido { -fx-font-size: 11px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 4 8; }
+.status-pendente { -fx-background-color: #fff2cc; -fx-text-fill: #805900; }
+.status-preparando { -fx-background-color: #e7efff; -fx-text-fill: #315c9c; }
+.status-pronto { -fx-background-color: #e5f6f0; -fx-text-fill: #16734d; }
+.status-entregue { -fx-background-color: #e5f4e7; -fx-text-fill: #28703a; }
+.status-cancelado { -fx-background-color: #f8e5e5; -fx-text-fill: #a33e3e; }
