@@ -17,17 +17,17 @@ Wireframes, mockups e protótipos devem ser documentados aqui quando forem produ
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `docs/ui-ux/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `docs/ui-ux/`.
 
 ```text
 docs/ui-ux/  # Organiza os artefatos de UX planejados para a interface da Ui K'Fomi.
-├── mockups/  # docs/ui-ux/mockups/ — Espaço reservado para mockups.
-│   └── .gitkeep  # docs/ui-ux/mockups/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── prototypes/  # docs/ui-ux/prototypes/ — Espaço reservado para protótipos.
-│   └── .gitkeep  # docs/ui-ux/prototypes/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── wireframes/  # docs/ui-ux/wireframes/ — Espaço reservado para wireframes.
-│   └── .gitkeep  # docs/ui-ux/wireframes/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-└── README.md  # docs/ui-ux/README.md — Guia de navegação e explicações desta pasta.
+├── mockups/  # Espaço reservado para mockups.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── prototypes/  # Espaço reservado para protótipos.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── wireframes/  # Espaço reservado para wireframes.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+└── README.md  # Guia de navegação e explicações desta pasta.
 ```
 
 ## 📌 Status do Conteúdo

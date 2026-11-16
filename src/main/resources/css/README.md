@@ -19,16 +19,16 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `src/main/resources/css/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `src/main/resources/css/`.
 
 ```text
 src/main/resources/css/  # Folhas de estilo que definem a apresentação visual das telas.
-├── .gitkeep  # src/main/resources/css/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── admin.css  # src/main/resources/css/admin.css — Estilos do painel administrativo.
-├── agenda.css  # src/main/resources/css/agenda.css — Estilos da agenda.
-├── cliente-vitrine.css  # src/main/resources/css/cliente-vitrine.css — Estilos da vitrine.
-├── global.css  # src/main/resources/css/global.css — Estilos compartilhados da aplicação.
-└── README.md  # src/main/resources/css/README.md — Guia de navegação e explicações desta pasta.
+├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── admin.css  # Estilos do painel administrativo.
+├── agenda.css  # Estilos da agenda.
+├── cliente-vitrine.css  # Estilos da vitrine.
+├── global.css  # Estilos compartilhados da aplicação.
+└── README.md  # Guia de navegação e explicações desta pasta.
 ```
 
 [🏠 Voltar ao README principal](../../../../README.md)

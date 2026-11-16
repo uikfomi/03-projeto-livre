@@ -18,19 +18,19 @@ Adicione somente materiais autorizados e identifique sua origem quando forem inc
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `support/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `support/`.
 
 ```text
 support/  # Organiza documentos, referências, tutoriais e vídeos que apoiam o projeto e a disciplina.
-├── documents/  # support/documents/ — Espaço para documentos de apoio.
-│   └── .gitkeep  # support/documents/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── references/  # support/references/ — Espaço para referências.
-│   └── .gitkeep  # support/references/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── tutorials/  # support/tutorials/ — Espaço para tutoriais.
-│   └── .gitkeep  # support/tutorials/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── videos/  # support/videos/ — Espaço para materiais em vídeo.
-│   └── .gitkeep  # support/videos/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-└── README.md  # support/README.md — Guia de navegação e explicações desta pasta.
+├── documents/  # Espaço para documentos de apoio.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── references/  # Espaço para referências.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── tutorials/  # Espaço para tutoriais.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── videos/  # Espaço para materiais em vídeo.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+└── README.md  # Guia de navegação e explicações desta pasta.
 ```
 
 ## 📌 Status do Conteúdo

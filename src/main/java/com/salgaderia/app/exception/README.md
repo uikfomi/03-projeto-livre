@@ -19,16 +19,16 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `src/main/java/com/salgaderia/app/exception/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `src/main/java/com/salgaderia/app/exception/`.
 
 ```text
 src/main/java/com/salgaderia/app/exception/  # Define falhas específicas do domínio, autenticação e persistência para tratamento consistente.
-├── .gitkeep  # src/main/java/com/salgaderia/app/exception/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── AutenticacaoInvalidaException.java  # src/main/java/com/salgaderia/app/exception/AutenticacaoInvalidaException.java — Falha de autenticação.
-├── AvaliacaoNaoPermitidaException.java  # src/main/java/com/salgaderia/app/exception/AvaliacaoNaoPermitidaException.java — Avaliação sem compra elegível.
-├── EstoqueInsuficienteException.java  # src/main/java/com/salgaderia/app/exception/EstoqueInsuficienteException.java — Erro de quantidade indisponível.
-├── PersistenciaException.java  # src/main/java/com/salgaderia/app/exception/PersistenciaException.java — Encapsula erro de persistência.
-└── README.md  # src/main/java/com/salgaderia/app/exception/README.md — Guia de navegação e explicações desta pasta.
+├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── AutenticacaoInvalidaException.java  # Falha de autenticação.
+├── AvaliacaoNaoPermitidaException.java  # Avaliação sem compra elegível.
+├── EstoqueInsuficienteException.java  # Erro de quantidade indisponível.
+├── PersistenciaException.java  # Encapsula erro de persistência.
+└── README.md  # Guia de navegação e explicações desta pasta.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../README.md)

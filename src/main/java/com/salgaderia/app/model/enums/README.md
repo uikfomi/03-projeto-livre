@@ -21,18 +21,18 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `src/main/java/com/salgaderia/app/model/enums/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `src/main/java/com/salgaderia/app/model/enums/`.
 
 ```text
 src/main/java/com/salgaderia/app/model/enums/  # Agrupa enumerações e os comportamentos associados a estados ou opções fixas.
-├── .gitkeep  # src/main/java/com/salgaderia/app/model/enums/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── CategoriaInsumo.java  # src/main/java/com/salgaderia/app/model/enums/CategoriaInsumo.java — Categorias de insumos de fornecedores.
-├── FormaPagamento.java  # src/main/java/com/salgaderia/app/model/enums/FormaPagamento.java — Formas de pagamento e regra de troco.
-├── PerfilUsuario.java  # src/main/java/com/salgaderia/app/model/enums/PerfilUsuario.java — Perfis de acesso do usuário.
-├── README.md  # src/main/java/com/salgaderia/app/model/enums/README.md — Guia de navegação e explicações desta pasta.
-├── StatusPedido.java  # src/main/java/com/salgaderia/app/model/enums/StatusPedido.java — Estados e transições permitidas do pedido.
-├── TipoEntrega.java  # src/main/java/com/salgaderia/app/model/enums/TipoEntrega.java — Modalidades de entrega.
-└── TipoMovimentacaoEstoque.java  # src/main/java/com/salgaderia/app/model/enums/TipoMovimentacaoEstoque.java — Tipos de movimentação de estoque.
+├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── CategoriaInsumo.java  # Categorias de insumos de fornecedores.
+├── FormaPagamento.java  # Formas de pagamento e regra de troco.
+├── PerfilUsuario.java  # Perfis de acesso do usuário.
+├── README.md  # Guia de navegação e explicações desta pasta.
+├── StatusPedido.java  # Estados e transições permitidas do pedido.
+├── TipoEntrega.java  # Modalidades de entrega.
+└── TipoMovimentacaoEstoque.java  # Tipos de movimentação de estoque.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../../README.md)

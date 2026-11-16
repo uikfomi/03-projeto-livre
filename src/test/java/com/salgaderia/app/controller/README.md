@@ -18,15 +18,15 @@ Execute os testes compatíveis com o ambiente; os testes de integração podem e
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `src/test/java/com/salgaderia/app/controller/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `src/test/java/com/salgaderia/app/controller/`.
 
 ```text
 src/test/java/com/salgaderia/app/controller/  # Reúne testes automatizados dos componentes presentes neste pacote.
-├── AdminDashboardJavaFXTest.java  # src/test/java/com/salgaderia/app/controller/AdminDashboardJavaFXTest.java — Testes JavaFX do painel e notificações.
-├── AgendaJavaFXTest.java  # src/test/java/com/salgaderia/app/controller/AgendaJavaFXTest.java — Testes JavaFX da agenda.
-├── README.md  # src/test/java/com/salgaderia/app/controller/README.md — Guia de navegação e explicações desta pasta.
-├── TelasJavaFXTest.java  # src/test/java/com/salgaderia/app/controller/TelasJavaFXTest.java — Testes JavaFX de autenticação e navegação.
-└── VitrineJavaFXTest.java  # src/test/java/com/salgaderia/app/controller/VitrineJavaFXTest.java — Testes JavaFX da vitrine, pagamento e atualização.
+├── AdminDashboardJavaFXTest.java  # Testes JavaFX do painel e notificações.
+├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
+├── README.md  # Guia de navegação e explicações desta pasta.
+├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
+└── VitrineJavaFXTest.java  # Testes JavaFX da vitrine, pagamento e atualização.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../README.md)

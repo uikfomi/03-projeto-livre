@@ -19,27 +19,27 @@ Os arquivos existentes descrevem decisões reais do projeto; pastas marcadas com
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `docs/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `docs/`.
 
 ```text
 docs/  # Concentra os materiais de arquitetura, modelagem, interface e apresentação do sistema.
-├── diagrams/  # docs/diagrams/ — Espaço para diagramas adicionais.
-│   └── .gitkeep  # docs/diagrams/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── presentations/  # docs/presentations/ — Espaço reservado para slides e apresentações.
-│   └── .gitkeep  # docs/presentations/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── ui-ux/  # docs/ui-ux/ — Artefatos de experiência do usuário.
-│   ├── mockups/  # docs/ui-ux/mockups/ — Espaço reservado para mockups.
-│   │   └── .gitkeep  # docs/ui-ux/mockups/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── prototypes/  # docs/ui-ux/prototypes/ — Espaço reservado para protótipos.
-│   │   └── .gitkeep  # docs/ui-ux/prototypes/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── wireframes/  # docs/ui-ux/wireframes/ — Espaço reservado para wireframes.
-│   │   └── .gitkeep  # docs/ui-ux/wireframes/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   └── README.md  # docs/ui-ux/README.md — Guia de navegação e explicações desta pasta.
-├── uml/  # docs/uml/ — Materiais para diagramas de classes e modelagem UML.
-│   ├── .gitkeep  # docs/uml/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   └── diagrama-de-classes.md  # docs/uml/diagrama-de-classes.md — Diagrama UML de classes Mermaid.
-├── etapa4-persistencia.md  # docs/etapa4-persistencia.md — Notas de persistência e migração.
-└── README.md  # docs/README.md — Guia de navegação e explicações desta pasta.
+├── diagrams/  # Espaço para diagramas adicionais.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── presentations/  # Espaço reservado para slides e apresentações.
+│   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── ui-ux/  # Artefatos de experiência do usuário.
+│   ├── mockups/  # Espaço reservado para mockups.
+│   │   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+│   ├── prototypes/  # Espaço reservado para protótipos.
+│   │   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+│   ├── wireframes/  # Espaço reservado para wireframes.
+│   │   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+│   └── README.md  # Guia de navegação e explicações desta pasta.
+├── uml/  # Materiais para diagramas de classes e modelagem UML.
+│   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+│   └── diagrama-de-classes.md  # Diagrama UML de classes Mermaid.
+├── etapa4-persistencia.md  # Notas de persistência e migração.
+└── README.md  # Guia de navegação e explicações desta pasta.
 ```
 
 ## 📌 Status do Conteúdo

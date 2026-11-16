@@ -19,16 +19,16 @@ Revise o conteúdo e a ordem das migrações; instruções ALTER podem não ser 
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `database/scripts/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `database/scripts/`.
 
 ```text
 database/scripts/  # Contém o schema e os scripts SQL de evolução da persistência.
-├── etapa10_pagamento_vitrine.sql  # database/scripts/etapa10_pagamento_vitrine.sql — Amplia forma de pagamento para cartão genérico.
-├── etapa4_migracao.sql  # database/scripts/etapa4_migracao.sql — Migração de contatos, usuários e custos históricos.
-├── etapa8_pdv.sql  # database/scripts/etapa8_pdv.sql — Colunas de origem e pagamento do PDV.
-├── etapa9_descontos.sql  # database/scripts/etapa9_descontos.sql — Cupons e registro de descontos por pedido.
-├── README.md  # database/scripts/README.md — Guia de navegação e explicações desta pasta.
-└── schema.sql  # database/scripts/schema.sql — Schema inicial MySQL usado pelo respectivo repositório.
+├── etapa10_pagamento_vitrine.sql  # Amplia forma de pagamento para cartão genérico.
+├── etapa4_migracao.sql  # Migração de contatos, usuários e custos históricos.
+├── etapa8_pdv.sql  # Colunas de origem e pagamento do PDV.
+├── etapa9_descontos.sql  # Cupons e registro de descontos por pedido.
+├── README.md  # Guia de navegação e explicações desta pasta.
+└── schema.sql  # Schema inicial MySQL usado pelo respectivo repositório.
 ```
 
 [🏠 Voltar ao README principal](../../README.md)

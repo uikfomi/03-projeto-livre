@@ -15,12 +15,12 @@ As telas e estilos executáveis ficam em src/main/resources; não inclua credenc
 
 ## Árvore estrutural comentada
 
-O ponto inicial é `resources/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+O ponto inicial é `resources/`.
 
 ```text
 resources/  # Reserva espaço para recursos compartilhados do projeto fora dos recursos de execução do Maven.
-├── .gitkeep  # resources/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-└── README.md  # resources/README.md — Guia de navegação e explicações desta pasta.
+├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+└── README.md  # Guia de navegação e explicações desta pasta.
 ```
 
 ## 📌 Status do Conteúdo
