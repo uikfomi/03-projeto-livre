@@ -14,6 +14,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [AgendaServiceImpl.java](AgendaServiceImpl.java) | Valida e coordena cadastro, busca e alterações de contatos pela camada DAO. |
 | [AutenticacaoServiceImpl.java](AutenticacaoServiceImpl.java) | Orquestra login, verificação de senha e cadastro de cliente e usuário. |
 | [AvaliacaoServiceImpl.java](AvaliacaoServiceImpl.java) | Valida avaliações elegíveis e controla operações de moderação. |
+| [ComandaServiceImpl.java](ComandaServiceImpl.java) | Orquestra estoque, validação de operador, pagamentos e fechamento atômico. |
 | [PedidoVendaServiceImpl.java](PedidoVendaServiceImpl.java) | Executa vendas transacionais, descontos, movimentações de estoque e transições. |
 | [ProdutoEstoqueServiceImpl.java](ProdutoEstoqueServiceImpl.java) | Valida produtos e coordena entradas, perdas e consultas de estoque. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
@@ -29,6 +30,7 @@ src/main/java/com/salgaderia/app/service/impl/  # Reúne implementações dos co
 ├── AgendaServiceImpl.java  # Valida e coordena cadastro, busca e alterações de contatos pela camada DAO.
 ├── AutenticacaoServiceImpl.java  # Orquestra login, verificação de senha e cadastro de cliente e usuário.
 ├── AvaliacaoServiceImpl.java  # Valida avaliações elegíveis e controla operações de moderação.
+├── ComandaServiceImpl.java  # Orquestra estoque, validação de operador, pagamentos e fechamento atômico.
 ├── PedidoVendaServiceImpl.java  # Executa vendas transacionais, descontos, movimentações de estoque e transições.
 ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
 ├── README.md  # Guia de navegação e explicações desta pasta.

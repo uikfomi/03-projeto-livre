@@ -10,6 +10,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 
 | Caminho | Conteúdo e responsabilidade |
 |---|---|
+| [comanda/](comanda/) | Entidades de mesa, comanda, itens e pagamentos parciais. [Abrir guia](comanda/README.md). |
 | [enums/](enums/) | Enumerações com comportamento e respectivos testes. [Abrir guia](enums/README.md). |
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [Avaliacao.java](Avaliacao.java) | Avaliação de produto e validação da nota. |
@@ -35,6 +36,13 @@ O ponto inicial é `src/main/java/com/salgaderia/app/model/`.
 
 ```text
 src/main/java/com/salgaderia/app/model/  # Agrupa entidades, tipos de domínio e comportamentos encapsulados do sistema.
+├── comanda/  # Entidades de mesa, comanda, itens e pagamentos parciais.
+│   ├── Comanda.java  # Resumo imutável com itens, pagamentos, total e saldo.
+│   ├── ItemComanda.java  # Item lançado com preço e quantidade paga.
+│   ├── Mesa.java  # Identificação, número e status da mesa.
+│   ├── PagamentoComanda.java  # Dados de pagamento parcial por valor ou item.
+│   ├── README.md  # Guia de navegação e explicações desta pasta.
+│   └── StatusMesa.java  # Estados livre e ocupada e suas permissões.
 ├── enums/  # Enumerações com comportamento e respectivos testes.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── CategoriaInsumo.java  # Categorias de insumos de fornecedores.

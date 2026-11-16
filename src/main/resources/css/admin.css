@@ -23,3 +23,5 @@
     -fx-background-radius: 12;
     -fx-font-weight: bold;
 }
+.mesa-livre { -fx-background-color: #d9f4df; -fx-border-color: #3e9855; -fx-text-fill: #205d30; -fx-padding: 20; -fx-background-radius: 10; -fx-border-radius: 10; }
+.mesa-ocupada { -fx-background-color: #fff0d0; -fx-border-color: #bb7020; -fx-text-fill: #713f0a; -fx-padding: 20; -fx-background-radius: 10; -fx-border-radius: 10; }

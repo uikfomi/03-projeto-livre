@@ -23,23 +23,26 @@ src/test/  # Contém os testes das regras de domínio, serviços, persistência 
 │   ├── com/  # Raiz de pacotes Java.
 │   │   ├── salgaderia/  # Pacote da aplicação Salgaderia.
 │   │   │   ├── app/  # Componentes da aplicação e suas camadas.
-│   │   │   │   ├── controller/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   ├── controller/  # Controllers das telas e testes de interface, conforme a localização.
 │   │   │   │   │   ├── AdminDashboardJavaFXTest.java  # Testes JavaFX do painel e notificações.
 │   │   │   │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
 │   │   │   │   │   └── VitrineJavaFXTest.java  # Testes JavaFX da vitrine, pagamento e atualização.
-│   │   │   │   ├── dao/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   │   │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
-│   │   │   │   ├── model/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
 │   │   │   │   │   ├── enums/  # Enumerações com comportamento e respectivos testes.
 │   │   │   │   │   │   └── EnumsTest.java  # Testes de comportamento dos enums.
 │   │   │   │   │   └── DominioTest.java  # Testes das entidades e regras de domínio.
-│   │   │   │   ├── service/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
 │   │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   │   └── EstrategiasDescontoTest.java  # Testa as estratégias e a escolha do melhor desconto.
+│   │   │   │   │   ├── ComandaIntegracaoTest.java  # Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL.
+│   │   │   │   │   ├── CozinhaStateTest.java  # Verifica mensagens e progresso dos estados da cozinha.
 │   │   │   │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
 │   │   │   │   │   ├── Etapa4IntegracaoTest.java  # Fluxos transacionais no MySQL.
+│   │   │   │   │   ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
 │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
 │   │   │   │   │   └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.

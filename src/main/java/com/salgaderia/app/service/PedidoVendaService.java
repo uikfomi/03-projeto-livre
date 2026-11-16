@@ -11,4 +11,6 @@ public interface PedidoVendaService {
     long finalizarPdv(Pedido pedido, com.salgaderia.app.model.enums.FormaPagamento forma, java.math.BigDecimal recebido,
                       String codigo, com.salgaderia.app.service.desconto.ResultadoDesconto esperado);
     void transicionar(long pedidoId, com.salgaderia.app.model.enums.StatusPedido destino);
+    long contarFilaCozinha();
+    java.util.List<com.salgaderia.app.model.PedidoItem> repetirUltimoPedido(com.salgaderia.app.model.UsuarioCliente usuario);
 }

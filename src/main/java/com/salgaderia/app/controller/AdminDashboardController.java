@@ -5,6 +5,7 @@ import com.salgaderia.app.dao.impl.ContatoDAOImpl;
 import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
+import com.salgaderia.app.model.comanda.*;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
@@ -47,6 +48,7 @@ public class AdminDashboardController implements TelaAutenticada {
     private final AgendaService agenda;
     private final RelatorioFinanceiroService financeiro;
     private final AvaliacaoService avaliacoes;
+    private final ComandaService comandas;
     private Usuario usuario;
     private long telaAtual;
     private final WhatsAppLinkService whatsapp = new WhatsAppLinkService();
@@ -61,10 +63,14 @@ public class AdminDashboardController implements TelaAutenticada {
     private record DadosPdv(List<Produto> produtos,List<Contato> contatos) { }
     private record DadosEstoque(List<Produto> produtos,List<Categoria> categorias,List<Contato> fornecedores) { }
     private record DadosFinanceiros(RelatorioFinanceiroService.Relatorio totais,Map<String,BigDecimal> produtos,Map<String,BigDecimal> categorias) { }
+    private record DadosMesa(Comanda comanda,List<Produto> produtos) { }
 
     public AdminDashboardController(){this(new ProdutoEstoqueServiceImpl(),new PedidoVendaServiceImpl(),new AgendaServiceImpl(new ContatoDAOImpl()),new RelatorioFinanceiroServiceImpl(),new AvaliacaoServiceImpl());}
     public AdminDashboardController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AgendaService agenda,RelatorioFinanceiroService financeiro,AvaliacaoService avaliacoes){
-        this.produtos=Objects.requireNonNull(produtos);this.pedidos=Objects.requireNonNull(pedidos);this.agenda=Objects.requireNonNull(agenda);this.financeiro=Objects.requireNonNull(financeiro);this.avaliacoes=Objects.requireNonNull(avaliacoes);
+        this(produtos,pedidos,agenda,financeiro,avaliacoes,new ComandaServiceImpl());
+    }
+    public AdminDashboardController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AgendaService agenda,RelatorioFinanceiroService financeiro,AvaliacaoService avaliacoes,ComandaService comandas){
+        this.produtos=Objects.requireNonNull(produtos);this.pedidos=Objects.requireNonNull(pedidos);this.agenda=Objects.requireNonNull(agenda);this.financeiro=Objects.requireNonNull(financeiro);this.avaliacoes=Objects.requireNonNull(avaliacoes);this.comandas=Objects.requireNonNull(comandas);
     }
     @FXML private void initialize(){
         notificarStatus.setSelected(true);notificarStatus.setId("notificar-status");
@@ -196,12 +202,57 @@ public class AdminDashboardController implements TelaAutenticada {
         if(qtd<=0)carrinho.remove(produto.getId());else if(produto.getEstoqueAtual().compareTo(BigDecimal.valueOf(qtd))>=0)carrinho.put(produto.getId(),new ItemVenda(produto,qtd));
         else avisar(Alert.AlertType.WARNING,"Estoque insuficiente","Não há mais unidades disponíveis.");}
 
+    @FXML private void mesas(){
+        long versao=iniciarTela("Mesas & Comanda Coletiva");
+        carregar(versao,comandas::listarMesas,lista->{
+            conteudo.getChildren().clear();
+            if(lista.isEmpty()){conteudo.getChildren().add(estado("Nenhuma mesa cadastrada."));return;}
+            FlowPane grade=new FlowPane(12,12);grade.setPrefWrapLength(700);
+            for(Mesa mesa:lista){Button card=botao(mesa.nome()+"\n"+mesa.status(),()->abrirMesa(mesa.id()),mesa.status()==StatusMesa.LIVRE?"mesa-livre":"mesa-ocupada");card.setId("mesa-"+mesa.numero());card.setPrefWidth(155);grade.getChildren().add(card);}
+            conteudo.getChildren().addAll(texto("Selecione uma mesa para abrir ou consultar a comanda.","subtitle"),grade);
+        });
+    }
+    private void abrirMesa(long mesaId){carregarMesa(mesaId,null);}
+    private void atualizarMesa(long mesaId,long atendimentoId){carregarMesa(mesaId,atendimentoId);}
+    private void carregarMesa(long mesaId,Long atendimentoId){
+        long versao=iniciarTela("Comanda da mesa");
+        carregar(versao,()->new DadosMesa(atendimentoId==null?comandas.abrirOuConsultar(mesaId,usuario):comandas.consultar(mesaId,atendimentoId,usuario),produtos.listar()),dados->montarMesa(dados));
+    }
+    private void montarMesa(DadosMesa dados){
+        Comanda comanda=dados.comanda();long mesaId=comanda.mesa().id(),atendimentoId=comanda.atendimentoId();conteudo.getChildren().clear();
+        VBox linhas=new VBox(8);for(ItemComanda item:comanda.itens())linhas.getChildren().add(texto(item.produto()+" · "+item.quantidade().stripTrailingZeros().toPlainString()+" × "+moeda(item.precoUnitario())+" = "+moeda(item.subtotal())+" · quantidade paga "+item.quantidadePaga().stripTrailingZeros().toPlainString(),"subtitle"));
+        if(comanda.itens().isEmpty())linhas.getChildren().add(estado("Nenhum item lançado nesta comanda."));
+        ComboBox<Produto> produto=new ComboBox<>();produto.setId("comanda-produto");produto.getItems().setAll(dados.produtos());produto.setPromptText("Selecione um produto");
+        produto.setConverter(new StringConverter<>(){public String toString(Produto p){return p==null?"":p.getNome()+" · "+moeda(p.getPrecoVenda());}public Produto fromString(String s){return null;}});
+        TextField quantidade=campo("1","Quantidade");quantidade.setId("comanda-quantidade");
+        Button adicionar=botao("Lançar item",()->{
+            try{Produto p=Objects.requireNonNull(produto.getValue());BigDecimal qtd=decimal(quantidade.getText());executar(()->comandas.adicionarItem(mesaId,atendimentoId,p.getId(),qtd,usuario),x->atualizarMesa(mesaId,atendimentoId));}
+            catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Dados inválidos","Selecione um produto e informe uma quantidade válida.");}
+        },"button-primary");adicionar.setId("comanda-adicionar");
+        VBox pagamentos=new VBox(8);for(PagamentoComanda p:comanda.pagamentos())pagamentos.getChildren().add(new Label(p.pessoa()+" · "+p.forma().descricao()+" · "+moeda(p.valor())));
+        if(comanda.pagamentos().isEmpty())pagamentos.getChildren().add(estado("Nenhum pagamento registrado."));
+        VBox fechamento=new VBox(8);fechamento.setVisible(false);fechamento.setManaged(false);
+        TextField pessoas=campo("2","Pessoas");Label rateio=new Label();rateio.setWrapText(true);
+        Button dividir=botao("Calcular divisão igual",()->{try{List<BigDecimal> partes=comandas.dividirIgualmente(comanda.saldo(),Integer.parseInt(pessoas.getText().trim()));rateio.setText("Valores por pessoa: "+partes.stream().map(AdminDashboardController::moeda).collect(java.util.stream.Collectors.joining(" · ")));}catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Divisão inválida",e.getMessage());}},"button-secondary");
+        TextField pessoa=campo("","Nome da pessoa");pessoa.setId("comanda-pessoa");TextField valor=campo("","Valor em R$");valor.setId("comanda-valor");
+        ComboBox<FormaPagamento> forma=new ComboBox<>();forma.getItems().setAll(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO);forma.setValue(FormaPagamento.PIX);
+        ComboBox<ItemComanda> item=new ComboBox<>();item.getItems().setAll(comanda.itens());item.setPromptText("Item opcional");
+        item.setConverter(new StringConverter<>(){public String toString(ItemComanda i){return i==null?"":i.produto()+" · disponível "+i.quantidadeDisponivel().stripTrailingZeros().toPlainString();}public ItemComanda fromString(String s){return null;}});
+        TextField qtdItem=campo("1","Quantidade do item");
+        Button pagarValor=botao("Registrar valor",()->{try{String nome=pessoa.getText();FormaPagamento pagamento=forma.getValue();BigDecimal quantia=decimal(valor.getText());executar(()->comandas.pagarValor(mesaId,atendimentoId,nome,pagamento,quantia,usuario),fechada->{if(fechada){avisar(Alert.AlertType.INFORMATION,"Comanda encerrada","Saldo quitado e mesa liberada.");mesas();}else atualizarMesa(mesaId,atendimentoId);});}catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Valor inválido","Informe o valor do pagamento.");}},"button-primary");
+        Button pagarItem=botao("Pagar item",()->{try{ItemComanda escolhido=Objects.requireNonNull(item.getValue());String nome=pessoa.getText();FormaPagamento pagamento=forma.getValue();BigDecimal qtd=decimal(qtdItem.getText());executar(()->comandas.pagarItem(mesaId,atendimentoId,nome,pagamento,escolhido.id(),qtd,usuario),fechada->{if(fechada){avisar(Alert.AlertType.INFORMATION,"Comanda encerrada","Saldo quitado e mesa liberada.");mesas();}else atualizarMesa(mesaId,atendimentoId);});}catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Item inválido","Selecione um item e informe a quantidade.");}},"button-secondary");
+        Button fecharZero=botao("Fechar com saldo zero",()->executar(()->{comandas.fecharSemSaldo(mesaId,atendimentoId,usuario);return null;},x->mesas()),"button-outline");fecharZero.setDisable(comanda.saldo().signum()!=0);
+        fechamento.getChildren().addAll(new Label("Divisão igual"),new HBox(8,pessoas,dividir),rateio,new Label("Pagamento parcial"),pessoa,forma,valor,pagarValor,new Label("Ou pagar por item"),item,qtdItem,pagarItem,fecharZero);
+        Button abrirFechamento=botao("Fechar / Dividir Conta",()->{fechamento.setVisible(!fechamento.isVisible());fechamento.setManaged(fechamento.isVisible());},"button-secondary");abrirFechamento.setId("comanda-fechar");
+        conteudo.getChildren().addAll(texto(comanda.mesa().nome()+" · "+comanda.mesa().status(),"admin-subtitulo"),linhas,new HBox(8,produto,quantidade,adicionar),new Label("Pagamentos"),pagamentos,texto("Total: "+moeda(comanda.total())+" · Pago: "+moeda(comanda.pago())+" · Saldo: "+moeda(comanda.saldo()),"admin-valor"),abrirFechamento,fechamento,botao("Voltar às mesas",this::mesas,"button-outline"));
+    }
+
     @FXML private void fila(){
         long versao=iniciarTela("Fila de pedidos");carregar(versao,pedidos::listarFila,lista->{
             conteudo.getChildren().clear();conteudo.getChildren().addAll(texto("Pedidos da vitrine aguardando preparo ou entrega.","subtitle"),notificarStatus);
             if(lista.isEmpty()){conteudo.getChildren().add(estado("Nenhum pedido aguardando atendimento."));return;}
             for(PedidoFila p:lista){
-                Label info=new Label("#"+p.id()+"  ·  "+p.cliente()+"  ·  "+p.status()+"  ·  "+p.entrega()+"  ·  "+moeda(p.total())+"\n"+p.itens()+(p.enderecoEntrega()==null||p.enderecoEntrega().isBlank()?"":"\nEndereço: "+p.enderecoEntrega()));info.setWrapText(true);HBox.setHgrow(info,Priority.ALWAYS);
+                Label info=new Label("#"+p.id()+"  ·  "+p.cliente()+"  ·  "+p.status()+"  ·  "+p.entrega()+"  ·  "+moeda(p.total())+"\n"+p.itens()+(p.enderecoEntrega()==null||p.enderecoEntrega().isBlank()?"":"\nEndereço: "+p.enderecoEntrega())+(p.agendadoPara()==null?"":"\nAgendado: "+p.agendadoPara().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));info.setWrapText(true);HBox.setHgrow(info,Priority.ALWAYS);
                 StatusPedido proximo=switch(p.status()){case PENDENTE->StatusPedido.PREPARANDO;case PREPARANDO->StatusPedido.PRONTO;case PRONTO->StatusPedido.ENTREGUE;default->null;};
                 Button avancar=botao("Avançar para "+proximo,()->mudarStatus(p,proximo),"button-primary");
                 Button cancelar=botao("Cancelar",()->{if(confirmar("Cancelar pedido #"+p.id()+"? O estoque será devolvido."))mudarStatus(p,StatusPedido.CANCELADO);},"button-outline");

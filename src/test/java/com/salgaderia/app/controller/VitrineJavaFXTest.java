@@ -4,6 +4,10 @@ import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.*;
 import javafx.application.Platform;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.animation.Animation;
+import javafx.util.Duration;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -135,6 +139,24 @@ class VitrineJavaFXTest {
             assertNotNull(fx(()->stageRef.get().getScene().getRoot().lookup("#whatsapp-pedido-101")));
         }finally{fx(()->{stageRef.get().close();return null;});}
     }
+    @Test void repetePedidoEAgendaConsumoLocal() throws Exception {
+        Produto produto=new Produto(1L,null,"Coxinha",null,new BigDecimal("8.00"),BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
+        Cliente cliente=new Cliente(10L,"Ana",null,null,null,null,null);UsuarioCliente usuario=new UsuarioCliente(20L,"Ana","ana","senha",true,cliente);
+        Pedido anterior=new Pedido(101L,usuario,cliente,StatusPedido.ENTREGUE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,produto,BigDecimal.ONE,produto.getPrecoVenda())));
+        PedidosTeste pedidos=new PedidosTeste(List.of(anterior));var loader=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stage=new java.util.concurrent.atomic.AtomicReference<Stage>();
+        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));l.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of(produto)),pedidos,new AvaliacoesTeste()));Parent root=l.load();Stage s=new Stage();s.setScene(new Scene(root,1100,800));s.show();((ClienteVitrineController)l.getController()).definirUsuario(usuario);loader.set(l);stage.set(s);((Button)l.getNamespace().get("pedirDeSempre")).fire();return null;});
+        try{
+            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("contador")).getText().equals("1 item")));
+            LocalDateTime futuro=LocalDateTime.now().plusDays(2).withSecond(0).withNano(0);
+            fx(()->{var n=loader.get().getNamespace();((RadioButton)n.get("local")).fire();((CheckBox)n.get("agendar")).setSelected(true);((DatePicker)n.get("dataAgendamento")).setValue(futuro.toLocalDate());((TextField)n.get("horaAgendamento")).setText(futuro.toLocalTime().toString());@SuppressWarnings("unchecked") ComboBox<FormaPagamento> forma=(ComboBox<FormaPagamento>)n.get("formaPagamento");forma.setValue(FormaPagamento.PIX);return null;});
+            aguardar(()->fx(()->!((Button)loader.get().getNamespace().get("finalizar")).isDisabled()));
+            Timeline timer=fx(()->{Timeline t=new Timeline(new KeyFrame(Duration.millis(50),e->{for(var w:List.copyOf(javafx.stage.Window.getWindows()))if(w instanceof Stage s&&s!=stage.get()&&s.getScene()!=null&&s.getScene().getRoot() instanceof DialogPane pane){var ok=pane.lookupButton(ButtonType.OK);if(ok instanceof Button b)b.fire();}}));t.setCycleCount(Animation.INDEFINITE);t.play();return t;});
+            fx(()->{((Button)loader.get().getNamespace().get("finalizar")).fire();return null;});
+            aguardar(()->pedidos.enviado.get()!=null);
+            assertEquals(TipoEntrega.LOCAL,pedidos.enviado.get().getTipoEntrega());assertEquals(futuro,pedidos.enviado.get().getAgendadoPara());
+            fx(()->{timer.stop();return null;});
+        }finally{fx(()->{stage.get().close();return null;});}
+    }
     private static <T> T fx(Callable<T> c) throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> condicao) throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(condicao.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}
     private record ProdutosTeste(List<Produto> dados) implements ProdutoEstoqueService {
@@ -143,6 +165,8 @@ class VitrineJavaFXTest {
         public void entradaLote(long p,long f,BigDecimal q,String o){throw new UnsupportedOperationException();}public void registrarPerda(long p,BigDecimal q,String o){throw new UnsupportedOperationException();}
     }
     private static class PedidosTeste implements PedidoVendaService {
+        public long contarFilaCozinha(){return 0;}
+        public List<PedidoItem> repetirUltimoPedido(UsuarioCliente u){return dados.stream().filter(p->p.getStatus()==StatusPedido.ENTREGUE).findFirst().orElseThrow().getItens();}
         final List<Pedido> dados;final java.util.concurrent.atomic.AtomicReference<Pedido> enviado=new java.util.concurrent.atomic.AtomicReference<>();final java.util.concurrent.atomic.AtomicReference<String> codigo=new java.util.concurrent.atomic.AtomicReference<>();
         PedidosTeste(List<Pedido> dados){this.dados=dados;}
         public List<PedidoFila> listarFila(){return List.of();} public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){throw new UnsupportedOperationException();}

@@ -3,6 +3,7 @@ package com.salgaderia.app.controller;
 import com.salgaderia.app.dao.ContatoDAO.FiltroContato;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
+import com.salgaderia.app.model.comanda.*;
 import com.salgaderia.app.service.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -65,6 +66,20 @@ class AdminDashboardJavaFXTest {
             assertTrue(fx(()->((Label)loader.get().getNamespace().get("avisoPedido")).getText().contains("#123")));
         }finally{fx(()->{janela.get().close();return null;});}
     }
+    @Test void mostraMesasEPermiteAbrirComanda() throws Exception {
+        Produto produto=new Produto(1L,null,"Coxinha",null,new BigDecimal("8"),new BigDecimal("3"),BigDecimal.TEN,BigDecimal.ONE,null);
+        ComandasTeste comandas=new ComandasTeste();AtomicReference<FXMLLoader> loader=new AtomicReference<>();AtomicReference<Stage> janela=new AtomicReference<>();
+        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));l.setControllerFactory(c->new AdminDashboardController(new Produtos(produto),new Vendas(),new Agenda(),new Financeiro(),new Avaliacoes(),comandas));Parent root=l.load();Stage stage=new Stage();stage.setScene(new Scene(root,1100,700));stage.show();((AdminDashboardController)l.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));loader.set(l);janela.set(stage);((Button)l.getNamespace().get("menuMesas")).fire();return null;});
+        try{
+            aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#mesa-10")!=null));
+            fx(()->{Parent root=janela.get().getScene().getRoot();assertTrue(root.lookup("#mesa-1").getStyleClass().contains("mesa-livre"));((Button)root.lookup("#mesa-1")).fire();return null;});
+            aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#comanda-produto")!=null));
+            fx(()->{@SuppressWarnings("unchecked") ComboBox<Produto> cb=(ComboBox<Produto>)janela.get().getScene().getRoot().lookup("#comanda-produto");cb.setValue(produto);((Button)janela.get().getScene().getRoot().lookup("#comanda-adicionar")).fire();return null;});
+            aguardar(()->comandas.quantidade.get()!=null);
+            assertEquals(0,BigDecimal.ONE.compareTo(comandas.quantidade.get()));
+            aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#comanda-fechar")!=null));
+        }finally{fx(()->{janela.get().close();return null;});}
+    }
     private static <T>T fx(Callable<T> c)throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> c)throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(c.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}
     private record Produtos(Produto produto) implements ProdutoEstoqueService {
@@ -73,6 +88,8 @@ class AdminDashboardJavaFXTest {
         public void entradaLote(long p,long f,BigDecimal q,String o){}public void registrarPerda(long p,BigDecimal q,String o){}
     }
     private static class Vendas implements PedidoVendaService {
+        public long contarFilaCozinha(){return 0;}
+        public List<PedidoItem> repetirUltimoPedido(UsuarioCliente u){return List.of();}
         final List<PedidoFila> fila=new java.util.concurrent.CopyOnWriteArrayList<>();
         final AtomicReference<Pedido> enviado=new AtomicReference<>();final AtomicReference<FormaPagamento> forma=new AtomicReference<>();final AtomicReference<BigDecimal> recebido=new AtomicReference<>();final AtomicReference<String> codigo=new AtomicReference<>();
         public List<PedidoFila> listarFila(){return List.copyOf(fila);}public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){enviado.set(p);forma.set(f);recebido.set(r);return 1;}
@@ -80,6 +97,17 @@ class AdminDashboardJavaFXTest {
         public com.salgaderia.app.service.desconto.ResultadoDesconto simular(Pedido p,String c){var cupom="UIKFOMI10".equals(c)?new com.salgaderia.app.service.desconto.Cupom(c,BigDecimal.TEN,BigDecimal.ZERO):null;return new com.salgaderia.app.service.desconto.CalculadoraDescontos().calcular(new com.salgaderia.app.service.desconto.ContextoDesconto(p.getItens(),0,cupom));}
         public long finalizar(Pedido p,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){return finalizar(p);}
         public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){codigo.set(c);return finalizarPdv(p,f,r);}
+    }
+    private static class ComandasTeste implements ComandaService {
+        final AtomicReference<BigDecimal> quantidade=new AtomicReference<>();
+        public List<Mesa> listarMesas(){return java.util.stream.IntStream.rangeClosed(1,10).mapToObj(i->new Mesa(i,i,"Mesa "+i,StatusMesa.LIVRE)).toList();}
+        public Comanda abrirOuConsultar(long id,Usuario u){return new Comanda(new Mesa(id,(int)id,"Mesa "+id,StatusMesa.OCUPADA),1,List.of(),List.of());}
+        public Comanda consultar(long id,long a,Usuario u){return abrirOuConsultar(id,u);}
+        public Comanda adicionarItem(long m,long a,long p,BigDecimal q,Usuario u){quantidade.set(q);return abrirOuConsultar(m,u);}
+        public boolean pagarValor(long m,long a,String p,FormaPagamento f,BigDecimal v,Usuario u){return false;}
+        public boolean pagarItem(long m,long a,String p,FormaPagamento f,long i,BigDecimal q,Usuario u){return false;}
+        public List<BigDecimal> dividirIgualmente(BigDecimal s,int p){return List.of();}
+        public void fecharSemSaldo(long m,long a,Usuario u){}
     }
     private static class Agenda implements AgendaService {
         public long cadastrar(Contato c){return 1;}public boolean atualizar(Contato c){return true;}public boolean excluir(long id){return true;}

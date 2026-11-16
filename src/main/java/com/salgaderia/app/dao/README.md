@@ -14,6 +14,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [AvaliacaoDAO.java](AvaliacaoDAO.java) | Contrato para consultar médias, listar, inserir, responder e excluir avaliações. |
 | [CategoriaDAO.java](CategoriaDAO.java) | Contrato para cadastrar, atualizar, buscar, listar e excluir categorias. |
+| [ComandaDAO.java](ComandaDAO.java) | Contrato JDBC para mesas, itens, pagamentos e fechamento transacional. |
 | [ContatoDAO.java](ContatoDAO.java) | Contrato para cadastro, edição, exclusão e busca filtrada de contatos. |
 | [CupomDAO.java](CupomDAO.java) | Contrato para consultar cupom ativo por código. |
 | [MovimentacaoEstoqueDAO.java](MovimentacaoEstoqueDAO.java) | Contrato para registrar movimentações e calcular perdas por período. |
@@ -32,6 +33,7 @@ src/main/java/com/salgaderia/app/dao/  # Define operações de acesso a dados in
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── AvaliacaoDAOImpl.java  # Consultas JDBC de avaliações, médias, respostas e exclusão.
 │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
+│   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
 │   ├── CupomDAOImpl.java  # Consulta JDBC parametrizada para localizar cupons ativos.
 │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
@@ -42,6 +44,7 @@ src/main/java/com/salgaderia/app/dao/  # Define operações de acesso a dados in
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── AvaliacaoDAO.java  # Contrato para consultar médias, listar, inserir, responder e excluir avaliações.
 ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
+├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
 ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
 ├── CupomDAO.java  # Contrato para consultar cupom ativo por código.
 ├── MovimentacaoEstoqueDAO.java  # Contrato para registrar movimentações e calcular perdas por período.

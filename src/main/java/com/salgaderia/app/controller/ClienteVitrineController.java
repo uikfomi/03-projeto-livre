@@ -9,6 +9,7 @@ import com.salgaderia.app.model.enums.FormaPagamento;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
+import com.salgaderia.app.service.cozinha.EtapaCozinha;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.TelaAutenticada;
 import com.salgaderia.app.util.WhatsAppUi;
@@ -18,6 +19,7 @@ import java.net.URI;
 import java.text.NumberFormat;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import javafx.concurrent.Task;
@@ -45,7 +47,10 @@ public class ClienteVitrineController implements TelaAutenticada {
     @FXML private FlowPane cards;
     @FXML private VBox painelVitrine, painelPedidos, listaPedidos, itensCarrinho;
     @FXML private ScrollPane rolagemProdutos;
-    @FXML private RadioButton retirada, entrega;
+    @FXML private RadioButton retirada, entrega, local;
+    @FXML private CheckBox agendar;
+    @FXML private DatePicker dataAgendamento;
+    @FXML private TextField horaAgendamento;
     @FXML private Button finalizar;
     private final ProdutoEstoqueService produtosService;
     private final PedidoVendaService pedidosService;
@@ -71,6 +76,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     private record FiltroCategoria(Long id,String nome) { }
     private record ItemCarrinho(Produto produto,int quantidade) { }
     private record Catalogo(List<Produto> produtos,Map<Long,BigDecimal> medias) { }
+    private record Historico(List<Pedido> pedidos,long fila) { }
 
     @FXML private void initialize() {
         atualizacaoPedidos.setCycleCount(Timeline.INDEFINITE);
@@ -87,7 +93,9 @@ public class ClienteVitrineController implements TelaAutenticada {
                 else janela.showingProperty().addListener((x,era,visivel)->{if(!visivel){atualizacaoPedidos.stop();geracaoPedidos++;}});
             });
         });
-        ToggleGroup grupo=new ToggleGroup();retirada.setToggleGroup(grupo);entrega.setToggleGroup(grupo);retirada.setSelected(true);
+        ToggleGroup grupo=new ToggleGroup();retirada.setToggleGroup(grupo);entrega.setToggleGroup(grupo);local.setToggleGroup(grupo);retirada.setSelected(true);
+        dataAgendamento.disableProperty().bind(agendar.selectedProperty().not());
+        horaAgendamento.disableProperty().bind(agendar.selectedProperty().not());
         grupo.selectedToggleProperty().addListener((o,a,n)->{if(n==null)grupo.selectToggle(a);atualizarEndereco();});
         categorias.setConverter(new StringConverter<>() {
             @Override public String toString(FiltroCategoria filtro) { return filtro==null?"Todas as categorias":filtro.nome(); }
@@ -188,7 +196,7 @@ public class ClienteVitrineController implements TelaAutenticada {
         simularDesconto();
     }
     private Pedido pedidoAtual(){
-        TipoEntrega tipo=entrega.isSelected()?TipoEntrega.ENTREGA:TipoEntrega.RETIRADA;
+        TipoEntrega tipo=modalidade();
         String enderecoEntrega=tipo==TipoEntrega.ENTREGA?usuario.getCliente().getEndereco():null;
         if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())) tipo=TipoEntrega.RETIRADA;
         List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
@@ -208,20 +216,28 @@ public class ClienteVitrineController implements TelaAutenticada {
     private void atualizarEndereco(){
         if(usuario==null)return;
         String valor=usuario.getCliente().getEndereco();
-        endereco.setText(entrega.isSelected()?(valor==null||valor.isBlank()?"Nenhum endereço cadastrado. Cadastre um endereço antes de pedir entrega.":valor):"Retire seu pedido no balcão.");
+        endereco.setText(entrega.isSelected()?(valor==null||valor.isBlank()?"Nenhum endereço cadastrado. Cadastre um endereço antes de pedir entrega.":valor):local.isSelected()?"Consuma seu pedido no local.":"Retire seu pedido no balcão.");
     }
+    private TipoEntrega modalidade(){return entrega.isSelected()?TipoEntrega.ENTREGA:local.isSelected()?TipoEntrega.LOCAL:TipoEntrega.RETIRADA;}
     @FXML private void finalizar(){
         if(carrinho.isEmpty()||usuario==null||descontoAtual==null||formaPagamento.getValue()==null)return;
-        TipoEntrega tipo=entrega.isSelected()?TipoEntrega.ENTREGA:TipoEntrega.RETIRADA;
+        TipoEntrega tipo=modalidade();
         String enderecoEntrega=tipo==TipoEntrega.ENTREGA?usuario.getCliente().getEndereco():null;
         if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())){avisar(Alert.AlertType.WARNING,"Endereço necessário","Seu cadastro não possui endereço. Escolha retirada ou atualize seu endereço antes de pedir entrega.");return;}
         List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
         Pedido pedido=new Pedido(null,usuario,usuario.getCliente(),StatusPedido.PENDENTE,tipo,enderecoEntrega,LocalDateTime.now(),itens);
         pedido.setFormaPagamento(formaPagamento.getValue());
+        if(agendar.isSelected()){
+            try {
+                LocalDateTime data=LocalDateTime.of(Objects.requireNonNull(dataAgendamento.getValue()),LocalTime.parse(horaAgendamento.getText().trim()));
+                if(!data.isAfter(LocalDateTime.now()))throw new IllegalArgumentException("Data deve estar no futuro");
+                pedido.setAgendadoPara(data);
+            }catch(RuntimeException erro){avisar(Alert.AlertType.WARNING,"Agendamento inválido","Informe uma data e horário futuro no formato HH:mm.");return;}
+        }
         raiz.setDisable(true);
         ResultadoDesconto esperado=descontoAtual;String codigo=cupom.getText();
         Task<Long> tarefa=new Task<>() { @Override protected Long call(){return pedidosService.finalizar(pedido,codigo,esperado);} };
-        tarefa.setOnSucceeded(e->{raiz.setDisable(false);if(pedido.getId()==null)pedido.setId(tarefa.getValue());pedido.setDesconto(esperado.desconto());carrinho.clear();cupom.clear();formaPagamento.setValue(null);atualizarCarrinho();
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);if(pedido.getId()==null)pedido.setId(tarefa.getValue());pedido.setDesconto(esperado.desconto());carrinho.clear();cupom.clear();formaPagamento.setValue(null);agendar.setSelected(false);dataAgendamento.setValue(null);horaAgendamento.clear();atualizarCarrinho();
             Alert alerta=new Alert(Alert.AlertType.INFORMATION);alerta.initOwner(raiz.getScene().getWindow());alerta.setTitle("Pedido enviado");alerta.setHeaderText(null);alerta.setContentText("Pedido #"+tarefa.getValue()+" recebido com sucesso.");
             ButtonType acompanhar=new ButtonType("Acompanhar no WhatsApp");alerta.getButtonTypes().add(acompanhar);
             if(alerta.showAndWait().orElse(ButtonType.OK)==acompanhar)abrirWhatsApp(pedido);
@@ -235,18 +251,24 @@ public class ClienteVitrineController implements TelaAutenticada {
     private void atualizarPedidos(boolean inicial){
         if(usuario==null||consultaPedidosEmAndamento)return;consultaPedidosEmAndamento=true;long geracao=++geracaoPedidos;
         if(inicial){listaPedidos.getChildren().clear();exibir(mensagemPedidos,"Carregando seus pedidos...");}
-        Task<List<Pedido>> tarefa=new Task<>() { @Override protected List<Pedido> call(){return pedidosService.listarDoCliente(usuario);} };
-        tarefa.setOnSucceeded(e->{consultaPedidosEmAndamento=false;if(geracao!=geracaoPedidos)return;List<Pedido> pedidos=tarefa.getValue();
+        Task<Historico> tarefa=new Task<>() { @Override protected Historico call(){return new Historico(pedidosService.listarDoCliente(usuario),pedidosService.contarFilaCozinha());} };
+        tarefa.setOnSucceeded(e->{consultaPedidosEmAndamento=false;if(geracao!=geracaoPedidos)return;List<Pedido> pedidos=tarefa.getValue().pedidos();
             if(pedidos.isEmpty()){exibir(mensagemPedidos,"Você ainda não fez nenhum pedido.");return;}
-            ocultar(mensagemPedidos);listaPedidos.getChildren().setAll(pedidos.stream().map(this::cardPedido).toList());
+            ocultar(mensagemPedidos);listaPedidos.getChildren().setAll(pedidos.stream().map(p->cardPedido(p,tarefa.getValue().fila())).toList());
         });
         tarefa.setOnFailed(e->{consultaPedidosEmAndamento=false;if(geracao==geracaoPedidos)exibir(mensagemPedidos,"Não foi possível atualizar seus pedidos. Verifique a conexão e tente novamente.");});iniciar(tarefa);
     }
-    private Node cardPedido(Pedido pedido){
+    private Node cardPedido(Pedido pedido,long fila){
         VBox card=new VBox(10);card.getStyleClass().add("pedido-card");
         Label numero=new Label("Pedido #"+pedido.getId()+"  ·  "+pedido.getCriadoEm().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));numero.getStyleClass().add("pedido-titulo");
         Label status=new Label(pedido.getStatus().name());status.getStyleClass().addAll("status-pedido","status-"+pedido.getStatus().name().toLowerCase(Locale.ROOT));
         Region espaco=new Region();HBox.setHgrow(espaco,Priority.ALWAYS);HBox topo=new HBox(8,numero,espaco,status);topo.setAlignment(Pos.CENTER_LEFT);card.getChildren().add(topo);
+        var etapa=EtapaCozinha.de(pedido.getStatus());
+        ProgressBar termometro=new ProgressBar(etapa.progresso());termometro.setMaxWidth(Double.MAX_VALUE);
+        boolean futuro=pedido.getAgendadoPara()!=null&&pedido.getAgendadoPara().isAfter(LocalDateTime.now());
+        String estimativa=etapa.aguardaCozinha()?(futuro?" · aguardando horário agendado":" · estimativa: "+(Math.max(1,Math.min(fila,100000))*5)+" min (fila atual)"):"";
+        card.getChildren().addAll(new Label("🌡 Termômetro da Cozinha — "+etapa.mensagem(pedido.getTipoEntrega())+estimativa),termometro);
+        if(pedido.getAgendadoPara()!=null)card.getChildren().add(new Label("Agendado: "+pedido.getAgendadoPara().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
         for(PedidoItem item:pedido.getItens()){
             Label descricao=new Label(item.getQuantidade().stripTrailingZeros().toPlainString()+" × "+item.getProduto().getNome()+"  ·  "+moeda(item.calcularSubtotal()));descricao.setWrapText(true);HBox.setHgrow(descricao,Priority.ALWAYS);
             Button avaliar=new Button("Avaliar produto");avaliar.setId("avaliar-"+pedido.getId()+"-"+item.getProduto().getId());avaliar.getStyleClass().add("button-secondary");avaliar.setDisable(pedido.getStatus()!=StatusPedido.ENTREGUE);avaliar.setOnAction(e->avaliar(item.getProduto()));
@@ -255,6 +277,13 @@ public class ClienteVitrineController implements TelaAutenticada {
         Label totalPedido=new Label("Total: "+moeda(pedido.calcularTotal()));totalPedido.getStyleClass().add("produto-preco");
         Button whatsappPedido=new Button("Acompanhar no WhatsApp");whatsappPedido.setId("whatsapp-pedido-"+pedido.getId());whatsappPedido.getStyleClass().add("button-secondary");whatsappPedido.setOnAction(e->abrirWhatsApp(pedido));
         card.getChildren().addAll(totalPedido,whatsappPedido);return card;
+    }
+    @FXML private void pedirDeSempre(){
+        if(usuario==null)return;raiz.setDisable(true);
+        Task<List<PedidoItem>> tarefa=new Task<>(){@Override protected List<PedidoItem> call(){return pedidosService.repetirUltimoPedido(usuario);}};
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);carrinho.clear();for(PedidoItem i:tarefa.getValue())carrinho.put(i.getProduto().getId(),new ItemCarrinho(i.getProduto(),i.getQuantidade().intValueExact()));atualizarCarrinho();mostrarVitrine();});
+        tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();avisar(Alert.AlertType.WARNING,"Não foi possível repetir",erro instanceof IllegalArgumentException?erro.getMessage():"Verifique a disponibilidade e a conexão.");});
+        iniciar(tarefa);
     }
     private void abrirWhatsApp(Pedido pedido){WhatsAppUi.abrir(raiz.getScene().getWindow(),whatsapp,whatsapp.acompanhar(pedido));}
     private void avaliar(Produto produto){

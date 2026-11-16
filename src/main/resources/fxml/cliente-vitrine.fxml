@@ -11,6 +11,7 @@
                 </VBox>
                 <Button fx:id="botaoCatalogo" text="Cardápio" onAction="#mostrarVitrine" styleClass="button-outline" />
                 <Button fx:id="botaoPedidos" text="Meus Pedidos" onAction="#mostrarPedidos" styleClass="button-secondary" />
+                <Button fx:id="pedirDeSempre" text="Pedir o de Sempre (2 Cliques)" onAction="#pedirDeSempre" styleClass="button-secondary" />
                 <Button text="Sair" onAction="#sair" styleClass="button-outline" />
             </HBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
@@ -62,7 +63,11 @@
             <Label text="Como deseja receber?" styleClass="field-label" />
             <RadioButton fx:id="retirada" text="Retirada no Balcão" />
             <RadioButton fx:id="entrega" text="Entrega" />
+            <RadioButton fx:id="local" text="Consumir no Local" />
             <Label fx:id="endereco" wrapText="true" styleClass="subtitle" />
+            <CheckBox fx:id="agendar" text="Agendar para Evento/Festa" />
+            <DatePicker fx:id="dataAgendamento" promptText="Data do evento" />
+            <TextField fx:id="horaAgendamento" promptText="Horário (HH:mm)" />
             <Separator />
             <Label text="Forma de pagamento" styleClass="field-label" />
             <ComboBox fx:id="formaPagamento" promptText="Selecione a forma de pagamento" maxWidth="Infinity" />

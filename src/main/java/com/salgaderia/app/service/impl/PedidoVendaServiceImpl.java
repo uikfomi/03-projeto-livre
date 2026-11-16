@@ -22,6 +22,23 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         return ConnectionFactory.executarEmTransacao(c->pedidos.listarDoCliente(c,usuario));
     }
     @Override public List<PedidoFila> listarFila(){return ConnectionFactory.executarEmTransacao(pedidos::listarFila);}
+    @Override public long contarFilaCozinha(){return ConnectionFactory.executarEmTransacao(pedidos::contarFilaCozinha);}
+    @Override public List<PedidoItem> repetirUltimoPedido(UsuarioCliente usuario){
+        if(usuario==null||usuario.getId()==null||!usuario.isAtivo())throw new IllegalArgumentException("Cliente autenticado obrigatório");
+        return ConnectionFactory.executarEmTransacao(c->{
+            Pedido anterior=pedidos.listarDoCliente(c,usuario).stream().filter(p->p.getStatus()==StatusPedido.ENTREGUE).findFirst().orElseThrow(()->new IllegalArgumentException("Você ainda não possui pedido concluído."));
+            Map<Long,BigDecimal> quantidades=new LinkedHashMap<>();
+            for(PedidoItem item:anterior.getItens())quantidades.merge(item.getProduto().getId(),item.getQuantidade(),BigDecimal::add);
+            List<PedidoItem> resultado=new ArrayList<>();
+            for(var entrada:quantidades.entrySet()){
+                Produto atual=produtos.buscarPorId(c,entrada.getKey(),false).orElseThrow(()->new IllegalArgumentException("Um produto do pedido anterior não está mais disponível."));
+                if(atual.getEstoqueAtual().compareTo(entrada.getValue())<0)throw new IllegalArgumentException("Estoque insuficiente para "+atual.getNome());
+                try{entrada.getValue().intValueExact();}catch(ArithmeticException e){throw new IllegalArgumentException("O pedido anterior contém quantidade não inteira.",e);}
+                resultado.add(new PedidoItem(null,atual,entrada.getValue(),atual.getPrecoVenda()));
+            }
+            return List.copyOf(resultado);
+        });
+    }
     @Override public long finalizar(Pedido pedido){ return finalizarInterno(pedido,null,null,null,null); }
     @Override public long finalizar(Pedido pedido,String codigo,ResultadoDesconto esperado){
         return finalizarInterno(pedido,null,null,codigo,Objects.requireNonNull(esperado));
@@ -65,6 +82,7 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
     }
     private long finalizarInterno(Pedido pedido,FormaPagamento forma,BigDecimal recebido,String codigo,ResultadoDesconto esperado){
         Objects.requireNonNull(pedido);if(pedido.getId()!=null||pedido.getStatus()!=StatusPedido.PENDENTE||pedido.getItens().isEmpty())throw new IllegalArgumentException("Pedido deve ser novo, pendente e conter itens");
+        if(pedido.getAgendadoPara()!=null&&!pedido.getAgendadoPara().isAfter(LocalDateTime.now()))throw new IllegalArgumentException("O agendamento deve estar no futuro");
         if(pedido.getUsuario()!=null && pedido.getUsuario().getId()==null)throw new IllegalArgumentException("Usuário sem ID");
         if(forma!=null && (!(pedido.getUsuario() instanceof UsuarioAdmin) || pedido.getUsuario().getId()==null || !pedido.getUsuario().isAtivo()))
             throw new IllegalArgumentException("Venda PDV exige administrador ativo");

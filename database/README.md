@@ -29,6 +29,7 @@ database/  # Reúne o schema, as migrações e os modelos de dados que apoiam a 
 │   └── modelo-logico.md  # Modelo lógico do banco.
 ├── scripts/  # Schema e migrações SQL ordenadas pela evolução do sistema.
 │   ├── etapa10_pagamento_vitrine.sql  # Amplia forma de pagamento para cartão genérico.
+│   ├── etapa11_salao_agendamento.sql  # Migração de agendamento, mesas, comandas e pagamentos parciais.
 │   ├── etapa4_migracao.sql  # Migração de contatos, usuários e custos históricos.
 │   ├── etapa8_pdv.sql  # Colunas de origem e pagamento do PDV.
 │   ├── etapa9_descontos.sql  # Cupons e registro de descontos por pedido.

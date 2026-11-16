@@ -3,4 +3,9 @@ import com.salgaderia.app.model.enums.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 public record PedidoFila(long id, String cliente, StatusPedido status, TipoEntrega entrega,
-                         String enderecoEntrega, LocalDateTime criadoEm, BigDecimal total, String itens, String telefone) { }
+                         String enderecoEntrega, LocalDateTime criadoEm, BigDecimal total, String itens, String telefone,
+                         LocalDateTime agendadoPara) {
+    public PedidoFila(long id,String cliente,StatusPedido status,TipoEntrega entrega,String enderecoEntrega,LocalDateTime criadoEm,BigDecimal total,String itens,String telefone){
+        this(id,cliente,status,entrega,enderecoEntrega,criadoEm,total,itens,telefone,null);
+    }
+}

@@ -38,6 +38,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   ├── AvaliacaoDAOImpl.java  # Consultas JDBC de avaliações, médias, respostas e exclusão.
 │   │   │   │   │   │   │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
+│   │   │   │   │   │   │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 │   │   │   │   │   │   │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
 │   │   │   │   │   │   │   ├── CupomDAOImpl.java  # Consulta JDBC parametrizada para localizar cupons ativos.
 │   │   │   │   │   │   │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
@@ -48,6 +49,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   ├── AvaliacaoDAO.java  # Contrato para consultar médias, listar, inserir, responder e excluir avaliações.
 │   │   │   │   │   │   ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
+│   │   │   │   │   │   ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
 │   │   │   │   │   │   ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
 │   │   │   │   │   │   ├── CupomDAO.java  # Contrato para consultar cupom ativo por código.
 │   │   │   │   │   │   ├── MovimentacaoEstoqueDAO.java  # Contrato para registrar movimentações e calcular perdas por período.
@@ -63,6 +65,13 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── PersistenciaException.java  # Encapsula erro de persistência.
 │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
+│   │   │   │   │   │   ├── comanda/  # Entidades de mesa, comanda, itens e pagamentos parciais.
+│   │   │   │   │   │   │   ├── Comanda.java  # Resumo imutável com itens, pagamentos, total e saldo.
+│   │   │   │   │   │   │   ├── ItemComanda.java  # Item lançado com preço e quantidade paga.
+│   │   │   │   │   │   │   ├── Mesa.java  # Identificação, número e status da mesa.
+│   │   │   │   │   │   │   ├── PagamentoComanda.java  # Dados de pagamento parcial por valor ou item.
+│   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
+│   │   │   │   │   │   │   └── StatusMesa.java  # Estados livre e ocupada e suas permissões.
 │   │   │   │   │   │   ├── enums/  # Enumerações com comportamento e respectivos testes.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   ├── CategoriaInsumo.java  # Categorias de insumos de fornecedores.
@@ -90,6 +99,10 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── UsuarioCliente.java  # Usuário vinculado a um cliente.
 │   │   │   │   │   │   └── Validacao.java  # Validações compartilhadas das entidades.
 │   │   │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
+│   │   │   │   │   │   ├── cozinha/  # Estados do termômetro visual de preparo dos pedidos.
+│   │   │   │   │   │   │   ├── EstadoCozinha.java  # Contrato State de mensagem, progresso e espera.
+│   │   │   │   │   │   │   ├── EtapaCozinha.java  # Mapeia os status persistidos aos estados visuais da cozinha.
+│   │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   │   │   ├── CalculadoraDescontos.java  # Seleciona o maior desconto elegível.
 │   │   │   │   │   │   │   ├── ContextoDesconto.java  # Dados de entrada para estratégias de desconto.
@@ -100,11 +113,12 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   │   ├── EstrategiaDesconto.java  # Contrato Strategy para descontos.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   └── ResultadoDesconto.java  # Resumo do desconto e total calculados.
-│   │   │   │   │   │   ├── impl/  # Implementações de regras e orquestração dos serviços.
+│   │   │   │   │   │   ├── impl/  # Implementações JDBC dos contratos DAO, com comandos parametrizados.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   ├── AgendaServiceImpl.java  # Valida e coordena cadastro, busca e alterações de contatos pela camada DAO.
 │   │   │   │   │   │   │   ├── AutenticacaoServiceImpl.java  # Orquestra login, verificação de senha e cadastro de cliente e usuário.
 │   │   │   │   │   │   │   ├── AvaliacaoServiceImpl.java  # Valida avaliações elegíveis e controla operações de moderação.
+│   │   │   │   │   │   │   ├── ComandaServiceImpl.java  # Orquestra estoque, validação de operador, pagamentos e fechamento atômico.
 │   │   │   │   │   │   │   ├── PedidoVendaServiceImpl.java  # Executa vendas transacionais, descontos, movimentações de estoque e transições.
 │   │   │   │   │   │   │   ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
@@ -113,6 +127,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── AgendaService.java  # Contrato de operações e busca da agenda de clientes e fornecedores.
 │   │   │   │   │   │   ├── AutenticacaoService.java  # Contrato para autenticação única e cadastro público de clientes.
 │   │   │   │   │   │   ├── AvaliacaoService.java  # Contrato para avaliações, médias por produto e moderação administrativa.
+│   │   │   │   │   │   ├── ComandaService.java  # Contrato para abertura, lançamento, rateio e pagamentos de comandas.
 │   │   │   │   │   │   ├── PedidoVendaService.java  # Contrato para simular descontos, finalizar pedidos e alterar status de vendas.
 │   │   │   │   │   │   ├── ProdutoEstoqueService.java  # Contrato para produtos, consultas de estoque, entradas e perdas.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
@@ -159,23 +174,26 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   ├── com/  # Raiz de pacotes Java.
 │   │   │   ├── salgaderia/  # Pacote da aplicação Salgaderia.
 │   │   │   │   ├── app/  # Componentes da aplicação e suas camadas.
-│   │   │   │   │   ├── controller/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   ├── controller/  # Controllers das telas e testes de interface, conforme a localização.
 │   │   │   │   │   │   ├── AdminDashboardJavaFXTest.java  # Testes JavaFX do painel e notificações.
 │   │   │   │   │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
 │   │   │   │   │   │   └── VitrineJavaFXTest.java  # Testes JavaFX da vitrine, pagamento e atualização.
-│   │   │   │   │   ├── dao/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   │   │   │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
-│   │   │   │   │   ├── model/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
 │   │   │   │   │   │   ├── enums/  # Enumerações com comportamento e respectivos testes.
 │   │   │   │   │   │   │   └── EnumsTest.java  # Testes de comportamento dos enums.
 │   │   │   │   │   │   └── DominioTest.java  # Testes das entidades e regras de domínio.
-│   │   │   │   │   ├── service/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
 │   │   │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   │   │   └── EstrategiasDescontoTest.java  # Testa as estratégias e a escolha do melhor desconto.
+│   │   │   │   │   │   ├── ComandaIntegracaoTest.java  # Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL.
+│   │   │   │   │   │   ├── CozinhaStateTest.java  # Verifica mensagens e progresso dos estados da cozinha.
 │   │   │   │   │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
 │   │   │   │   │   │   ├── Etapa4IntegracaoTest.java  # Fluxos transacionais no MySQL.
+│   │   │   │   │   │   ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
 │   │   │   │   │   │   └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.

@@ -58,7 +58,12 @@ public final class WhatsAppLinkService {
         if (pedido.getId() == null) throw new IllegalArgumentException("Pedido ainda não registrado");
         Builder builder = new Builder(telefoneLoja).linha("Olá! Gostaria de acompanhar o pedido #" + pedido.getId() + ".").linha("Itens:");
         pedido.getItens().forEach(i -> builder.linha("- " + i.getQuantidade().stripTrailingZeros().toPlainString() + " x " + i.getProduto().getNome()));
-        builder.linha("Entrega: " + (pedido.getTipoEntrega() == TipoEntrega.ENTREGA ? "Entrega - " + pedido.getEnderecoEntrega() : "Retirada"));
+        builder.linha("Modalidade: " + switch(pedido.getTipoEntrega()) {
+            case ENTREGA -> "Entrega - " + pedido.getEnderecoEntrega();
+            case RETIRADA -> "Retirada no balcão";
+            case LOCAL -> "Consumir no local";
+        });
+        if(pedido.getAgendadoPara()!=null)builder.linha("Agendado para: "+pedido.getAgendadoPara().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
         builder.linha("Pagamento: " + (pedido.getFormaPagamento()==null?"não informado":pedido.getFormaPagamento().descricao())).linha("Total: " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(pedido.calcularTotal()));
         return builder.construir();
     }

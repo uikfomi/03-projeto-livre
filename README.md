@@ -1,6 +1,6 @@
 # Ui K'Fomi — Salgaderia Pro
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-v1.3.0-8b4513)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-v1.4.0-8b4513)
 ![Java](https://img.shields.io/badge/Java-17%2B-orange)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21-blue)
 ![MySQL](https://img.shields.io/badge/MySQL-8-4479A1)
@@ -26,8 +26,10 @@ Sistema desktop para uma salgaderia, com login único, vitrine de pedidos, agend
 
 - **Autenticação e cadastro público:** perfil `CLIENTE` ou `ADMIN`; o cadastro público cria um cliente na agenda. A tela inicial é escolhida polimorficamente conforme o perfil.
 - **Agenda:** clientes e fornecedores, busca, filtros, cadastro, edição e exclusão. Contatos vinculados a outros registros podem ter a exclusão impedida pelo banco.
-- **Vitrine do cliente:** catálogo com filtros, imagens opcionais, preços, disponibilidade e médias de avaliações; carrinho com retirada ou entrega e escolha de PIX, dinheiro ou cartão; histórico e avaliação de produtos recebidos.
+- **Vitrine do cliente:** catálogo, carrinho e escolha de entrega, retirada ou consumo no local; pagamento, agendamento opcional para evento e repetição do último pedido concluído mediante validação de estoque.
+- **Termômetro da cozinha:** estados visuais de preparo e estimativa informativa baseada na quantidade de pedidos ativos; pedidos futuros indicam que aguardam o horário agendado.
 - **Administração:** PDV com formas de pagamento e troco, fila de pedidos da vitrine, produtos e estoque, entrada por fornecedor, perdas, indicadores financeiros, gráficos e moderação de avaliações.
+- **Mesas e comandas:** dez mesas, lançamento de itens sem cliente, divisão igual do saldo e pagamentos parciais por valor ou item; a mesa é liberada quando a conta é quitada.
 - **Estados vazios:** as telas não exibem cadastros fictícios; mostras de ausência de dados são distintas de falhas de conexão.
 - **WhatsApp:** após finalizar e no histórico, o cliente pode abrir uma conversa com a loja pelo botão de acompanhamento. Na agenda e na fila, o administrador pode abrir uma conversa com o contato; ao mudar o status, a opção de notificação vem marcada. O WhatsApp abre com mensagem preenchida: o envio continua dependendo de confirmação no aplicativo.
 - **Acompanhamento:** a lista “Meus Pedidos” e o indicador administrativo de pedidos pendentes consultam o banco a cada cinco segundos enquanto as respectivas telas estão abertas. Os alertas recentes são locais à sessão administrativa.
@@ -36,6 +38,8 @@ Sistema desktop para uma salgaderia, com login único, vitrine de pedidos, agend
 ### Regras importantes
 
 - Pedidos da vitrine avançam de `PENDENTE` para `PREPARANDO`, `PRONTO` e `ENTREGUE`. O cancelamento é permitido antes da entrega e devolve estoque. A venda de PDV é registrada como `ENTREGUE` na própria transação de finalização.
+- Agendamentos são opcionais e devem estar no futuro ao finalizar. O horário é local ao servidor/aplicação; não há despacho automático. O termômetro usa uma estimativa simples de cinco minutos por pedido ativo, não uma previsão garantida.
+- Itens de comanda usam quantidades inteiras e baixam estoque no lançamento. A divisão igual distribui os centavos restantes entre as primeiras pessoas; os pagamentos são registrados individualmente por valor ou item. A venda entra no financeiro ao quitar o saldo, sem nova baixa de estoque. Comanda vazia pode ser fechada sem gerar venda.
 - **Descontos não cumulativos:** aplica-se a maior vantagem entre cupom ativo (`UIKFOMI10`: 10%; `FESTA15`: 15% a partir de R$ 80), fidelidade (5% para cliente com pelo menos três pedidos entregues) e cento (12% sobre os itens elegíveis quando houver pelo menos 100 unidades de salgados). Para o cento, categorias com “salgad”, “frit” ou “assad” no nome são elegíveis, exceto nomes contendo “bebid” ou “doc”, sem distinção de caixa ou acentos. Produtos sem categoria não entram. Pedidos de PDV identificados por cliente também contam para a fidelidade.
 - Cupons inválidos, inativos ou abaixo do mínimo bloqueiam a finalização até sua correção ou remoção. O sistema mostra a melhor vantagem no carrinho e revalida preços, elegibilidade e desconto ao finalizar; se o resultado mudar, é necessário conferir novamente.
 - Finalização, itens, baixa de estoque e movimentações compartilham uma transação JDBC; o estoque é bloqueado durante a venda. A falta de estoque aborta a operação.
@@ -72,6 +76,7 @@ mysql -u root -p < database/scripts/etapa4_migracao.sql
 mysql -u root -p < database/scripts/etapa8_pdv.sql
 mysql -u root -p < database/scripts/etapa9_descontos.sql
 mysql -u root -p < database/scripts/etapa10_pagamento_vitrine.sql
+mysql -u root -p < database/scripts/etapa11_salao_agendamento.sql
 ```
 
 **Execute as migrações na ordem e somente uma vez.** Embora o schema inicial use `IF NOT EXISTS`, os scripts de migração usam `ALTER TABLE` não idempotente. Antes de atualizar um banco existente, faça backup, confira quais migrações já foram aplicadas e revise dados legados; DDL no MySQL pode causar commit implícito. Usuários clientes antigos sem contato vinculado e fornecedores sem os campos adicionais precisam de saneamento manual. Consulte [as notas de persistência](docs/etapa4-persistencia.md).
@@ -191,8 +196,10 @@ A árvore mostra todos os arquivos versionados e os guias desta documentação. 
 | `src/main/java/com/salgaderia/app/dao/impl/` | [Abrir README](src/main/java/com/salgaderia/app/dao/impl/README.md) |
 | `src/main/java/com/salgaderia/app/exception/` | [Abrir README](src/main/java/com/salgaderia/app/exception/README.md) |
 | `src/main/java/com/salgaderia/app/model/` | [Abrir README](src/main/java/com/salgaderia/app/model/README.md) |
+| `src/main/java/com/salgaderia/app/model/comanda/` | [Abrir README](src/main/java/com/salgaderia/app/model/comanda/README.md) |
 | `src/main/java/com/salgaderia/app/model/enums/` | [Abrir README](src/main/java/com/salgaderia/app/model/enums/README.md) |
 | `src/main/java/com/salgaderia/app/service/` | [Abrir README](src/main/java/com/salgaderia/app/service/README.md) |
+| `src/main/java/com/salgaderia/app/service/cozinha/` | [Abrir README](src/main/java/com/salgaderia/app/service/cozinha/README.md) |
 | `src/main/java/com/salgaderia/app/service/desconto/` | [Abrir README](src/main/java/com/salgaderia/app/service/desconto/README.md) |
 | `src/main/java/com/salgaderia/app/service/impl/` | [Abrir README](src/main/java/com/salgaderia/app/service/impl/README.md) |
 | `src/main/java/com/salgaderia/app/util/` | [Abrir README](src/main/java/com/salgaderia/app/util/README.md) |
@@ -223,6 +230,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   └── modelo-logico.md  # Modelo lógico do banco.
 │   ├── scripts/  # Schema e migrações SQL ordenadas pela evolução do sistema.
 │   │   ├── etapa10_pagamento_vitrine.sql  # Amplia forma de pagamento para cartão genérico.
+│   │   ├── etapa11_salao_agendamento.sql  # Migração de agendamento, mesas, comandas e pagamentos parciais.
 │   │   ├── etapa4_migracao.sql  # Migração de contatos, usuários e custos históricos.
 │   │   ├── etapa8_pdv.sql  # Colunas de origem e pagamento do PDV.
 │   │   ├── etapa9_descontos.sql  # Cupons e registro de descontos por pedido.
@@ -269,6 +277,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   │   ├── AvaliacaoDAOImpl.java  # Consultas JDBC de avaliações, médias, respostas e exclusão.
 │   │   │   │   │   │   │   │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
+│   │   │   │   │   │   │   │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 │   │   │   │   │   │   │   │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
 │   │   │   │   │   │   │   │   ├── CupomDAOImpl.java  # Consulta JDBC parametrizada para localizar cupons ativos.
 │   │   │   │   │   │   │   │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
@@ -279,6 +288,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   ├── AvaliacaoDAO.java  # Contrato para consultar médias, listar, inserir, responder e excluir avaliações.
 │   │   │   │   │   │   │   ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
+│   │   │   │   │   │   │   ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
 │   │   │   │   │   │   │   ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
 │   │   │   │   │   │   │   ├── CupomDAO.java  # Contrato para consultar cupom ativo por código.
 │   │   │   │   │   │   │   ├── MovimentacaoEstoqueDAO.java  # Contrato para registrar movimentações e calcular perdas por período.
@@ -294,6 +304,13 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── PersistenciaException.java  # Encapsula erro de persistência.
 │   │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
+│   │   │   │   │   │   │   ├── comanda/  # Entidades de mesa, comanda, itens e pagamentos parciais.
+│   │   │   │   │   │   │   │   ├── Comanda.java  # Resumo imutável com itens, pagamentos, total e saldo.
+│   │   │   │   │   │   │   │   ├── ItemComanda.java  # Item lançado com preço e quantidade paga.
+│   │   │   │   │   │   │   │   ├── Mesa.java  # Identificação, número e status da mesa.
+│   │   │   │   │   │   │   │   ├── PagamentoComanda.java  # Dados de pagamento parcial por valor ou item.
+│   │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
+│   │   │   │   │   │   │   │   └── StatusMesa.java  # Estados livre e ocupada e suas permissões.
 │   │   │   │   │   │   │   ├── enums/  # Enumerações com comportamento e respectivos testes.
 │   │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   │   ├── CategoriaInsumo.java  # Categorias de insumos de fornecedores.
@@ -321,6 +338,10 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── UsuarioCliente.java  # Usuário vinculado a um cliente.
 │   │   │   │   │   │   │   └── Validacao.java  # Validações compartilhadas das entidades.
 │   │   │   │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
+│   │   │   │   │   │   │   ├── cozinha/  # Estados do termômetro visual de preparo dos pedidos.
+│   │   │   │   │   │   │   │   ├── EstadoCozinha.java  # Contrato State de mensagem, progresso e espera.
+│   │   │   │   │   │   │   │   ├── EtapaCozinha.java  # Mapeia os status persistidos aos estados visuais da cozinha.
+│   │   │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   │   │   │   ├── CalculadoraDescontos.java  # Seleciona o maior desconto elegível.
 │   │   │   │   │   │   │   │   ├── ContextoDesconto.java  # Dados de entrada para estratégias de desconto.
@@ -331,11 +352,12 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   │   ├── EstrategiaDesconto.java  # Contrato Strategy para descontos.
 │   │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   │   └── ResultadoDesconto.java  # Resumo do desconto e total calculados.
-│   │   │   │   │   │   │   ├── impl/  # Implementações de regras e orquestração dos serviços.
+│   │   │   │   │   │   │   ├── impl/  # Implementações JDBC dos contratos DAO, com comandos parametrizados.
 │   │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   │   ├── AgendaServiceImpl.java  # Valida e coordena cadastro, busca e alterações de contatos pela camada DAO.
 │   │   │   │   │   │   │   │   ├── AutenticacaoServiceImpl.java  # Orquestra login, verificação de senha e cadastro de cliente e usuário.
 │   │   │   │   │   │   │   │   ├── AvaliacaoServiceImpl.java  # Valida avaliações elegíveis e controla operações de moderação.
+│   │   │   │   │   │   │   │   ├── ComandaServiceImpl.java  # Orquestra estoque, validação de operador, pagamentos e fechamento atômico.
 │   │   │   │   │   │   │   │   ├── PedidoVendaServiceImpl.java  # Executa vendas transacionais, descontos, movimentações de estoque e transições.
 │   │   │   │   │   │   │   │   ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
 │   │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
@@ -344,6 +366,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── AgendaService.java  # Contrato de operações e busca da agenda de clientes e fornecedores.
 │   │   │   │   │   │   │   ├── AutenticacaoService.java  # Contrato para autenticação única e cadastro público de clientes.
 │   │   │   │   │   │   │   ├── AvaliacaoService.java  # Contrato para avaliações, médias por produto e moderação administrativa.
+│   │   │   │   │   │   │   ├── ComandaService.java  # Contrato para abertura, lançamento, rateio e pagamentos de comandas.
 │   │   │   │   │   │   │   ├── PedidoVendaService.java  # Contrato para simular descontos, finalizar pedidos e alterar status de vendas.
 │   │   │   │   │   │   │   ├── ProdutoEstoqueService.java  # Contrato para produtos, consultas de estoque, entradas e perdas.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
@@ -390,23 +413,26 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   ├── com/  # Raiz de pacotes Java.
 │   │   │   │   ├── salgaderia/  # Pacote da aplicação Salgaderia.
 │   │   │   │   │   ├── app/  # Componentes da aplicação e suas camadas.
-│   │   │   │   │   │   ├── controller/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   │   ├── controller/  # Controllers das telas e testes de interface, conforme a localização.
 │   │   │   │   │   │   │   ├── AdminDashboardJavaFXTest.java  # Testes JavaFX do painel e notificações.
 │   │   │   │   │   │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
 │   │   │   │   │   │   │   └── VitrineJavaFXTest.java  # Testes JavaFX da vitrine, pagamento e atualização.
-│   │   │   │   │   │   ├── dao/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   │   │   │   │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
-│   │   │   │   │   │   ├── model/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
 │   │   │   │   │   │   │   ├── enums/  # Enumerações com comportamento e respectivos testes.
 │   │   │   │   │   │   │   │   └── EnumsTest.java  # Testes de comportamento dos enums.
 │   │   │   │   │   │   │   └── DominioTest.java  # Testes das entidades e regras de domínio.
-│   │   │   │   │   │   ├── service/  # Testes automatizados dos componentes desta camada.
+│   │   │   │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
 │   │   │   │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   │   │   │   └── EstrategiasDescontoTest.java  # Testa as estratégias e a escolha do melhor desconto.
+│   │   │   │   │   │   │   ├── ComandaIntegracaoTest.java  # Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL.
+│   │   │   │   │   │   │   ├── CozinhaStateTest.java  # Verifica mensagens e progresso dos estados da cozinha.
 │   │   │   │   │   │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
 │   │   │   │   │   │   │   ├── Etapa4IntegracaoTest.java  # Fluxos transacionais no MySQL.
+│   │   │   │   │   │   │   ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
 │   │   │   │   │   │   │   └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.
@@ -453,7 +479,7 @@ mvn clean test-compile
 
 ```bash
 # MySQL local configurado e migrado; cria e limpa registros temporários
-SALGADERIA_TESTE_MYSQL=true mvn -Dtest=Etapa4IntegracaoTest,DescontoIntegracaoTest,AgendaJDBCTest test
+SALGADERIA_TESTE_MYSQL=true mvn -Dtest=Etapa4IntegracaoTest,DescontoIntegracaoTest,ComandaIntegracaoTest,AgendaJDBCTest test
 
 # Servidor gráfico disponível
 SALGADERIA_TESTE_JAVAFX=true mvn -Dtest=TelasJavaFXTest,AgendaJavaFXTest,VitrineJavaFXTest,AdminDashboardJavaFXTest test

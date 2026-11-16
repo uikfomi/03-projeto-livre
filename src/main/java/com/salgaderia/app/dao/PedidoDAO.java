@@ -18,4 +18,5 @@ public interface PedidoDAO {
     BigDecimal[] somarVendasEntregues(Connection c,LocalDateTime inicio,LocalDateTime fim) throws SQLException;
     long contarEntreguesDoCliente(Connection c, long clienteId) throws SQLException;
     void registrarDesconto(Connection c, long pedidoId, com.salgaderia.app.service.desconto.ResultadoDesconto desconto) throws SQLException;
+    long contarFilaCozinha(Connection c) throws SQLException;
 }

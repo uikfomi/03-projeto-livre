@@ -33,8 +33,9 @@ class Etapa4IntegracaoTest {
             produto=new Produto(null,null,"Produto "+token,null,new BigDecimal("8.00"),new BigDecimal("3.00"),BigDecimal.ZERO,BigDecimal.ONE,null);
             var estoque=new ProdutoEstoqueServiceImpl();estoque.cadastrar(produto);estoque.entradaLote(produto.getId(),fornecedor.getId(),new BigDecimal("3"),"teste");
             LocalDateTime data=LocalDateTime.of(2001,1,1,12,0);
-            Pedido pedido=new Pedido(null,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,data,List.of(new PedidoItem(null,produto,new BigDecimal("2"),new BigDecimal("8.00"))));
+            Pedido pedido=new Pedido(null,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.LOCAL,null,data,List.of(new PedidoItem(null,produto,new BigDecimal("2"),new BigDecimal("8.00"))));
             pedido.setFormaPagamento(FormaPagamento.PIX);
+            LocalDateTime agendado=LocalDateTime.now().plusDays(1).withNano(0);pedido.setAgendadoPara(agendado);
             var vendas=new PedidoVendaServiceImpl();
             MovimentacaoEstoqueDAO falha=new MovimentacaoEstoqueDAO(){
                 public long inserir(Connection c,MovimentacaoEstoque m,Long f,String motivo,BigDecimal custo) throws SQLException {throw new SQLException("falha simulada");}
@@ -58,6 +59,10 @@ class Etapa4IntegracaoTest {
             assertEquals(1,historico.size());
             assertEquals(StatusPedido.ENTREGUE,historico.get(0).getStatus());
             assertEquals(FormaPagamento.PIX,historico.get(0).getFormaPagamento());
+            assertEquals(TipoEntrega.LOCAL,historico.get(0).getTipoEntrega());
+            assertEquals(agendado,historico.get(0).getAgendadoPara());
+            UsuarioCliente clienteParaRepeticao=usuario;
+            assertThrows(IllegalArgumentException.class,()->vendas.repetirUltimoPedido(clienteParaRepeticao));
             assertEquals(0,historico.get(0).getItens().get(0).getPrecoUnitario().compareTo(new BigDecimal("8.00")));
             UsuarioCliente outroCliente=new UsuarioCliente(Long.MAX_VALUE,"Outro","outro","senha",true,cliente);
             assertTrue(vendas.listarDoCliente(outroCliente).isEmpty());
@@ -72,6 +77,7 @@ class Etapa4IntegracaoTest {
             estoque.registrarPerda(produto.getId(),BigDecimal.ONE,"teste");
             assertEquals(0,estoque.buscarPorId(produto.getId()).orElseThrow().getEstoqueAtual().signum());
             estoque.entradaLote(produto.getId(),fornecedor.getId(),new BigDecimal("2"),"novo lote");
+            assertEquals(0,new BigDecimal("2").compareTo(vendas.repetirUltimoPedido(clienteParaRepeticao).get(0).getQuantidade()));
             Produto atual=estoque.buscarPorId(produto.getId()).orElseThrow();
             Pedido venda=new Pedido(null,admin,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,atual,BigDecimal.ONE,atual.getPrecoVenda())));
             assertThrows(IllegalArgumentException.class,()->vendas.finalizarPdv(venda,FormaPagamento.DINHEIRO,new BigDecimal("1.00")));

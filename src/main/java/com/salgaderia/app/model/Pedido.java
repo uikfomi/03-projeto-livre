@@ -20,6 +20,7 @@ public class Pedido {
     private final List<PedidoItem> itens;
     private BigDecimal desconto = BigDecimal.ZERO;
     private FormaPagamento formaPagamento;
+    private LocalDateTime agendadoPara;
 
     public Pedido(Long id, Usuario usuario, Cliente cliente, StatusPedido status, TipoEntrega tipoEntrega,
                   String enderecoEntrega, LocalDateTime criadoEm, List<PedidoItem> itens) {
@@ -42,6 +43,9 @@ public class Pedido {
     public TipoEntrega getTipoEntrega() { return tipoEntrega; }
     public String getEnderecoEntrega() { return enderecoEntrega; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
+    public LocalDateTime getAgendadoPara() { return agendadoPara; }
+    /** Pedidos históricos também podem ser carregados com agendamentos já passados. */
+    public void setAgendadoPara(LocalDateTime agendadoPara) { this.agendadoPara = agendadoPara; }
     public List<PedidoItem> getItens() { return List.copyOf(itens); }
     public void adicionarItem(PedidoItem item) { exigirPendente(); itens.add(Validacao.obrigatorio(item, "item")); }
     public void removerItem(PedidoItem item) { exigirPendente(); itens.remove(Validacao.obrigatorio(item, "item")); }
