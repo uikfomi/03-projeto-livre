@@ -1,12 +1,32 @@
+[🏠 Início](../README.md) / 📂 resources
+
 # 🧩 Recursos institucionais
 
-Pasta oficial reservada para recursos compartilhados do projeto. Os recursos carregados pela aplicação JavaFX ficam em [`src/main/resources/`](../src/main/resources/).
+Reserva espaço para recursos compartilhados do projeto fora dos recursos de execução do Maven.
 
-| Caminho | Conteúdo |
+As telas e estilos executáveis ficam em src/main/resources; não inclua credenciais ou artefatos gerados nesta pasta.
+
+## Explore as subpastas e arquivos
+
+| Caminho | Conteúdo e responsabilidade |
 |---|---|
-| [README.md](README.md) | Guia desta pasta. |
-| [.gitkeep](.gitkeep) | Mantém a pasta institucional versionada enquanto aguarda materiais finais. |
+| [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
+| [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 
-> Os recursos institucionais finais ainda aguardam inclusão.
+## Árvore estrutural comentada
 
-[← Voltar à raiz](../README.md)
+O ponto inicial é `resources/`; cada comentário apresenta o caminho completo relativo à raiz do repositório.
+
+```text
+resources/  # Reserva espaço para recursos compartilhados do projeto fora dos recursos de execução do Maven.
+├── .gitkeep  # resources/.gitkeep — Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+└── README.md  # resources/README.md — Guia de navegação e explicações desta pasta.
+```
+
+## 📌 Status do Conteúdo
+
+As pastas abaixo estão reservadas e aguardam materiais finais; os arquivos `.gitkeep` apenas preservam a estrutura:
+
+- `resources/` — Recursos institucionais ou recursos JavaFX, conforme a localização.
+
+[🏠 Voltar ao README principal](../README.md)
