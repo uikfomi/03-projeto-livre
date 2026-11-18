@@ -9,6 +9,7 @@ public class Avaliacao {
     private int nota;
     private String comentario;
     private String respostaAdmin;
+    private String fotoUrl;
     private final LocalDateTime criadoEm;
     public Avaliacao(Long id, Usuario usuario, Produto produto, int nota, String comentario,
                      String respostaAdmin, LocalDateTime criadoEm) {
@@ -30,5 +31,7 @@ public class Avaliacao {
     public void setComentario(String comentario) { this.comentario = comentario; }
     public String getRespostaAdmin() { return respostaAdmin; }
     public void setRespostaAdmin(String respostaAdmin) { this.respostaAdmin = respostaAdmin; }
+    public String getFotoUrl() { return fotoUrl; }
+    public void setFotoUrl(String fotoUrl) { this.fotoUrl = fotoUrl; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
 }

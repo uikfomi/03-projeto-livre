@@ -12,7 +12,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 |---|---|
 | [impl/](impl/) | Implementações JDBC dos contratos DAO, com comandos parametrizados. [Abrir guia](impl/README.md). |
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
-| [AvaliacaoDAO.java](AvaliacaoDAO.java) | Contrato para consultar médias, listar, inserir, responder e excluir avaliações. |
+| [AvaliacaoDAO.java](AvaliacaoDAO.java) | Contrato JDBC para avaliações, médias, galeria de fotos e moderação. |
 | [CategoriaDAO.java](CategoriaDAO.java) | Contrato para cadastrar, atualizar, buscar, listar e excluir categorias. |
 | [ComandaDAO.java](ComandaDAO.java) | Contrato JDBC para mesas, itens, pagamentos e fechamento transacional. |
 | [ContatoDAO.java](ContatoDAO.java) | Contrato para cadastro, edição, exclusão e busca filtrada de contatos. |
@@ -31,18 +31,18 @@ O ponto inicial é `src/main/java/com/salgaderia/app/dao/`.
 src/main/java/com/salgaderia/app/dao/  # Define operações de acesso a dados independentes da implementação JDBC.
 ├── impl/  # Implementações JDBC dos contratos DAO, com comandos parametrizados.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── AvaliacaoDAOImpl.java  # Consultas JDBC de avaliações, médias, respostas e exclusão.
+│   ├── AvaliacaoDAOImpl.java  # Persiste avaliações e fotos e consulta a galeria e dados de moderação.
 │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
 │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
 │   ├── CupomDAOImpl.java  # Consulta JDBC parametrizada para localizar cupons ativos.
 │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-│   ├── PedidoDAOImpl.java  # Persiste pedidos, itens, estado, pagamentos e descontos; consulta fila e relatórios.
-│   ├── ProdutoDAOImpl.java  # Persiste produtos, consulta categorias e atualiza estoque com JDBC.
+│   ├── PedidoDAOImpl.java  # Persiste pedidos e composições personalizadas e consulta histórico, fila e indicadores.
+│   ├── ProdutoDAOImpl.java  # Persiste produtos, estoque e fichas de personalização com JDBC.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── UsuarioDAOImpl.java  # Persiste usuários, consulta credenciais e atualiza hashes de senha.
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── AvaliacaoDAO.java  # Contrato para consultar médias, listar, inserir, responder e excluir avaliações.
+├── AvaliacaoDAO.java  # Contrato JDBC para avaliações, médias, galeria de fotos e moderação.
 ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
 ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
 ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.

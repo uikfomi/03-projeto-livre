@@ -1,8 +1,8 @@
 package com.salgaderia.app.service;
 
 import com.salgaderia.app.model.Pedido;
+import com.salgaderia.app.model.PedidoItem;
 import com.salgaderia.app.model.enums.StatusPedido;
-import com.salgaderia.app.model.enums.TipoEntrega;
 import java.awt.Desktop;
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
@@ -12,8 +12,11 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 /** Cria links wa.me; abrir o link não envia mensagens automaticamente. */
 public final class WhatsAppLinkService {
@@ -57,7 +60,17 @@ public final class WhatsAppLinkService {
     public URI acompanhar(Pedido pedido) {
         if (pedido.getId() == null) throw new IllegalArgumentException("Pedido ainda não registrado");
         Builder builder = new Builder(telefoneLoja).linha("Olá! Gostaria de acompanhar o pedido #" + pedido.getId() + ".").linha("Itens:");
-        pedido.getItens().forEach(i -> builder.linha("- " + i.getQuantidade().stripTrailingZeros().toPlainString() + " x " + i.getProduto().getNome()));
+        Set<UUID> caixas = new HashSet<>();
+        for (PedidoItem item : pedido.getItens()) {
+            var personalizacao = item.getPersonalizacao();
+            if (personalizacao != null && personalizacao.tipo().caixa() && pedido.getStatus() != StatusPedido.ENTREGUE) {
+                if (caixas.add(personalizacao.grupo())) builder.linha("- " + item.getObservacaoPersonalizada());
+            } else {
+                String observacao = item.getObservacaoPersonalizada();
+                builder.linha("- " + item.getQuantidade().stripTrailingZeros().toPlainString() + " x " +
+                        item.getProduto().getNome() + (observacao == null ? "" : " [" + observacao + "]"));
+            }
+        }
         builder.linha("Modalidade: " + switch(pedido.getTipoEntrega()) {
             case ENTREGA -> "Entrega - " + pedido.getEnderecoEntrega();
             case RETIRADA -> "Retirada no balcão";

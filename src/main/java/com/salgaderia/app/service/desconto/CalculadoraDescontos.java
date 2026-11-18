@@ -6,7 +6,7 @@ import java.util.List;
 
 public final class CalculadoraDescontos {
     private final List<EstrategiaDesconto> estrategias = List.of(
-            new DescontoCupomPercentual(), new DescontoCentoSalgados(), new DescontoFidelidade());
+            new DescontoCaixaMisteriosa(), new DescontoCupomPercentual(), new DescontoCentoSalgados(), new DescontoFidelidade());
 
     public ResultadoDesconto calcular(ContextoDesconto contexto) {
         BigDecimal subtotal = contexto.subtotal().setScale(2, RoundingMode.HALF_UP);

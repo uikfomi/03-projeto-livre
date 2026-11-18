@@ -28,8 +28,16 @@
                 <ScrollPane fx:id="rolagemProdutos" fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" styleClass="rolagem-transparente">
                     <content>
                         <VBox spacing="12">
+                            <FlowPane hgap="8" vgap="8">
+                                <Button fx:id="montarCombo" text="Monte seu Combo" onAction="#montarCombo" styleClass="button-secondary" />
+                                <Button fx:id="caixaMisteriosa" text="Caixa Misteriosa Ui K'Fomi" onAction="#caixaMisteriosa" styleClass="button-secondary" />
+                            </FlowPane>
                             <Label fx:id="mensagemProdutos" wrapText="true" styleClass="estado-vitrine" />
                             <FlowPane fx:id="cards" hgap="14" vgap="14" />
+                            <Separator />
+                            <Label text="Fotos de quem já provou" styleClass="secao-titulo" />
+                            <Label fx:id="mensagemFotos" text="Carregando fotos de avaliações…" wrapText="true" styleClass="subtitle" />
+                            <FlowPane fx:id="galeriaFotos" hgap="12" vgap="12" />
                         </VBox>
                     </content>
                 </ScrollPane>

@@ -27,27 +27,27 @@ O ponto inicial é `src/main/java/com/salgaderia/app/`.
 src/main/java/com/salgaderia/app/  # Pacote principal da aplicação e ponto de encontro das camadas MVC, serviços e persistência.
 ├── controller/  # Controllers das telas e testes de interface, conforme a localização.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── AdminDashboardController.java  # PDV, fila, estoque, financeiro e alertas administrativos.
+│   ├── AdminDashboardController.java  # Coordena PDV, fila, fichas de produto, comandas, financeiro e moderação de avaliações.
 │   ├── AgendaController.java  # Interface da agenda de clientes e fornecedores.
-│   ├── ClienteVitrineController.java  # Vitrine, carrinho, pagamento e histórico do cliente.
+│   ├── ClienteVitrineController.java  # Coordena catálogo, carrinho, combos, caixa, checkout, pedidos e fotos de avaliações.
 │   ├── LoginController.java  # Tela de login e cadastro público.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── SelecaoModulosController.java  # Seleção de módulos administrativos.
 ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   ├── impl/  # Implementações JDBC dos contratos DAO, com comandos parametrizados.
 │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   │   ├── AvaliacaoDAOImpl.java  # Consultas JDBC de avaliações, médias, respostas e exclusão.
+│   │   ├── AvaliacaoDAOImpl.java  # Persiste avaliações e fotos e consulta a galeria e dados de moderação.
 │   │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
 │   │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 │   │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
 │   │   ├── CupomDAOImpl.java  # Consulta JDBC parametrizada para localizar cupons ativos.
 │   │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-│   │   ├── PedidoDAOImpl.java  # Persiste pedidos, itens, estado, pagamentos e descontos; consulta fila e relatórios.
-│   │   ├── ProdutoDAOImpl.java  # Persiste produtos, consulta categorias e atualiza estoque com JDBC.
+│   │   ├── PedidoDAOImpl.java  # Persiste pedidos e composições personalizadas e consulta histórico, fila e indicadores.
+│   │   ├── ProdutoDAOImpl.java  # Persiste produtos, estoque e fichas de personalização com JDBC.
 │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   └── UsuarioDAOImpl.java  # Persiste usuários, consulta credenciais e atualiza hashes de senha.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── AvaliacaoDAO.java  # Contrato para consultar médias, listar, inserir, responder e excluir avaliações.
+│   ├── AvaliacaoDAO.java  # Contrato JDBC para avaliações, médias, galeria de fotos e moderação.
 │   ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
 │   ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
 │   ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
@@ -82,17 +82,20 @@ src/main/java/com/salgaderia/app/  # Pacote principal da aplicação e ponto de 
 │   │   ├── TipoEntrega.java  # Modalidades de entrega.
 │   │   └── TipoMovimentacaoEstoque.java  # Tipos de movimentação de estoque.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── Avaliacao.java  # Avaliação de produto e validação da nota.
-│   ├── AvaliacaoResumo.java  # Dados resumidos para moderação.
+│   ├── Avaliacao.java  # Registra nota, comentário, resposta oficial e referência opcional da foto.
+│   ├── AvaliacaoFoto.java  # Projeção pública de fotos de avaliações que não expõe dados da conta.
+│   ├── AvaliacaoResumo.java  # Projeção de avaliação com comentário, resposta oficial e foto para moderação.
 │   ├── Categoria.java  # Categoria de produtos.
 │   ├── Cliente.java  # Contato especializado em cliente.
 │   ├── Contato.java  # Abstração comum de contatos.
+│   ├── FichaVitrine.java  # Dados confirmados no catálogo: tipo de combo, recheio, ingredientes e preparo assado.
 │   ├── Fornecedor.java  # Contato especializado em fornecedor.
 │   ├── MovimentacaoEstoque.java  # Registro de entrada ou saída de estoque.
 │   ├── Pedido.java  # Agregado do pedido, itens, desconto e pagamento.
 │   ├── PedidoFila.java  # Resumo de pedido para a fila administrativa.
-│   ├── PedidoItem.java  # Quantidade e preço histórico de um item.
-│   ├── Produto.java  # Produto, preços, estoque e comportamento de domínio.
+│   ├── PedidoItem.java  # Registra produto, quantidade, preço histórico e eventual personalização do item.
+│   ├── PersonalizacaoItem.java  # Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes.
+│   ├── Produto.java  # Representa custos, preços, estoque e ficha de personalização do catálogo.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   ├── Usuario.java  # Abstração de usuário e permissões.
 │   ├── UsuarioAdmin.java  # Usuário administrativo.
@@ -107,6 +110,7 @@ src/main/java/com/salgaderia/app/  # Pacote principal da aplicação e ponto de 
 │   │   ├── CalculadoraDescontos.java  # Seleciona o maior desconto elegível.
 │   │   ├── ContextoDesconto.java  # Dados de entrada para estratégias de desconto.
 │   │   ├── Cupom.java  # Valor de domínio de cupom.
+│   │   ├── DescontoCaixaMisteriosa.java  # Oferece 15% sobre o valor de cada caixa como desconto não cumulativo.
 │   │   ├── DescontoCentoSalgados.java  # Estratégia de desconto para cento de salgados.
 │   │   ├── DescontoCupomPercentual.java  # Estratégia percentual por cupom.
 │   │   ├── DescontoFidelidade.java  # Estratégia para clientes fiéis.
@@ -117,18 +121,21 @@ src/main/java/com/salgaderia/app/  # Pacote principal da aplicação e ponto de 
 │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   ├── AgendaServiceImpl.java  # Valida e coordena cadastro, busca e alterações de contatos pela camada DAO.
 │   │   ├── AutenticacaoServiceImpl.java  # Orquestra login, verificação de senha e cadastro de cliente e usuário.
-│   │   ├── AvaliacaoServiceImpl.java  # Valida avaliações elegíveis e controla operações de moderação.
+│   │   ├── AvaliacaoServiceImpl.java  # Valida a entrega e coordena avaliações, upload e exclusão de fotos na moderação.
 │   │   ├── ComandaServiceImpl.java  # Orquestra estoque, validação de operador, pagamentos e fechamento atômico.
-│   │   ├── PedidoVendaServiceImpl.java  # Executa vendas transacionais, descontos, movimentações de estoque e transições.
+│   │   ├── PedidoVendaServiceImpl.java  # Finaliza vendas em transação, revalida personalizações, descontos e estoque e altera status.
 │   │   ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
 │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   └── RelatorioFinanceiroServiceImpl.java  # Calcula indicadores financeiros e gera o balanço CSV.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── AgendaService.java  # Contrato de operações e busca da agenda de clientes e fornecedores.
 │   ├── AutenticacaoService.java  # Contrato para autenticação única e cadastro público de clientes.
-│   ├── AvaliacaoService.java  # Contrato para avaliações, médias por produto e moderação administrativa.
+│   ├── AvaliacaoService.java  # Contrato para avaliações, médias, fotos e moderação administrativa.
 │   ├── ComandaService.java  # Contrato para abertura, lançamento, rateio e pagamentos de comandas.
+│   ├── ComboBuilder.java  # Monta o combo com uma variante real da massa e do recheio e acompanhamento opcional.
+│   ├── FotoAvaliacaoStorage.java  # Valida, redimensiona, salva e remove imagens locais de avaliações.
 │   ├── PedidoVendaService.java  # Contrato para simular descontos, finalizar pedidos e alterar status de vendas.
+│   ├── PersonalizacaoService.java  # Sorteia caixas, agrega estoque reservado no carrinho e valida composições e restrições.
 │   ├── ProdutoEstoqueService.java  # Contrato para produtos, consultas de estoque, entradas e perdas.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   ├── RelatorioFinanceiroService.java  # Contrato de cálculos de balanço, gráficos e exportação CSV.
@@ -136,6 +143,7 @@ src/main/java/com/salgaderia/app/  # Pacote principal da aplicação e ponto de 
 ├── util/  # Conexão, autenticação auxiliar e navegação.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── ConnectionFactory.java  # Pool HikariCP e transações JDBC.
+│   ├── FotoAvaliacaoUi.java  # Carrega miniaturas JavaFX de fotos de avaliações guardadas localmente.
 │   ├── Navegacao.java  # Navegação entre telas FXML.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   ├── Senhas.java  # Geração e verificação de hashes de senha.

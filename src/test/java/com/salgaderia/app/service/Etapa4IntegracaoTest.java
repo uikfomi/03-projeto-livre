@@ -9,7 +9,11 @@ import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.util.ConnectionFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.io.TempDir;
+import java.awt.image.BufferedImage;
 import java.math.BigDecimal;
+import java.nio.file.Path;
+import javax.imageio.ImageIO;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -18,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Teste opcional contra banco local migrado; remove apenas registros criados pelo teste. */
 @EnabledIfEnvironmentVariable(named="SALGADERIA_TESTE_MYSQL",matches="true")
 class Etapa4IntegracaoTest {
+    @TempDir Path pastaTeste;
+
     @Test void fluxosTransacionais() throws Exception {
         String token=UUID.randomUUID().toString().replace("-","");
         UsuarioCliente usuario=null; Fornecedor fornecedor=null; Produto produto=null; Long pedidoId=null; Long avaliacaoId=null; Long pdvId=null; Long pdvPixId=null;
@@ -51,9 +57,13 @@ class Etapa4IntegracaoTest {
             Pedido outro=new Pedido(null,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,data,List.of(new PedidoItem(null,produto,new BigDecimal("2"),new BigDecimal("8.00"))));
             outro.setFormaPagamento(FormaPagamento.DINHEIRO);
             assertThrows(EstoqueInsuficienteException.class,()->vendas.finalizar(outro));assertNull(outro.getId());
-            Avaliacao avaliacao=new Avaliacao(null,usuario,produto,5,"ótimo",null,data);
-            var avaliacoes=new AvaliacaoServiceImpl();
-            assertThrows(AvaliacaoNaoPermitidaException.class,()->avaliacoes.salvar(avaliacao));
+            Avaliacao avaliacao=new Avaliacao(null,usuario,produto,5,"ótimo",null,LocalDateTime.now());
+            var storage=new FotoAvaliacaoStorage(pastaTeste.resolve("uploads/avaliacoes"));
+            var avaliacoes=new AvaliacaoServiceImpl(new PedidoDAOImpl(),new AvaliacaoDAOImpl(),new UsuarioDAOImpl(new ContatoDAOImpl()),storage);
+            Path foto=pastaTeste.resolve("foto.png");
+            assertTrue(ImageIO.write(new BufferedImage(20,20,BufferedImage.TYPE_INT_RGB),"png",foto.toFile()));
+            assertThrows(AvaliacaoNaoPermitidaException.class,()->avaliacoes.salvar(avaliacao,foto));
+            assertNull(avaliacao.getFotoUrl());
             vendas.transicionar(pedidoId,StatusPedido.PREPARANDO);vendas.transicionar(pedidoId,StatusPedido.PRONTO);vendas.transicionar(pedidoId,StatusPedido.ENTREGUE);
             var historico=vendas.listarDoCliente(usuario);
             assertEquals(1,historico.size());
@@ -62,11 +72,14 @@ class Etapa4IntegracaoTest {
             assertEquals(TipoEntrega.LOCAL,historico.get(0).getTipoEntrega());
             assertEquals(agendado,historico.get(0).getAgendadoPara());
             UsuarioCliente clienteParaRepeticao=usuario;
-            assertThrows(IllegalArgumentException.class,()->vendas.repetirUltimoPedido(clienteParaRepeticao));
+            assertThrows(EstoqueInsuficienteException.class,()->vendas.repetirUltimoPedido(clienteParaRepeticao));
             assertEquals(0,historico.get(0).getItens().get(0).getPrecoUnitario().compareTo(new BigDecimal("8.00")));
             UsuarioCliente outroCliente=new UsuarioCliente(Long.MAX_VALUE,"Outro","outro","senha",true,cliente);
             assertTrue(vendas.listarDoCliente(outroCliente).isEmpty());
-            avaliacaoId=avaliacoes.salvar(avaliacao);
+            avaliacaoId=avaliacoes.salvar(avaliacao,foto);
+            assertTrue(storage.resolver(avaliacao.getFotoUrl()).isPresent());
+            long idComFoto=avaliacaoId;
+            assertTrue(avaliacoes.fotosRecentes().stream().anyMatch(a->a.id()==idComFoto&&a.fotoUrl().equals(avaliacao.getFotoUrl())));
             assertEquals(0,avaliacoes.mediasPorProduto().get(produto.getId()).compareTo(new BigDecimal("5")));
             Usuario admin=new UsuarioAdmin(2L,"Admin","admin","nao-usada",true);
             assertTrue(avaliacoes.responder(admin,avaliacaoId,"obrigado"));
@@ -95,7 +108,10 @@ class Etapa4IntegracaoTest {
             try(Connection c=ConnectionFactory.getConnection();PreparedStatement ps=c.prepareStatement("SELECT forma_pagamento,valor_recebido,troco FROM pedidos WHERE id=?")){
                 ps.setLong(1,pdvPixId);try(ResultSet rs=ps.executeQuery()){assertTrue(rs.next());assertEquals("PIX",rs.getString(1));assertEquals(0,rs.getBigDecimal(2).compareTo(new BigDecimal("8.00")));assertEquals(0,rs.getBigDecimal(3).signum());}
             }
-            assertTrue(avaliacoes.listar().stream().anyMatch(a->a.produto().equals(atual.getNome())));
+            assertTrue(avaliacoes.listar().stream().anyMatch(a->a.produto().equals(atual.getNome())&&a.fotoUrl().equals(avaliacao.getFotoUrl())));
+            assertTrue(avaliacoes.excluir(admin,avaliacaoId));avaliacaoId=null;
+            assertTrue(storage.resolver(avaliacao.getFotoUrl()).isEmpty());
+            assertTrue(avaliacoes.fotosRecentes().stream().noneMatch(a->a.id()==idComFoto));
             LocalDateTime inicio=LocalDateTime.now().minusDays(1),fim=LocalDateTime.now().plusDays(1);
             var financeiro=new RelatorioFinanceiroServiceImpl();
             assertTrue(financeiro.produtosMaisVendidos(inicio,fim).keySet().stream().anyMatch(nome->nome.contains(atual.getNome())));

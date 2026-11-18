@@ -1,6 +1,7 @@
 package com.salgaderia.app.controller;
 
 import com.salgaderia.app.model.*;
+import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.*;
 import javafx.application.Platform;
@@ -17,10 +18,14 @@ import javafx.stage.Stage;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.io.TempDir;
+import java.awt.image.BufferedImage;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import javax.imageio.ImageIO;
 import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIfEnvironmentVariable(named="SALGADERIA_TESTE_JAVAFX",matches="true")
@@ -56,6 +61,9 @@ class VitrineJavaFXTest {
                 Parent root=stageRef.get().getScene().getRoot();root.applyCss();
                 assertTrue(((Button)root.lookup("#adicionar-2")).isDisabled());
                 assertNotNull(root.lookup(".imagem-fallback"));
+                assertEquals(Set.of("Disponível"),root.lookupAll(".estoque-disponivel").stream().map(n->((Label)n).getText()).collect(java.util.stream.Collectors.toSet()));
+                assertEquals("Esgotado",((Label)root.lookup(".estoque-esgotado")).getText());
+                assertNotNull(root.lookup("#montarCombo"));assertNotNull(root.lookup("#caixaMisteriosa"));
                 assertTrue(root.lookupAll(".produto-estrelas").stream().anyMatch(n->((Label)n).getText().contains("4,5")));
                 ((Button)root.lookup("#adicionar-1")).fire();((Button)root.lookup("#adicionar-1")).fire();
                 assertEquals("2 itens",((Label)loader.getNamespace().get("contador")).getText());
@@ -157,6 +165,65 @@ class VitrineJavaFXTest {
             fx(()->{timer.stop();return null;});
         }finally{fx(()->{stage.get().close();return null;});}
     }
+    @Test void comboRecalculaPrecoCaixaEscondeSorteioEGaleriaExibeFoto(@TempDir Path pasta) throws Exception {
+        Produto empada=new Produto(1L,null,"Empada especial",null,new BigDecimal("8.00"),BigDecimal.ONE,new BigDecimal("12"),BigDecimal.ONE,null);
+        empada.setFichaVitrine(new FichaVitrine(TipoCombo.EMPADA,"Carne de Sol",false,false,true));
+        Produto molho=new Produto(2L,null,"Molho da casa",null,new BigDecimal("2.00"),BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
+        molho.setFichaVitrine(new FichaVitrine(TipoCombo.ACOMPANHAMENTO,null,null,null,false));
+        Path original=pasta.resolve("foto.png");
+        assertTrue(ImageIO.write(new BufferedImage(20,20,BufferedImage.TYPE_INT_RGB),"png",original.toFile()));
+        var storage=new FotoAvaliacaoStorage();
+        String foto=storage.salvar(original);
+        var avaliacoes=new AvaliacoesTeste(){
+            public List<AvaliacaoFoto> fotosRecentes(){return List.of(new AvaliacaoFoto(123L,empada.getId(),empada.getNome(),5,foto));}
+        };
+        var loader=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stage=new java.util.concurrent.atomic.AtomicReference<Stage>();
+        try {
+            fx(()->{
+                FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));
+                l.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of(empada,molho)),new PedidosTeste(List.of()),avaliacoes));
+                Stage s=new Stage();s.setScene(new Scene(l.load(),1100,800));s.show();stage.set(s);loader.set(l);
+                Cliente cliente=new Cliente(10L,"Ana",null,null,null,null,null);
+                ((ClienteVitrineController)l.getController()).definirUsuario(new UsuarioCliente(20L,"Ana","ana","senha",true,cliente));return null;
+            });
+            aguardar(()->fx(()->stage.get().getScene().getRoot().lookup("#foto-avaliacao-123")!=null));
+            fx(()->{Platform.runLater(()->((Button)loader.get().getNamespace().get("montarCombo")).fire());return null;});
+            aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.lookup("#combo-previa")!=null).orElse(false)));
+            fx(()->{
+                DialogPane p=dialogoAberto(stage.get()).orElseThrow();
+                selecionar(p,"#combo-massa",0);selecionar(p,"#combo-recheio",0);selecionar(p,"#combo-acompanhamento",1);
+                String previa=((Label)p.lookup("#combo-previa")).getText();
+                assertTrue(previa.contains("10,00")&&previa.contains("Carne de Sol + Molho da casa"));
+                confirmar(p);return null;
+            });
+            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("total")).getText().contains("10,00")));
+            fx(()->{Platform.runLater(()->((Button)loader.get().getNamespace().get("caixaMisteriosa")).fire());return null;});
+            aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.lookup("#caixa-tamanho")!=null).orElse(false)));
+            fx(()->{confirmar(dialogoAberto(stage.get()).orElseThrow());return null;});
+            aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.getContent() instanceof Label).orElse(false)));
+            fx(()->{
+                DialogPane p=dialogoAberto(stage.get()).orElseThrow();String previa=((Label)p.getContent()).getText();
+                assertTrue(previa.contains("68,00"));assertFalse(previa.contains(empada.getNome()));
+                confirmar(p);return null;
+            });
+            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("total")).getText().contains("78,00")));
+        }finally{
+            try{fx(()->{if(stage.get()!=null){dialogoAberto(stage.get()).ifPresent(p->p.getScene().getWindow().hide());stage.get().close();}return null;});}
+            finally{storage.excluir(foto);}
+        }
+    }
+    private static Optional<DialogPane> dialogoAberto(Stage dona){
+        for(var w:List.copyOf(javafx.stage.Window.getWindows()))
+            if(w instanceof Stage s&&s.getOwner()==dona&&s.getScene()!=null&&s.getScene().getRoot() instanceof DialogPane pane)return Optional.of(pane);
+        return Optional.empty();
+    }
+    private static void selecionar(DialogPane pane,String seletor,int indice){
+        ((ComboBox<?>)pane.lookup(seletor)).getSelectionModel().select(indice);
+    }
+    private static void confirmar(DialogPane p){
+        var tipo=p.getButtonTypes().stream().filter(t->t.getButtonData()==ButtonBar.ButtonData.OK_DONE).findFirst().orElseThrow();
+        ((Button)p.lookupButton(tipo)).fire();
+    }
     private static <T> T fx(Callable<T> c) throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> condicao) throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(condicao.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}
     private record ProdutosTeste(List<Produto> dados) implements ProdutoEstoqueService {
@@ -182,8 +249,9 @@ class VitrineJavaFXTest {
     }
     private static class AvaliacoesTeste implements AvaliacaoService {
         public List<AvaliacaoResumo> listar(){return List.of();}
+        public List<AvaliacaoFoto> fotosRecentes(){return List.of();}
         final java.util.concurrent.atomic.AtomicReference<Avaliacao> salva=new java.util.concurrent.atomic.AtomicReference<>();
-        public Map<Long,BigDecimal> mediasPorProduto(){return Map.of(1L,new BigDecimal("4.5"));}public long salvar(Avaliacao a){salva.set(a);return 1;}
+        public Map<Long,BigDecimal> mediasPorProduto(){return Map.of(1L,new BigDecimal("4.5"));}public long salvar(Avaliacao a,java.nio.file.Path foto){salva.set(a);return 1;}
         public boolean responder(Usuario u,long id,String r){throw new UnsupportedOperationException();}public boolean excluir(Usuario u,long id){throw new UnsupportedOperationException();}
     }
 }

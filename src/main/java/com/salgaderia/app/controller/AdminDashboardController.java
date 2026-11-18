@@ -4,12 +4,14 @@ import com.salgaderia.app.dao.ContatoDAO.FiltroContato;
 import com.salgaderia.app.dao.impl.ContatoDAOImpl;
 import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.model.*;
+import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.model.comanda.*;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
 import com.salgaderia.app.util.Navegacao;
+import com.salgaderia.app.util.FotoAvaliacaoUi;
 import com.salgaderia.app.util.TelaAutenticada;
 import com.salgaderia.app.util.WhatsAppUi;
 import java.io.File;
@@ -23,6 +25,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.concurrent.Task;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -297,13 +300,40 @@ public class AdminDashboardController implements TelaAutenticada {
         Button escolher=botao("Selecionar imagem",()->{FileChooser fc=new FileChooser();fc.setTitle("Selecionar imagem");fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagens","*.png","*.jpg","*.jpeg","*.gif"));File arquivo=fc.showOpenDialog(raiz.getScene().getWindow());if(arquivo!=null)imagem.setText(arquivo.toURI().toString());},"button-outline");
         ComboBox<Categoria> categoria=new ComboBox<>();categoria.getItems().setAll(categorias);categoria.setPromptText("Categoria (opcional)");categoria.setConverter(new StringConverter<>(){public String toString(Categoria c){return c==null?"Sem categoria":c.getNome();}public Categoria fromString(String s){return null;}});
         if(atual!=null&&atual.getCategoria()!=null)categorias.stream().filter(c->Objects.equals(c.getId(),atual.getCategoria().getId())).findFirst().ifPresent(categoria::setValue);
-        VBox campos=new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,new Label("Categoria"),categoria,new Label("Preço de venda"),preco,new Label("Custo de produção"),custo,new Label("Estoque atual: "+(atual==null?"0 (entrada por lote)":atual.getEstoqueAtual())),new Label("Estoque mínimo"),minimo,new Label("Imagem"),imagem,escolher);campos.setPadding(new Insets(10));
+        FichaVitrine ficha=atual==null?FichaVitrine.VAZIA:atual.getFichaVitrine();
+        ComboBox<Optional<TipoCombo>> tipoCombo=new ComboBox<>();tipoCombo.getItems().add(Optional.empty());
+        Arrays.stream(TipoCombo.values()).map(Optional::of).forEach(tipoCombo.getItems()::add);
+        tipoCombo.setConverter(new StringConverter<>(){
+            public String toString(Optional<TipoCombo> tipo){return tipo==null?"":tipo.map(TipoCombo::toString).orElse("Não participa do combo");}
+            public Optional<TipoCombo> fromString(String texto){return Optional.empty();}
+        });
+        tipoCombo.setValue(Optional.ofNullable(ficha.tipo()));
+        TextField recheio=campo(ficha.recheio(),"Ex.: Frango c/ Catupiry");recheio.setDisable(!temRecheio(ficha.tipo()));
+        tipoCombo.valueProperty().addListener((o,a,n)->recheio.setDisable(n==null||!temRecheio(n.orElse(null))));
+        ComboBox<PresencaIngrediente> queijo=presenca(ficha.contemQueijo()), calabresa=presenca(ficha.contemCalabresa());
+        CheckBox assado=new CheckBox("Confirmado como assado");assado.setSelected(ficha.assado());
+        VBox campos=new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,new Label("Categoria"),categoria,new Label("Preço de venda"),preco,new Label("Custo de produção"),custo,new Label("Estoque atual: "+(atual==null?"0 (entrada por lote)":atual.getEstoqueAtual())),new Label("Estoque mínimo"),minimo,new Label("Imagem"),imagem,escolher,
+                new Separator(),new Label("Ficha de personalização da vitrine"),new Label("Massa ou acompanhamento do combo"),tipoCombo,new Label("Recheio do produto"),recheio,
+                new Label("Contém queijo?"),queijo,new Label("Contém calabresa?"),calabresa,assado);campos.setPadding(new Insets(10));
         ScrollPane scroll=new ScrollPane(campos);scroll.setFitToWidth(true);scroll.setPrefViewportHeight(470);dialog.getDialogPane().setContent(scroll);
         if(dialog.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
         try{
             Produto p=new Produto(atual==null?null:atual.getId(),categoria.getValue(),nome.getText(),descricao.getText(),decimal(preco.getText()),decimal(custo.getText()),atual==null?BigDecimal.ZERO:atual.getEstoqueAtual(),decimal(minimo.getText()),imagem.getText().isBlank()?null:imagem.getText());
+            p.setFichaVitrine(new FichaVitrine(tipoCombo.getValue().orElse(null),recheio.getText(),queijo.getValue().contem,calabresa.getValue().contem,assado.isSelected()));
             executar(()->{if(atual==null)produtos.cadastrar(p);else if(!produtos.atualizar(p))throw new IllegalStateException("Produto não encontrado");return null;},x->estoque());
-        }catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Dados inválidos","Confira nome, valores e estoque mínimo.");}
+        }catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Dados inválidos",e instanceof IllegalArgumentException&&e.getMessage()!=null?e.getMessage():"Confira nome, valores, estoque mínimo e a ficha de personalização.");}
+    }
+    private static boolean temRecheio(TipoCombo tipo){return tipo!=null&&tipo!=TipoCombo.ACOMPANHAMENTO;}
+    private enum PresencaIngrediente {
+        NAO_CONFERIDO("Não conferido",null), CONTEM("Contém",true), NAO_CONTEM("Não contém",false);
+        private final String rotulo;private final Boolean contem;
+        PresencaIngrediente(String rotulo,Boolean contem){this.rotulo=rotulo;this.contem=contem;}
+        @Override public String toString(){return rotulo;}
+    }
+    private static ComboBox<PresencaIngrediente> presenca(Boolean valor){
+        ComboBox<PresencaIngrediente> caixa=new ComboBox<>();caixa.getItems().setAll(PresencaIngrediente.values());
+        caixa.setValue(valor==null?PresencaIngrediente.NAO_CONFERIDO:valor?PresencaIngrediente.CONTEM:PresencaIngrediente.NAO_CONTEM);
+        return caixa;
     }
     private void entradaLote(Produto produto,List<Contato> contatos){
         if(produto==null)return;List<Fornecedor> fornecedores=contatos.stream().filter(Fornecedor.class::isInstance).map(Fornecedor.class::cast).toList();
@@ -347,6 +377,16 @@ public class AdminDashboardController implements TelaAutenticada {
         long versao=iniciarTela("Moderação de avaliações");carregar(versao,avaliacoes::listar,lista->{
             conteudo.getChildren().clear();TableView<AvaliacaoResumo> tabela=new TableView<>();tabela.setId("tabela-avaliacoes");tabela.setPlaceholder(estado("Nenhuma avaliação cadastrada."));
             coluna(tabela,"Cliente",AvaliacaoResumo::cliente,120);coluna(tabela,"Produto",AvaliacaoResumo::produto,120);coluna(tabela,"Nota",a->a.nota()+" / 5",65);coluna(tabela,"Comentário",a->nulo(a.comentario()),220);coluna(tabela,"Resposta oficial",a->nulo(a.resposta()),220);
+            TableColumn<AvaliacaoResumo,String> fotos=new TableColumn<>("Foto anexada");fotos.setPrefWidth(115);
+            fotos.setCellValueFactory(d->new ReadOnlyStringWrapper(d.getValue().fotoUrl()));
+            fotos.setCellFactory(c->new TableCell<>(){
+                @Override protected void updateItem(String foto,boolean vazia){
+                    super.updateItem(foto,vazia);setGraphic(null);setText(null);
+                    if(vazia)return;
+                    var miniatura=FotoAvaliacaoUi.miniatura(foto,92,64,"Foto anexada à avaliação");
+                    if(miniatura.isPresent())setGraphic(miniatura.get());else setText(foto==null?"Sem foto":"Arquivo indisponível");
+                }
+            });tabela.getColumns().add(2,fotos);
             tabela.getItems().setAll(lista);tabela.setPrefHeight(400);
             Button responder=botao("Responder oficialmente",()->{AvaliacaoResumo a=tabela.getSelectionModel().getSelectedItem();if(a==null)return;TextInputDialog d=new TextInputDialog(nulo(a.resposta()));d.initOwner(raiz.getScene().getWindow());d.setTitle("Resposta oficial");d.setHeaderText("Resposta para "+a.cliente());d.showAndWait().ifPresent(resposta->{if(resposta.isBlank()){avisar(Alert.AlertType.WARNING,"Resposta vazia","Escreva uma resposta antes de salvar.");return;}executar(()->avaliacoes.responder(usuario,a.id(),resposta),ok->{if(!ok)avisar(Alert.AlertType.WARNING,"Avaliação não encontrada","Atualize a listagem.");moderacao();});});},"button-primary");
             Button excluir=botao("Excluir avaliação",()->{AvaliacaoResumo a=tabela.getSelectionModel().getSelectedItem();if(a!=null&&confirmar("Excluir esta avaliação?"))executar(()->avaliacoes.excluir(usuario,a.id()),ok->{if(!ok)avisar(Alert.AlertType.WARNING,"Avaliação não encontrada","Atualize a listagem.");moderacao();});},"button-outline");

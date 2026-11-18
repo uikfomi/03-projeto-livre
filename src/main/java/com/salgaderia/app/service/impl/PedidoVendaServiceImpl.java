@@ -4,6 +4,8 @@ import com.salgaderia.app.dao.impl.*;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.PedidoVendaService;
+import com.salgaderia.app.service.PersonalizacaoService;
+import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.service.desconto.*;
 import com.salgaderia.app.util.ConnectionFactory;
 import java.math.BigDecimal;
@@ -27,16 +29,25 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         if(usuario==null||usuario.getId()==null||!usuario.isAtivo())throw new IllegalArgumentException("Cliente autenticado obrigatório");
         return ConnectionFactory.executarEmTransacao(c->{
             Pedido anterior=pedidos.listarDoCliente(c,usuario).stream().filter(p->p.getStatus()==StatusPedido.ENTREGUE).findFirst().orElseThrow(()->new IllegalArgumentException("Você ainda não possui pedido concluído."));
-            Map<Long,BigDecimal> quantidades=new LinkedHashMap<>();
-            for(PedidoItem item:anterior.getItens())quantidades.merge(item.getProduto().getId(),item.getQuantidade(),BigDecimal::add);
+            Map<Long,BigDecimal> quantidades=PersonalizacaoService.quantidades(anterior.getItens());
+            Map<Long,Produto> atuais=new LinkedHashMap<>();
             List<PedidoItem> resultado=new ArrayList<>();
             for(var entrada:quantidades.entrySet()){
                 Produto atual=produtos.buscarPorId(c,entrada.getKey(),false).orElseThrow(()->new IllegalArgumentException("Um produto do pedido anterior não está mais disponível."));
-                if(atual.getEstoqueAtual().compareTo(entrada.getValue())<0)throw new IllegalArgumentException("Estoque insuficiente para "+atual.getNome());
+                if(atual.getEstoqueAtual().compareTo(entrada.getValue())<0)throw new EstoqueInsuficienteException(atual.getNome(),atual.getEstoqueAtual(),entrada.getValue());
                 try{entrada.getValue().intValueExact();}catch(ArithmeticException e){throw new IllegalArgumentException("O pedido anterior contém quantidade não inteira.",e);}
-                resultado.add(new PedidoItem(null,atual,entrada.getValue(),atual.getPrecoVenda()));
+                atuais.put(entrada.getKey(),atual);
             }
-            return List.copyOf(resultado);
+            Map<Long,BigDecimal> avulsos=new LinkedHashMap<>();
+            for(PedidoItem item:anterior.getItens()){
+                Produto atual=atuais.get(item.getProduto().getId());
+                if(item.getPersonalizacao()==null) {
+                    try{item.getQuantidade().intValueExact();}catch(ArithmeticException e){throw new IllegalArgumentException("O pedido anterior contém quantidade não inteira.",e);}
+                    avulsos.merge(atual.getId(),item.getQuantidade(),BigDecimal::add);
+                }else resultado.add(item.comProdutoAtual(atual));
+            }
+            avulsos.forEach((id,q)->resultado.add(new PedidoItem(null,atuais.get(id),q,atuais.get(id).getPrecoVenda())));
+            return PersonalizacaoService.descrever(resultado);
         });
     }
     @Override public long finalizar(Pedido pedido){ return finalizarInterno(pedido,null,null,null,null); }
@@ -60,7 +71,8 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             for(PedidoItem item:pedido.getItens()) {
                 Long id=item.getProduto().getId();
                 if(id==null)throw new IllegalArgumentException("Produto sem ID");
-                Produto p=produtos.buscarPorId(c,id,false).orElseThrow(()->new IllegalArgumentException("Produto não encontrado"));
+                Produto p=atuais.get(id);
+                if(p==null)p=produtos.buscarPorId(c,id,false).orElseThrow(()->new IllegalArgumentException("Produto não encontrado"));
                 if(p.getPrecoVenda().compareTo(item.getPrecoUnitario())!=0)throw new IllegalArgumentException("Preço do produto mudou");
                 atuais.put(id,p);
             }
@@ -69,7 +81,8 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
     }
     private ResultadoDesconto calcular(Connection c,Pedido pedido,String codigo,Map<Long,Produto> atuais) throws SQLException {
         List<PedidoItem> itens=new ArrayList<>();
-        for(PedidoItem item:pedido.getItens())itens.add(new PedidoItem(null,atuais.get(item.getProduto().getId()),item.getQuantidade(),item.getPrecoUnitario()));
+        for(PedidoItem item:pedido.getItens())itens.add(item.comProdutoAtual(atuais.get(item.getProduto().getId())));
+        PersonalizacaoService.validarComposicao(itens);
         long entregues=pedido.getCliente()==null||pedido.getCliente().getId()==null?0:pedidos.contarEntreguesDoCliente(c,pedido.getCliente().getId());
         Cupom cupom=null;
         if(codigo!=null&&!codigo.isBlank()){

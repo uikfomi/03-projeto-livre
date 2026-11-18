@@ -14,10 +14,13 @@ Execute os testes compatíveis com o ambiente; os testes de integração podem e
 | [ComandaIntegracaoTest.java](ComandaIntegracaoTest.java) | Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL. |
 | [CozinhaStateTest.java](CozinhaStateTest.java) | Verifica mensagens e progresso dos estados da cozinha. |
 | [DescontoIntegracaoTest.java](DescontoIntegracaoTest.java) | Integração de descontos e pagamentos no MySQL. |
-| [Etapa4IntegracaoTest.java](Etapa4IntegracaoTest.java) | Fluxos transacionais no MySQL. |
+| [Etapa4IntegracaoTest.java](Etapa4IntegracaoTest.java) | Verifica transações de estoque, pedidos, PDV, avaliações com foto e financeiro no MySQL. |
+| [FotoAvaliacaoStorageTest.java](FotoAvaliacaoStorageTest.java) | Testa a cópia validada, limites, caminhos locais e remoção de anexos. |
 | [PedidoAgendamentoTest.java](PedidoAgendamentoTest.java) | Verifica rejeição de agendamento passado. |
+| [PersonalizacaoServiceTest.java](PersonalizacaoServiceTest.java) | Testa a composição do combo, sorteio com restrições e desconto não cumulativo. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [RelatorioCsvTest.java](RelatorioCsvTest.java) | Verifica o balanço exportado em CSV. |
+| [VitrineV150IntegracaoTest.java](VitrineV150IntegracaoTest.java) | Valida baixa e devolução de estoque, restrições e histórico de combos e caixas no MySQL. |
 | [WhatsAppLinkServiceTest.java](WhatsAppLinkServiceTest.java) | Testa links, mensagens e configuração WhatsApp. |
 
 ## Árvore estrutural comentada
@@ -31,10 +34,13 @@ src/test/java/com/salgaderia/app/service/  # Reúne testes automatizados dos com
 ├── ComandaIntegracaoTest.java  # Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL.
 ├── CozinhaStateTest.java  # Verifica mensagens e progresso dos estados da cozinha.
 ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
-├── Etapa4IntegracaoTest.java  # Fluxos transacionais no MySQL.
+├── Etapa4IntegracaoTest.java  # Verifica transações de estoque, pedidos, PDV, avaliações com foto e financeiro no MySQL.
+├── FotoAvaliacaoStorageTest.java  # Testa a cópia validada, limites, caminhos locais e remoção de anexos.
 ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
+├── PersonalizacaoServiceTest.java  # Testa a composição do combo, sorteio com restrições e desconto não cumulativo.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
+├── VitrineV150IntegracaoTest.java  # Valida baixa e devolução de estoque, restrições e histórico de combos e caixas no MySQL.
 └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.
 ```
 

@@ -119,6 +119,6 @@ class AdminDashboardJavaFXTest {
         public Map<String,BigDecimal> produtosMaisVendidos(LocalDateTime i,LocalDateTime f){return Map.of("Coxinha",BigDecimal.ONE);}public Map<String,BigDecimal> receitaPorCategoria(LocalDateTime i,LocalDateTime f){return Map.of("Sem categoria",BigDecimal.TEN);}
     }
     private static class Avaliacoes implements AvaliacaoService {
-        public List<AvaliacaoResumo> listar(){return List.of();}public Map<Long,BigDecimal> mediasPorProduto(){return Map.of();}public long salvar(Avaliacao a){return 1;}public boolean responder(Usuario a,long id,String r){return true;}public boolean excluir(Usuario a,long id){return true;}
+        public List<AvaliacaoResumo> listar(){return List.of();}public List<AvaliacaoFoto> fotosRecentes(){return List.of();}public Map<Long,BigDecimal> mediasPorProduto(){return Map.of();}public long salvar(Avaliacao a,java.nio.file.Path foto){return 1;}public boolean responder(Usuario a,long id,String r){return true;}public boolean excluir(Usuario a,long id){return true;}
     }
 }

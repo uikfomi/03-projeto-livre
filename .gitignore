@@ -3,5 +3,7 @@ target/
 .idea/
 *.iml
 database.local.properties
+/uploads/avaliacoes/*
+!/uploads/avaliacoes/.gitkeep
 referencia-professor/
 referencia-professor/

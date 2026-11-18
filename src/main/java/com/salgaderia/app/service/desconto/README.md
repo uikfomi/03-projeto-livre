@@ -13,6 +13,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [CalculadoraDescontos.java](CalculadoraDescontos.java) | Seleciona o maior desconto elegível. |
 | [ContextoDesconto.java](ContextoDesconto.java) | Dados de entrada para estratégias de desconto. |
 | [Cupom.java](Cupom.java) | Valor de domínio de cupom. |
+| [DescontoCaixaMisteriosa.java](DescontoCaixaMisteriosa.java) | Oferece 15% sobre o valor de cada caixa como desconto não cumulativo. |
 | [DescontoCentoSalgados.java](DescontoCentoSalgados.java) | Estratégia de desconto para cento de salgados. |
 | [DescontoCupomPercentual.java](DescontoCupomPercentual.java) | Estratégia percentual por cupom. |
 | [DescontoFidelidade.java](DescontoFidelidade.java) | Estratégia para clientes fiéis. |
@@ -29,6 +30,7 @@ src/main/java/com/salgaderia/app/service/desconto/  # Agrupa os contratos, conte
 ├── CalculadoraDescontos.java  # Seleciona o maior desconto elegível.
 ├── ContextoDesconto.java  # Dados de entrada para estratégias de desconto.
 ├── Cupom.java  # Valor de domínio de cupom.
+├── DescontoCaixaMisteriosa.java  # Oferece 15% sobre o valor de cada caixa como desconto não cumulativo.
 ├── DescontoCentoSalgados.java  # Estratégia de desconto para cento de salgados.
 ├── DescontoCupomPercentual.java  # Estratégia percentual por cupom.
 ├── DescontoFidelidade.java  # Estratégia para clientes fiéis.

@@ -7,14 +7,14 @@ import java.util.*;
 public class ProdutoDAOImpl implements ProdutoDAO {
     private static final String SELECT = "SELECT p.*,c.nome AS categoria_nome,c.descricao AS categoria_descricao FROM produtos p LEFT JOIN categorias c ON c.id=p.categoria_id";
     @Override public long inserir(Connection c, Produto p) throws SQLException {
-        try (PreparedStatement ps = c.prepareStatement("INSERT INTO produtos(categoria_id,nome,descricao,preco_venda,custo_producao,estoque_atual,estoque_minimo,url_imagem) VALUES (?,?,?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
-            preencher(ps,p); ps.executeUpdate(); try (ResultSet rs=ps.getGeneratedKeys()) { if (!rs.next()) throw new SQLException("ID não retornado"); return rs.getLong(1); }
+        try (PreparedStatement ps = c.prepareStatement("INSERT INTO produtos(categoria_id,nome,descricao,preco_venda,custo_producao,estoque_atual,estoque_minimo,url_imagem,tipo_combo,recheio_combo,contem_queijo,contem_calabresa,assado_caixa) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
+            preencher(ps,p); preencherFicha(ps,9,p.getFichaVitrine()); ps.executeUpdate(); try (ResultSet rs=ps.getGeneratedKeys()) { if (!rs.next()) throw new SQLException("ID não retornado"); return rs.getLong(1); }
         }
     }
     @Override public boolean atualizar(Connection c, Produto p) throws SQLException {
         if (p.getId() == null) throw new IllegalArgumentException("ID obrigatório");
-        try (PreparedStatement ps=c.prepareStatement("UPDATE produtos SET categoria_id=?,nome=?,descricao=?,preco_venda=?,custo_producao=?,estoque_minimo=?,url_imagem=? WHERE id=?")) {
-            preencherAtualizacao(ps,p); ps.setLong(8,p.getId()); return ps.executeUpdate()==1;
+        try (PreparedStatement ps=c.prepareStatement("UPDATE produtos SET categoria_id=?,nome=?,descricao=?,preco_venda=?,custo_producao=?,estoque_minimo=?,url_imagem=?,tipo_combo=?,recheio_combo=?,contem_queijo=?,contem_calabresa=?,assado_caixa=? WHERE id=?")) {
+            preencherAtualizacao(ps,p); preencherFicha(ps,8,p.getFichaVitrine()); ps.setLong(13,p.getId()); return ps.executeUpdate()==1;
         }
     }
     @Override public boolean excluir(Connection c, long id) throws SQLException {
@@ -51,6 +51,19 @@ public class ProdutoDAOImpl implements ProdutoDAO {
     private Produto mapear(ResultSet rs) throws SQLException {
         Long id=(Long)rs.getObject("categoria_id",Long.class);
         Categoria categoria=id==null ? null : new Categoria(id,rs.getString("categoria_nome"),rs.getString("categoria_descricao"));
-        return new Produto(rs.getLong("id"),categoria,rs.getString("nome"),rs.getString("descricao"),rs.getBigDecimal("preco_venda"),rs.getBigDecimal("custo_producao"),rs.getBigDecimal("estoque_atual"),rs.getBigDecimal("estoque_minimo"),rs.getString("url_imagem"));
+        Produto produto = new Produto(rs.getLong("id"),categoria,rs.getString("nome"),rs.getString("descricao"),rs.getBigDecimal("preco_venda"),rs.getBigDecimal("custo_producao"),rs.getBigDecimal("estoque_atual"),rs.getBigDecimal("estoque_minimo"),rs.getString("url_imagem"));
+        String tipo=rs.getString("tipo_combo");
+        produto.setFichaVitrine(new FichaVitrine(tipo==null?null:FichaVitrine.TipoCombo.valueOf(tipo),
+                rs.getString("recheio_combo"),booleanoOpcional(rs,"contem_queijo"),
+                booleanoOpcional(rs,"contem_calabresa"),rs.getBoolean("assado_caixa")));
+        return produto;
+    }
+    private static Boolean booleanoOpcional(ResultSet rs,String coluna) throws SQLException {
+        boolean valor=rs.getBoolean(coluna);return rs.wasNull()?null:valor;
+    }
+    private static void preencherFicha(PreparedStatement ps,int i,FichaVitrine f) throws SQLException {
+        ps.setString(i,f.tipo()==null?null:f.tipo().name());ps.setString(i+1,f.recheio());
+        ps.setObject(i+2,f.contemQueijo(),Types.BOOLEAN);ps.setObject(i+3,f.contemCalabresa(),Types.BOOLEAN);
+        ps.setBoolean(i+4,f.assado());
     }
 }

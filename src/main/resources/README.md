@@ -34,7 +34,7 @@ src/main/resources/  # Agrupa telas FXML, estilos e configuração padrão consu
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo.
 │   ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-│   ├── cliente-vitrine.fxml  # Estrutura visual da vitrine e checkout.
+│   ├── cliente-vitrine.fxml  # Estrutura visual da vitrine, ações de personalização, galeria e checkout.
 │   ├── login.fxml  # Estrutura visual de login e cadastro.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.

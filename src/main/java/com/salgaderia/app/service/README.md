@@ -16,9 +16,12 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [AgendaService.java](AgendaService.java) | Contrato de operações e busca da agenda de clientes e fornecedores. |
 | [AutenticacaoService.java](AutenticacaoService.java) | Contrato para autenticação única e cadastro público de clientes. |
-| [AvaliacaoService.java](AvaliacaoService.java) | Contrato para avaliações, médias por produto e moderação administrativa. |
+| [AvaliacaoService.java](AvaliacaoService.java) | Contrato para avaliações, médias, fotos e moderação administrativa. |
 | [ComandaService.java](ComandaService.java) | Contrato para abertura, lançamento, rateio e pagamentos de comandas. |
+| [ComboBuilder.java](ComboBuilder.java) | Monta o combo com uma variante real da massa e do recheio e acompanhamento opcional. |
+| [FotoAvaliacaoStorage.java](FotoAvaliacaoStorage.java) | Valida, redimensiona, salva e remove imagens locais de avaliações. |
 | [PedidoVendaService.java](PedidoVendaService.java) | Contrato para simular descontos, finalizar pedidos e alterar status de vendas. |
+| [PersonalizacaoService.java](PersonalizacaoService.java) | Sorteia caixas, agrega estoque reservado no carrinho e valida composições e restrições. |
 | [ProdutoEstoqueService.java](ProdutoEstoqueService.java) | Contrato para produtos, consultas de estoque, entradas e perdas. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [RelatorioFinanceiroService.java](RelatorioFinanceiroService.java) | Contrato de cálculos de balanço, gráficos e exportação CSV. |
@@ -38,6 +41,7 @@ src/main/java/com/salgaderia/app/service/  # Define contratos e serviços de apl
 │   ├── CalculadoraDescontos.java  # Seleciona o maior desconto elegível.
 │   ├── ContextoDesconto.java  # Dados de entrada para estratégias de desconto.
 │   ├── Cupom.java  # Valor de domínio de cupom.
+│   ├── DescontoCaixaMisteriosa.java  # Oferece 15% sobre o valor de cada caixa como desconto não cumulativo.
 │   ├── DescontoCentoSalgados.java  # Estratégia de desconto para cento de salgados.
 │   ├── DescontoCupomPercentual.java  # Estratégia percentual por cupom.
 │   ├── DescontoFidelidade.java  # Estratégia para clientes fiéis.
@@ -48,18 +52,21 @@ src/main/java/com/salgaderia/app/service/  # Define contratos e serviços de apl
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── AgendaServiceImpl.java  # Valida e coordena cadastro, busca e alterações de contatos pela camada DAO.
 │   ├── AutenticacaoServiceImpl.java  # Orquestra login, verificação de senha e cadastro de cliente e usuário.
-│   ├── AvaliacaoServiceImpl.java  # Valida avaliações elegíveis e controla operações de moderação.
+│   ├── AvaliacaoServiceImpl.java  # Valida a entrega e coordena avaliações, upload e exclusão de fotos na moderação.
 │   ├── ComandaServiceImpl.java  # Orquestra estoque, validação de operador, pagamentos e fechamento atômico.
-│   ├── PedidoVendaServiceImpl.java  # Executa vendas transacionais, descontos, movimentações de estoque e transições.
+│   ├── PedidoVendaServiceImpl.java  # Finaliza vendas em transação, revalida personalizações, descontos e estoque e altera status.
 │   ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── RelatorioFinanceiroServiceImpl.java  # Calcula indicadores financeiros e gera o balanço CSV.
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── AgendaService.java  # Contrato de operações e busca da agenda de clientes e fornecedores.
 ├── AutenticacaoService.java  # Contrato para autenticação única e cadastro público de clientes.
-├── AvaliacaoService.java  # Contrato para avaliações, médias por produto e moderação administrativa.
+├── AvaliacaoService.java  # Contrato para avaliações, médias, fotos e moderação administrativa.
 ├── ComandaService.java  # Contrato para abertura, lançamento, rateio e pagamentos de comandas.
+├── ComboBuilder.java  # Monta o combo com uma variante real da massa e do recheio e acompanhamento opcional.
+├── FotoAvaliacaoStorage.java  # Valida, redimensiona, salva e remove imagens locais de avaliações.
 ├── PedidoVendaService.java  # Contrato para simular descontos, finalizar pedidos e alterar status de vendas.
+├── PersonalizacaoService.java  # Sorteia caixas, agrega estoque reservado no carrinho e valida composições e restrições.
 ├── ProdutoEstoqueService.java  # Contrato para produtos, consultas de estoque, entradas e perdas.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 ├── RelatorioFinanceiroService.java  # Contrato de cálculos de balanço, gráficos e exportação CSV.

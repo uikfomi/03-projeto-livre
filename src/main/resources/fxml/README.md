@@ -13,7 +13,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [admin-dashboard.fxml](admin-dashboard.fxml) | Estrutura visual do painel administrativo. |
 | [agenda-contatos.fxml](agenda-contatos.fxml) | Estrutura visual da agenda. |
-| [cliente-vitrine.fxml](cliente-vitrine.fxml) | Estrutura visual da vitrine e checkout. |
+| [cliente-vitrine.fxml](cliente-vitrine.fxml) | Estrutura visual da vitrine, ações de personalização, galeria e checkout. |
 | [login.fxml](login.fxml) | Estrutura visual de login e cadastro. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [selecao-modulos.fxml](selecao-modulos.fxml) | Estrutura visual da seleção de módulos. |
@@ -27,7 +27,7 @@ src/main/resources/fxml/  # Declara a estrutura visual das telas carregadas pelo
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo.
 ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-├── cliente-vitrine.fxml  # Estrutura visual da vitrine e checkout.
+├── cliente-vitrine.fxml  # Estrutura visual da vitrine, ações de personalização, galeria e checkout.
 ├── login.fxml  # Estrutura visual de login e cadastro.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.
