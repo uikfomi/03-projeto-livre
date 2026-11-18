@@ -13,19 +13,24 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [comanda/](comanda/) | Entidades de mesa, comanda, itens e pagamentos parciais. [Abrir guia](comanda/README.md). |
 | [enums/](enums/) | Enumerações com comportamento e respectivos testes. [Abrir guia](enums/README.md). |
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
+| [AssinaturaCliente.java](AssinaturaCliente.java) | Representa o plano do cliente, o desconto vigente e o estado da assinatura. |
 | [Avaliacao.java](Avaliacao.java) | Registra nota, comentário, resposta oficial e referência opcional da foto. |
 | [AvaliacaoFoto.java](AvaliacaoFoto.java) | Projeção pública de fotos de avaliações que não expõe dados da conta. |
 | [AvaliacaoResumo.java](AvaliacaoResumo.java) | Projeção de avaliação com comentário, resposta oficial e foto para moderação. |
 | [Categoria.java](Categoria.java) | Categoria de produtos. |
 | [Cliente.java](Cliente.java) | Contato especializado em cliente. |
+| [ConquistaCliente.java](ConquistaCliente.java) | Representa um selo e a data em que foi desbloqueado. |
 | [Contato.java](Contato.java) | Abstração comum de contatos. |
 | [FichaVitrine.java](FichaVitrine.java) | Dados confirmados no catálogo: tipo de combo, recheio, ingredientes e preparo assado. |
 | [Fornecedor.java](Fornecedor.java) | Contato especializado em fornecedor. |
+| [MensalidadeClube.java](MensalidadeClube.java) | Cotação imutável de valor e desconto de uma mensalidade pendente. |
 | [MovimentacaoEstoque.java](MovimentacaoEstoque.java) | Registro de entrada ou saída de estoque. |
-| [Pedido.java](Pedido.java) | Agregado do pedido, itens, desconto e pagamento. |
+| [Pedido.java](Pedido.java) | Agregado de pedido, itens, modalidade, pagamento, status e liberação da roleta. |
 | [PedidoFila.java](PedidoFila.java) | Resumo de pedido para a fila administrativa. |
 | [PedidoItem.java](PedidoItem.java) | Registra produto, quantidade, preço histórico e eventual personalização do item. |
 | [PersonalizacaoItem.java](PersonalizacaoItem.java) | Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes. |
+| [PlanoAssinatura.java](PlanoAssinatura.java) | Valida nome, descrição, preço mensal e percentual do plano. |
+| [PremioRoleta.java](PremioRoleta.java) | Representa o sorteio persistido, com pontos ou cupom exclusivo. |
 | [Produto.java](Produto.java) | Representa custos, preços, estoque e ficha de personalização do catálogo. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [Usuario.java](Usuario.java) | Abstração de usuário e permissões. |
@@ -40,8 +45,8 @@ O ponto inicial é `src/main/java/com/salgaderia/app/model/`.
 ```text
 src/main/java/com/salgaderia/app/model/  # Agrupa entidades, tipos de domínio e comportamentos encapsulados do sistema.
 ├── comanda/  # Entidades de mesa, comanda, itens e pagamentos parciais.
-│   ├── Comanda.java  # Resumo imutável com itens, pagamentos, total e saldo.
-│   ├── ItemComanda.java  # Item lançado com preço e quantidade paga.
+│   ├── Comanda.java  # Sessão da mesa e cálculo monetário de total, pagamentos e saldo.
+│   ├── ItemComanda.java  # Item lançado na comanda, com quantidade disponível e cotação por unidade.
 │   ├── Mesa.java  # Identificação, número e status da mesa.
 │   ├── PagamentoComanda.java  # Dados de pagamento parcial por valor ou item.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
@@ -56,19 +61,24 @@ src/main/java/com/salgaderia/app/model/  # Agrupa entidades, tipos de domínio e
 │   ├── TipoEntrega.java  # Modalidades de entrega.
 │   └── TipoMovimentacaoEstoque.java  # Tipos de movimentação de estoque.
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
+├── AssinaturaCliente.java  # Representa o plano do cliente, o desconto vigente e o estado da assinatura.
 ├── Avaliacao.java  # Registra nota, comentário, resposta oficial e referência opcional da foto.
 ├── AvaliacaoFoto.java  # Projeção pública de fotos de avaliações que não expõe dados da conta.
 ├── AvaliacaoResumo.java  # Projeção de avaliação com comentário, resposta oficial e foto para moderação.
 ├── Categoria.java  # Categoria de produtos.
 ├── Cliente.java  # Contato especializado em cliente.
+├── ConquistaCliente.java  # Representa um selo e a data em que foi desbloqueado.
 ├── Contato.java  # Abstração comum de contatos.
 ├── FichaVitrine.java  # Dados confirmados no catálogo: tipo de combo, recheio, ingredientes e preparo assado.
 ├── Fornecedor.java  # Contato especializado em fornecedor.
+├── MensalidadeClube.java  # Cotação imutável de valor e desconto de uma mensalidade pendente.
 ├── MovimentacaoEstoque.java  # Registro de entrada ou saída de estoque.
-├── Pedido.java  # Agregado do pedido, itens, desconto e pagamento.
+├── Pedido.java  # Agregado de pedido, itens, modalidade, pagamento, status e liberação da roleta.
 ├── PedidoFila.java  # Resumo de pedido para a fila administrativa.
 ├── PedidoItem.java  # Registra produto, quantidade, preço histórico e eventual personalização do item.
 ├── PersonalizacaoItem.java  # Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes.
+├── PlanoAssinatura.java  # Valida nome, descrição, preço mensal e percentual do plano.
+├── PremioRoleta.java  # Representa o sorteio persistido, com pontos ou cupom exclusivo.
 ├── Produto.java  # Representa custos, preços, estoque e ficha de personalização do catálogo.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 ├── Usuario.java  # Abstração de usuário e permissões.

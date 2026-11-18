@@ -13,6 +13,7 @@ Revise o conteúdo e a ordem das migrações; instruções ALTER podem não ser 
 | [etapa10_pagamento_vitrine.sql](etapa10_pagamento_vitrine.sql) | Amplia forma de pagamento para cartão genérico. |
 | [etapa11_salao_agendamento.sql](etapa11_salao_agendamento.sql) | Migração de agendamento, mesas, comandas e pagamentos parciais. |
 | [etapa12_combo_avaliacoes.sql](etapa12_combo_avaliacoes.sql) | Acrescenta a ficha do catálogo, personalização dos itens e caminhos das fotos de avaliações. |
+| [etapa13_clube_gamificacao.sql](etapa13_clube_gamificacao.sql) | Cria planos, assinaturas, mensalidades, conquistas e histórico da roleta; habilita cupons exclusivos. |
 | [etapa4_migracao.sql](etapa4_migracao.sql) | Migração de contatos, usuários e custos históricos. |
 | [etapa8_pdv.sql](etapa8_pdv.sql) | Colunas de origem e pagamento do PDV. |
 | [etapa9_descontos.sql](etapa9_descontos.sql) | Cupons e registro de descontos por pedido. |
@@ -28,6 +29,7 @@ database/scripts/  # Contém o schema e os scripts SQL de evolução da persist�
 ├── etapa10_pagamento_vitrine.sql  # Amplia forma de pagamento para cartão genérico.
 ├── etapa11_salao_agendamento.sql  # Migração de agendamento, mesas, comandas e pagamentos parciais.
 ├── etapa12_combo_avaliacoes.sql  # Acrescenta a ficha do catálogo, personalização dos itens e caminhos das fotos de avaliações.
+├── etapa13_clube_gamificacao.sql  # Cria planos, assinaturas, mensalidades, conquistas e histórico da roleta; habilita cupons exclusivos.
 ├── etapa4_migracao.sql  # Migração de contatos, usuários e custos históricos.
 ├── etapa8_pdv.sql  # Colunas de origem e pagamento do PDV.
 ├── etapa9_descontos.sql  # Cupons e registro de descontos por pedido.

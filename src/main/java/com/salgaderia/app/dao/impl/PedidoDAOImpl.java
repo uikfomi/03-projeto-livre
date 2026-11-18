@@ -11,13 +11,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 public class PedidoDAOImpl implements PedidoDAO {
     @Override public java.util.List<Pedido> listarDoCliente(Connection c,UsuarioCliente usuario) throws SQLException {
-        String sql="SELECT p.id pedido_id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.agendado_para,p.desconto,p.forma_pagamento,"
+        String sql="SELECT p.id pedido_id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.agendado_para,p.desconto,p.forma_pagamento,p.roleta_liberada,"
                 + "i.id item_id,i.quantidade,i.preco_unitario,i.observacao_personalizada,i.grupo_personalizado,i.tipo_personalizacao,i.restricoes_personalizadas,pr.id produto_id,pr.nome produto_nome,pr.descricao produto_descricao,"
                 + "pr.preco_venda,pr.custo_producao,pr.estoque_atual,pr.estoque_minimo,pr.url_imagem,"
                 + "cat.id categoria_id,cat.nome categoria_nome,cat.descricao categoria_descricao "
                 + "FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id "
                 + "LEFT JOIN categorias cat ON cat.id=pr.categoria_id WHERE p.usuario_id=? ORDER BY p.criado_em DESC,p.id DESC,i.id";
-        record Dados(com.salgaderia.app.model.enums.StatusPedido status,com.salgaderia.app.model.enums.TipoEntrega entrega,String endereco,LocalDateTime data,LocalDateTime agendado,BigDecimal desconto,String pagamento,java.util.List<PedidoItem> itens) { }
+        record Dados(com.salgaderia.app.model.enums.StatusPedido status,com.salgaderia.app.model.enums.TipoEntrega entrega,String endereco,LocalDateTime data,LocalDateTime agendado,BigDecimal desconto,String pagamento,boolean roleta,java.util.List<PedidoItem> itens) { }
         java.util.Map<Long,Dados> grupos=new java.util.LinkedHashMap<>();
         try(PreparedStatement ps=c.prepareStatement(sql)){
             ps.setLong(1,usuario.getId());
@@ -25,7 +25,7 @@ public class PedidoDAOImpl implements PedidoDAO {
                 while(rs.next()){
                     long id=rs.getLong("pedido_id");
                     Dados dados=grupos.get(id);
-                    if(dados==null){Timestamp agendado=rs.getTimestamp("agendado_para");dados=new Dados(com.salgaderia.app.model.enums.StatusPedido.valueOf(rs.getString("status")),com.salgaderia.app.model.enums.TipoEntrega.valueOf(rs.getString("tipo_entrega")),rs.getString("endereco_entrega"),rs.getTimestamp("criado_em").toLocalDateTime(),agendado==null?null:agendado.toLocalDateTime(),rs.getBigDecimal("desconto"),rs.getString("forma_pagamento"),new java.util.ArrayList<>());grupos.put(id,dados);}
+                    if(dados==null){Timestamp agendado=rs.getTimestamp("agendado_para");dados=new Dados(com.salgaderia.app.model.enums.StatusPedido.valueOf(rs.getString("status")),com.salgaderia.app.model.enums.TipoEntrega.valueOf(rs.getString("tipo_entrega")),rs.getString("endereco_entrega"),rs.getTimestamp("criado_em").toLocalDateTime(),agendado==null?null:agendado.toLocalDateTime(),rs.getBigDecimal("desconto"),rs.getString("forma_pagamento"),rs.getBoolean("roleta_liberada"),new java.util.ArrayList<>());grupos.put(id,dados);}
                     Long categoriaId=rs.getObject("categoria_id",Long.class);
                     Categoria categoria=categoriaId==null?null:new Categoria(categoriaId,rs.getString("categoria_nome"),rs.getString("categoria_descricao"));
                     Produto produto=new Produto(rs.getLong("produto_id"),categoria,rs.getString("produto_nome"),rs.getString("produto_descricao"),rs.getBigDecimal("preco_venda"),rs.getBigDecimal("custo_producao"),rs.getBigDecimal("estoque_atual"),rs.getBigDecimal("estoque_minimo"),rs.getString("url_imagem"));
@@ -35,7 +35,7 @@ public class PedidoDAOImpl implements PedidoDAO {
             }
         }
         java.util.List<Pedido> resultado=new java.util.ArrayList<>();
-        grupos.forEach((id,d)->{Pedido pedido=new Pedido(id,usuario,usuario.getCliente(),d.status(),d.entrega(),d.endereco(),d.data(),d.itens());pedido.setAgendadoPara(d.agendado());pedido.setDesconto(d.desconto());if(d.pagamento()!=null)pedido.setFormaPagamento(com.salgaderia.app.model.enums.FormaPagamento.valueOf(d.pagamento()));resultado.add(pedido);});
+        grupos.forEach((id,d)->{Pedido pedido=new Pedido(id,usuario,usuario.getCliente(),d.status(),d.entrega(),d.endereco(),d.data(),d.itens());pedido.setAgendadoPara(d.agendado());pedido.setDesconto(d.desconto());pedido.setRoletaLiberada(d.roleta());if(d.pagamento()!=null)pedido.setFormaPagamento(com.salgaderia.app.model.enums.FormaPagamento.valueOf(d.pagamento()));resultado.add(pedido);});
         return resultado;
     }
     private static PersonalizacaoItem personalizacao(ResultSet rs) throws SQLException {

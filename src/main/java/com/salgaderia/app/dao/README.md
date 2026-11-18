@@ -14,14 +14,16 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [AvaliacaoDAO.java](AvaliacaoDAO.java) | Contrato JDBC para avaliações, médias, galeria de fotos e moderação. |
 | [CategoriaDAO.java](CategoriaDAO.java) | Contrato para cadastrar, atualizar, buscar, listar e excluir categorias. |
+| [ClubeDAO.java](ClubeDAO.java) | Contrato de persistência de planos, assinaturas e mensalidades. |
 | [ComandaDAO.java](ComandaDAO.java) | Contrato JDBC para mesas, itens, pagamentos e fechamento transacional. |
 | [ContatoDAO.java](ContatoDAO.java) | Contrato para cadastro, edição, exclusão e busca filtrada de contatos. |
-| [CupomDAO.java](CupomDAO.java) | Contrato para consultar cupom ativo por código. |
+| [CupomDAO.java](CupomDAO.java) | Contrato de consulta de cupons públicos ou exclusivos e expiração dos últimos. |
+| [GamificacaoDAO.java](GamificacaoDAO.java) | Contrato de contas, selos, elegibilidade da roleta e prêmios. |
 | [MovimentacaoEstoqueDAO.java](MovimentacaoEstoqueDAO.java) | Contrato para registrar movimentações e calcular perdas por período. |
 | [PedidoDAO.java](PedidoDAO.java) | Contrato para pedidos, fila, status, pagamentos, descontos e agregações de vendas. |
 | [ProdutoDAO.java](ProdutoDAO.java) | Contrato para cadastro de produtos, consultas e atualização de estoque. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
-| [UsuarioDAO.java](UsuarioDAO.java) | Contrato para inserir usuários, consultar login e atualizar senhas. |
+| [UsuarioDAO.java](UsuarioDAO.java) | Contrato de acesso a usuários, credenciais e bloqueio transacional da conta do cliente. |
 
 ## Árvore estrutural comentada
 
@@ -33,25 +35,29 @@ src/main/java/com/salgaderia/app/dao/  # Define operações de acesso a dados in
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── AvaliacaoDAOImpl.java  # Persiste avaliações e fotos e consulta a galeria e dados de moderação.
 │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
+│   ├── ClubeDAOImpl.java  # Executa consultas e atualizações JDBC para adesões, vigência e mensalidades.
 │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
-│   ├── CupomDAOImpl.java  # Consulta JDBC parametrizada para localizar cupons ativos.
+│   ├── CupomDAOImpl.java  # Valida disponibilidade e titular de cupons e encerra os exclusivos na compra seguinte.
+│   ├── GamificacaoDAOImpl.java  # Grava selos e prêmios e consulta os fatos de pedido usados pelo Observer.
 │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-│   ├── PedidoDAOImpl.java  # Persiste pedidos e composições personalizadas e consulta histórico, fila e indicadores.
+│   ├── PedidoDAOImpl.java  # Persiste pedidos e personalizações e consulta histórico, fila, roleta e indicadores.
 │   ├── ProdutoDAOImpl.java  # Persiste produtos, estoque e fichas de personalização com JDBC.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
-│   └── UsuarioDAOImpl.java  # Persiste usuários, consulta credenciais e atualiza hashes de senha.
+│   └── UsuarioDAOImpl.java  # Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio.
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── AvaliacaoDAO.java  # Contrato JDBC para avaliações, médias, galeria de fotos e moderação.
 ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
+├── ClubeDAO.java  # Contrato de persistência de planos, assinaturas e mensalidades.
 ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
 ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
-├── CupomDAO.java  # Contrato para consultar cupom ativo por código.
+├── CupomDAO.java  # Contrato de consulta de cupons públicos ou exclusivos e expiração dos últimos.
+├── GamificacaoDAO.java  # Contrato de contas, selos, elegibilidade da roleta e prêmios.
 ├── MovimentacaoEstoqueDAO.java  # Contrato para registrar movimentações e calcular perdas por período.
 ├── PedidoDAO.java  # Contrato para pedidos, fila, status, pagamentos, descontos e agregações de vendas.
 ├── ProdutoDAO.java  # Contrato para cadastro de produtos, consultas e atualização de estoque.
 ├── README.md  # Guia de navegação e explicações desta pasta.
-└── UsuarioDAO.java  # Contrato para inserir usuários, consultar login e atualizar senhas.
+└── UsuarioDAO.java  # Contrato de acesso a usuários, credenciais e bloqueio transacional da conta do cliente.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../README.md)

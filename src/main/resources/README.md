@@ -14,7 +14,7 @@ O arquivo database.local.properties é local e ignorado pelo Git; verifique se a
 | [fxml/](fxml/) | Descrições de interface JavaFX. [Abrir guia](fxml/README.md). |
 | [icons/](icons/) | Espaço reservado para ícones. |
 | [images/](images/) | Espaço reservado para imagens. |
-| [database.properties](database.properties) | Template de configuração JDBC; não contém credenciais locais. |
+| [database.properties](database.properties) | Template de configuração JDBC e das propriedades opcionais de pagamento Pix. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 
 ## Árvore estrutural comentada
@@ -32,9 +32,9 @@ src/main/resources/  # Agrupa telas FXML, estilos e configuração padrão consu
 │   └── README.md  # Guia de navegação e explicações desta pasta.
 ├── fxml/  # Descrições de interface JavaFX.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo.
+│   ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo, com navegação para o Clube da Fome.
 │   ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-│   ├── cliente-vitrine.fxml  # Estrutura visual da vitrine, ações de personalização, galeria e checkout.
+│   ├── cliente-vitrine.fxml  # Estrutura da vitrine com personalização, galeria, checkout Pix e Clube da Fome.
 │   ├── login.fxml  # Estrutura visual de login e cadastro.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.
@@ -42,7 +42,7 @@ src/main/resources/  # Agrupa telas FXML, estilos e configuração padrão consu
 │   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── images/  # Espaço reservado para imagens.
 │   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── database.properties  # Template de configuração JDBC; não contém credenciais locais.
+├── database.properties  # Template de configuração JDBC e das propriedades opcionais de pagamento Pix.
 └── README.md  # Guia de navegação e explicações desta pasta.
 ```
 

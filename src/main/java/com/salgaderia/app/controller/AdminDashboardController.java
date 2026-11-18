@@ -12,6 +12,7 @@ import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.FotoAvaliacaoUi;
+import com.salgaderia.app.util.PixPainel;
 import com.salgaderia.app.util.TelaAutenticada;
 import com.salgaderia.app.util.WhatsAppUi;
 import java.io.File;
@@ -52,6 +53,7 @@ public class AdminDashboardController implements TelaAutenticada {
     private final RelatorioFinanceiroService financeiro;
     private final AvaliacaoService avaliacoes;
     private final ComandaService comandas;
+    private final ClubeService clube;
     private Usuario usuario;
     private long telaAtual;
     private final WhatsAppLinkService whatsapp = new WhatsAppLinkService();
@@ -73,7 +75,11 @@ public class AdminDashboardController implements TelaAutenticada {
         this(produtos,pedidos,agenda,financeiro,avaliacoes,new ComandaServiceImpl());
     }
     public AdminDashboardController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AgendaService agenda,RelatorioFinanceiroService financeiro,AvaliacaoService avaliacoes,ComandaService comandas){
+        this(produtos,pedidos,agenda,financeiro,avaliacoes,comandas,new ClubeServiceImpl());
+    }
+    public AdminDashboardController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AgendaService agenda,RelatorioFinanceiroService financeiro,AvaliacaoService avaliacoes,ComandaService comandas,ClubeService clube){
         this.produtos=Objects.requireNonNull(produtos);this.pedidos=Objects.requireNonNull(pedidos);this.agenda=Objects.requireNonNull(agenda);this.financeiro=Objects.requireNonNull(financeiro);this.avaliacoes=Objects.requireNonNull(avaliacoes);this.comandas=Objects.requireNonNull(comandas);
+        this.clube=Objects.requireNonNull(clube);
     }
     @FXML private void initialize(){
         notificarStatus.setSelected(true);notificarStatus.setId("notificar-status");
@@ -144,8 +150,11 @@ public class AdminDashboardController implements TelaAutenticada {
         TextField cupom=new TextField();cupom.setId("pdv-cupom");cupom.setPromptText("Cupom opcional");
         Label mensagemDesconto=new Label();mensagemDesconto.setWrapText(true);
         ResultadoDesconto[] desconto={null};long[] geracao={0};Button[] botaoConcluir={null};
+        PixPainel pix=new PixPainel();pix.setId("pdv-pix");
         Runnable atualizarTroco=()->{
             recebido.setDisable(!forma.getValue().isPermiteTroco());
+            pix.atualizar(forma.getValue()==FormaPagamento.PIX,desconto[0]==null?null:desconto[0].total(),null,
+                    desconto[0]==null?"O código PIX aparece quando o total estiver disponível.":"Confira o recebimento no banco antes de finalizar.");
             try {BigDecimal valor=decimal(recebido.getText());troco.setText(forma.getValue().isPermiteTroco()?(desconto[0]==null?"Calcule o total.":"Troco: "+moeda(valor.subtract(desconto[0].total()).max(BigDecimal.ZERO))):"Sem troco para esta forma.");}
             catch(RuntimeException e){troco.setText(forma.getValue().isPermiteTroco()?"Informe o valor recebido.":"Sem troco para esta forma.");}
         };
@@ -188,6 +197,8 @@ public class AdminDashboardController implements TelaAutenticada {
         Button concluir=botao("Finalizar venda",()->{
             if(carrinho.isEmpty()||desconto[0]==null){avisar(Alert.AlertType.WARNING,"Carrinho não calculado","Aguarde o cálculo do desconto.");return;}
             FormaPagamento selecionada=forma.getValue();BigDecimal valor;
+            if(selecionada==FormaPagamento.PIX&&desconto[0].total().signum()>0&&
+                    !confirmar("Você conferiu o recebimento PIX de "+moeda(desconto[0].total())+" no banco?"))return;
             try{valor=selecionada.isPermiteTroco()?decimal(recebido.getText()):desconto[0].total();if(valor.compareTo(desconto[0].total())<0)throw new IllegalArgumentException();}
             catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Valor inválido","Informe um valor recebido suficiente para a venda.");return;}
             Cliente contato=cliente.getValue() instanceof Cliente c?c:null;
@@ -197,7 +208,7 @@ public class AdminDashboardController implements TelaAutenticada {
             executar(()->pedidos.finalizarPdv(pedido,selecionada,valor,codigo,esperado),id->{carrinho.clear();avisar(Alert.AlertType.INFORMATION,"Venda concluída","Venda #"+id+" registrada com baixa de estoque.");pdv();},atualizar);
         },"button-primary");concluir.setId("pdv-concluir");concluir.setMaxWidth(Double.MAX_VALUE);
         botaoConcluir[0]=concluir;
-        VBox resumo=new VBox(10,texto("Venda atual","admin-subtitulo"),listaCarrinho,new Separator(),new Label("Cliente"),cliente,limparCliente,new Label("Cupom"),cupom,mensagemDesconto,new Label("Pagamento"),forma,recebido,troco,new Label("Total"),total,concluir);resumo.getStyleClass().add("admin-card");resumo.setPrefWidth(290);
+        VBox resumo=new VBox(10,texto("Venda atual","admin-subtitulo"),listaCarrinho,new Separator(),new Label("Cliente"),cliente,limparCliente,new Label("Cupom"),cupom,mensagemDesconto,new Label("Pagamento"),forma,recebido,troco,new Label("Total"),total,pix,concluir);resumo.getStyleClass().add("admin-card");resumo.setPrefWidth(290);
         HBox corpo=new HBox(16,produtosBox,resumo);conteudo.getChildren().addAll(subtitulo,corpo);atualizar.run();
     }
     private BigDecimal totalCarrinho(){return carrinho.values().stream().map(i->i.produto().getPrecoVenda().multiply(BigDecimal.valueOf(i.quantidade()))).reduce(BigDecimal.ZERO,BigDecimal::add);}
@@ -237,15 +248,45 @@ public class AdminDashboardController implements TelaAutenticada {
         VBox fechamento=new VBox(8);fechamento.setVisible(false);fechamento.setManaged(false);
         TextField pessoas=campo("2","Pessoas");Label rateio=new Label();rateio.setWrapText(true);
         Button dividir=botao("Calcular divisão igual",()->{try{List<BigDecimal> partes=comandas.dividirIgualmente(comanda.saldo(),Integer.parseInt(pessoas.getText().trim()));rateio.setText("Valores por pessoa: "+partes.stream().map(AdminDashboardController::moeda).collect(java.util.stream.Collectors.joining(" · ")));}catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Divisão inválida",e.getMessage());}},"button-secondary");
-        TextField pessoa=campo("","Nome da pessoa");pessoa.setId("comanda-pessoa");TextField valor=campo("","Valor em R$");valor.setId("comanda-valor");
-        ComboBox<FormaPagamento> forma=new ComboBox<>();forma.getItems().setAll(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO);forma.setValue(FormaPagamento.PIX);
+        TextField pessoa=campo("","Nome da pessoa");pessoa.setId("comanda-pessoa");TextField valor=campo("","Deixe em branco para pagar o saldo");valor.setId("comanda-valor");
+        ComboBox<FormaPagamento> forma=new ComboBox<>();forma.setId("comanda-forma");forma.getItems().setAll(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO);forma.setValue(FormaPagamento.PIX);
         ComboBox<ItemComanda> item=new ComboBox<>();item.getItems().setAll(comanda.itens());item.setPromptText("Item opcional");
+        item.setId("comanda-item-pagamento");
         item.setConverter(new StringConverter<>(){public String toString(ItemComanda i){return i==null?"":i.produto()+" · disponível "+i.quantidadeDisponivel().stripTrailingZeros().toPlainString();}public ItemComanda fromString(String s){return null;}});
         TextField qtdItem=campo("1","Quantidade do item");
-        Button pagarValor=botao("Registrar valor",()->{try{String nome=pessoa.getText();FormaPagamento pagamento=forma.getValue();BigDecimal quantia=decimal(valor.getText());executar(()->comandas.pagarValor(mesaId,atendimentoId,nome,pagamento,quantia,usuario),fechada->{if(fechada){avisar(Alert.AlertType.INFORMATION,"Comanda encerrada","Saldo quitado e mesa liberada.");mesas();}else atualizarMesa(mesaId,atendimentoId);});}catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Valor inválido","Informe o valor do pagamento.");}},"button-primary");
-        Button pagarItem=botao("Pagar item",()->{try{ItemComanda escolhido=Objects.requireNonNull(item.getValue());String nome=pessoa.getText();FormaPagamento pagamento=forma.getValue();BigDecimal qtd=decimal(qtdItem.getText());executar(()->comandas.pagarItem(mesaId,atendimentoId,nome,pagamento,escolhido.id(),qtd,usuario),fechada->{if(fechada){avisar(Alert.AlertType.INFORMATION,"Comanda encerrada","Saldo quitado e mesa liberada.");mesas();}else atualizarMesa(mesaId,atendimentoId);});}catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Item inválido","Selecione um item e informe a quantidade.");}},"button-secondary");
+        RadioButton porValor=new RadioButton("Por valor / saldo"),porItem=new RadioButton("Por item");
+        porItem.setId("comanda-por-item");
+        ToggleGroup modo=new ToggleGroup();porValor.setToggleGroup(modo);porItem.setToggleGroup(modo);porValor.setSelected(true);
+        PixPainel pix=new PixPainel();pix.setId("comanda-pix");
+        Supplier<BigDecimal> cotar=()->porItem.isSelected()?Objects.requireNonNull(item.getValue()).cotarPagamento(decimal(qtdItem.getText())):
+                valor.getText().isBlank()?comanda.saldo():decimal(valor.getText());
+        Runnable atualizarPix=()->{
+            BigDecimal quantia=null;
+            try{BigDecimal calculada=cotar.get();if(comanda.aceitaPagamento(calculada))quantia=calculada;}catch(RuntimeException ignorada){/* Input ainda incompleto. */}
+            pix.atualizar(forma.getValue()==FormaPagamento.PIX,quantia,null,
+                    quantia==null?"Escolha um valor válido ou um item para gerar o PIX.":"Confira o recebimento no banco antes de registrar.");
+        };
+        valor.textProperty().addListener((o,a,n)->atualizarPix.run());qtdItem.textProperty().addListener((o,a,n)->atualizarPix.run());
+        item.valueProperty().addListener((o,a,n)->atualizarPix.run());forma.valueProperty().addListener((o,a,n)->atualizarPix.run());
+        modo.selectedToggleProperty().addListener((o,a,n)->{if(n==null)modo.selectToggle(a);atualizarPix.run();});
+        VBox entradaValor=new VBox(4,new Label("Valor do pagamento"),valor),entradaItem=new VBox(4,new Label("Item e quantidade"),item,qtdItem);
+        entradaValor.visibleProperty().bind(porValor.selectedProperty());entradaValor.managedProperty().bind(entradaValor.visibleProperty());
+        entradaItem.visibleProperty().bind(porItem.selectedProperty());entradaItem.managedProperty().bind(entradaItem.visibleProperty());
+        Button registrar=botao("Registrar pagamento",()->{
+            try{
+                String nome=pessoa.getText();FormaPagamento pagamento=forma.getValue();BigDecimal quantia=cotar.get();
+                if(nome.isBlank()||nome.trim().length()>100||!comanda.aceitaPagamento(quantia))throw new IllegalArgumentException();
+                if(pagamento==FormaPagamento.PIX&&!confirmar("Você conferiu o recebimento PIX de "+moeda(quantia)+" no banco?"))return;
+                ItemComanda escolhido=porItem.isSelected()?item.getValue():null;
+                BigDecimal qtd=escolhido==null?null:decimal(qtdItem.getText());
+                executar(()->escolhido==null?comandas.pagarValor(mesaId,atendimentoId,nome,pagamento,quantia,usuario):
+                        comandas.pagarItem(mesaId,atendimentoId,nome,pagamento,escolhido.id(),qtd,usuario),
+                        fechada->{if(fechada){avisar(Alert.AlertType.INFORMATION,"Comanda encerrada","Saldo quitado e mesa liberada.");mesas();}else atualizarMesa(mesaId,atendimentoId);});
+            }catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Pagamento inválido","Confira a pessoa, o valor ou o item e o saldo disponível.");}
+        },"button-primary");
         Button fecharZero=botao("Fechar com saldo zero",()->executar(()->{comandas.fecharSemSaldo(mesaId,atendimentoId,usuario);return null;},x->mesas()),"button-outline");fecharZero.setDisable(comanda.saldo().signum()!=0);
-        fechamento.getChildren().addAll(new Label("Divisão igual"),new HBox(8,pessoas,dividir),rateio,new Label("Pagamento parcial"),pessoa,forma,valor,pagarValor,new Label("Ou pagar por item"),item,qtdItem,pagarItem,fecharZero);
+        fechamento.getChildren().addAll(new Label("Divisão igual"),new HBox(8,pessoas,dividir),rateio,new Label("Pagamento"),pessoa,forma,
+                new HBox(8,porValor,porItem),entradaValor,entradaItem,pix,registrar,fecharZero);atualizarPix.run();
         Button abrirFechamento=botao("Fechar / Dividir Conta",()->{fechamento.setVisible(!fechamento.isVisible());fechamento.setManaged(fechamento.isVisible());},"button-secondary");abrirFechamento.setId("comanda-fechar");
         conteudo.getChildren().addAll(texto(comanda.mesa().nome()+" · "+comanda.mesa().status(),"admin-subtitulo"),linhas,new HBox(8,produto,quantidade,adicionar),new Label("Pagamentos"),pagamentos,texto("Total: "+moeda(comanda.total())+" · Pago: "+moeda(comanda.pago())+" · Saldo: "+moeda(comanda.saldo()),"admin-valor"),abrirFechamento,fechamento,botao("Voltar às mesas",this::mesas,"button-outline"));
     }
@@ -372,6 +413,64 @@ public class AdminDashboardController implements TelaAutenticada {
         executar(()->{try{financeiro.exportarCsv(relatorio,arquivo.toPath());return null;}catch(IOException e){throw new java.io.UncheckedIOException(e);}},x->avisar(Alert.AlertType.INFORMATION,"Balanço exportado","Arquivo CSV salvo com sucesso."));
     }
     private Node indicador(String nome,BigDecimal valor){VBox caixa=new VBox(8,texto(nome,"subtitle"),texto(moeda(valor),"admin-valor"));caixa.getStyleClass().add("admin-card");caixa.setPrefWidth(190);return caixa;}
+
+    @FXML private void clubeDaFome(){
+        if(!(usuario instanceof UsuarioAdmin admin))return;
+        long versao=iniciarTela("Clube da Fome");
+        carregar(versao,()->clube.painel(admin),painel->montarClube(admin,painel));
+    }
+    private void montarClube(UsuarioAdmin admin,ClubeService.Painel painel){
+        TableView<PlanoAssinatura> planos=new TableView<>();planos.setId("clube-planos");planos.setPrefHeight(190);
+        planos.setPlaceholder(estado("Nenhum plano cadastrado."));
+        coluna(planos,"Plano",PlanoAssinatura::nome,145);coluna(planos,"Descrição",PlanoAssinatura::descricao,265);
+        coluna(planos,"Mensalidade",p->moeda(p.mensalidade()),110);coluna(planos,"Desconto",p->percentual(p.descontoPercentual()),100);
+        coluna(planos,"Estado",p->p.ativo()?"Disponível":"Desativado",105);planos.getItems().setAll(painel.planos());
+        Button novo=botao("Novo plano",()->formularioPlano(admin,null),"button-primary");
+        Button editar=botao("Editar / ativar ou desativar",()->formularioPlano(admin,planos.getSelectionModel().getSelectedItem()),"button-secondary");
+        editar.disableProperty().bind(planos.getSelectionModel().selectedItemProperty().isNull());
+
+        TableView<AssinaturaCliente> ativos=new TableView<>();ativos.setId("clube-ativos");ativos.setPrefHeight(180);
+        ativos.setPlaceholder(estado("Nenhum assinante com vigência ativa."));
+        DateTimeFormatter data=DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        coluna(ativos,"Cliente",AssinaturaCliente::cliente,190);coluna(ativos,"Plano",AssinaturaCliente::plano,150);
+        coluna(ativos,"Benefício",a->percentual(a.descontoVigente()),120);
+        coluna(ativos,"Válida até",a->a.validaAte().minusDays(1).format(data),140);
+        ativos.getItems().setAll(painel.ativos());
+
+        TableView<MensalidadeClube> pendentes=new TableView<>();pendentes.setId("clube-pendentes");pendentes.setPrefHeight(180);
+        pendentes.setPlaceholder(estado("Nenhum pagamento aguardando confirmação."));
+        coluna(pendentes,"Referência PIX",m->"C"+m.id(),125);coluna(pendentes,"Cliente",MensalidadeClube::cliente,170);
+        coluna(pendentes,"Plano",MensalidadeClube::plano,150);coluna(pendentes,"Valor",m->moeda(m.valor()),110);
+        pendentes.getItems().setAll(painel.pendencias());
+        Button confirmar=botao("Confirmar mensalidade recebida",()->{
+            MensalidadeClube m=pendentes.getSelectionModel().getSelectedItem();
+            if(m!=null&&confirmar("Você conferiu no banco o recebimento de "+moeda(m.valor())+
+                    " para "+m.cliente()+" (referência C"+m.id()+")?"))
+                executar(()->{clube.confirmar(admin,m.usuarioId(),m.id());return null;},x->clubeDaFome());
+        },"button-primary");
+        confirmar.disableProperty().bind(pendentes.getSelectionModel().selectedItemProperty().isNull());
+        conteudo.getChildren().setAll(texto("Planos mensais", "admin-subtitulo"),planos,new HBox(8,novo,editar),
+                texto("Assinantes ativos","admin-subtitulo"),ativos,
+                texto("Mensalidades a conferir","admin-subtitulo"),
+                texto("Valide cada recebimento no banco antes de confirmar. Não há cobrança ou confirmação automática.","subtitle"),pendentes,confirmar);
+    }
+    private void formularioPlano(UsuarioAdmin admin,PlanoAssinatura atual){
+        Dialog<ButtonType> dialog=dialog(atual==null?"Novo plano do Clube da Fome":"Editar plano do Clube da Fome");
+        TextField nome=campo(atual==null?"":atual.nome(),"Nome do plano");
+        TextArea descricao=new TextArea(atual==null?"":atual.descricao());descricao.setWrapText(true);descricao.setPrefRowCount(3);
+        TextField valor=campo(atual==null?"":atual.mensalidade().toPlainString(),"Mensalidade em R$");
+        TextField desconto=campo(atual==null?"":atual.descontoPercentual().toPlainString(),"Desconto em %");
+        CheckBox ativo=new CheckBox("Disponível para novas adesões ou renovações");ativo.setSelected(atual==null||atual.ativo());
+        dialog.getDialogPane().setContent(new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,
+                new Label("Mensalidade"),valor,new Label("Desconto no checkout"),desconto,ativo));
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
+        try{
+            PlanoAssinatura plano=new PlanoAssinatura(atual==null?null:atual.id(),nome.getText(),descricao.getText(),
+                    decimal(valor.getText()),decimal(desconto.getText()),ativo.isSelected());
+            executar(()->{clube.salvarPlano(admin,plano);return null;},x->clubeDaFome());
+        }catch(IllegalArgumentException e){avisar(Alert.AlertType.WARNING,"Plano inválido",e instanceof NumberFormatException?"Confira a mensalidade e o desconto.":e.getMessage());}
+    }
+    private static String percentual(BigDecimal valor){return NumberFormat.getNumberInstance(BR).format(valor)+"%";}
 
     @FXML private void moderacao(){
         long versao=iniciarTela("Moderação de avaliações");carregar(versao,avaliacoes::listar,lista->{

@@ -14,7 +14,9 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [ConnectionFactory.java](ConnectionFactory.java) | Pool HikariCP e transações JDBC. |
 | [FotoAvaliacaoUi.java](FotoAvaliacaoUi.java) | Carrega miniaturas JavaFX de fotos de avaliações guardadas localmente. |
 | [Navegacao.java](Navegacao.java) | Navegação entre telas FXML. |
+| [PixPainel.java](PixPainel.java) | Componente JavaFX para QR, avisos e cópia do código Pix. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
+| [RoletaUi.java](RoletaUi.java) | Anima os setores da roda até o prêmio devolvido pelo serviço. |
 | [Senhas.java](Senhas.java) | Geração e verificação de hashes de senha. |
 | [TelaAutenticada.java](TelaAutenticada.java) | Contrato para telas com usuário autenticado. |
 | [WhatsAppUi.java](WhatsAppUi.java) | Feedback visual e alternativa para links WhatsApp. |
@@ -29,7 +31,9 @@ src/main/java/com/salgaderia/app/util/  # Concentra conexão, navegação, auten
 ├── ConnectionFactory.java  # Pool HikariCP e transações JDBC.
 ├── FotoAvaliacaoUi.java  # Carrega miniaturas JavaFX de fotos de avaliações guardadas localmente.
 ├── Navegacao.java  # Navegação entre telas FXML.
+├── PixPainel.java  # Componente JavaFX para QR, avisos e cópia do código Pix.
 ├── README.md  # Guia de navegação e explicações desta pasta.
+├── RoletaUi.java  # Anima os setores da roda até o prêmio devolvido pelo serviço.
 ├── Senhas.java  # Geração e verificação de hashes de senha.
 ├── TelaAutenticada.java  # Contrato para telas com usuário autenticado.
 └── WhatsAppUi.java  # Feedback visual e alternativa para links WhatsApp.

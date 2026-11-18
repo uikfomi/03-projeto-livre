@@ -10,8 +10,8 @@ Os saldos são derivados dos itens e pagamentos; as operações transacionais s�
 
 | Caminho | Conteúdo e responsabilidade |
 |---|---|
-| [Comanda.java](Comanda.java) | Resumo imutável com itens, pagamentos, total e saldo. |
-| [ItemComanda.java](ItemComanda.java) | Item lançado com preço e quantidade paga. |
+| [Comanda.java](Comanda.java) | Sessão da mesa e cálculo monetário de total, pagamentos e saldo. |
+| [ItemComanda.java](ItemComanda.java) | Item lançado na comanda, com quantidade disponível e cotação por unidade. |
 | [Mesa.java](Mesa.java) | Identificação, número e status da mesa. |
 | [PagamentoComanda.java](PagamentoComanda.java) | Dados de pagamento parcial por valor ou item. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
@@ -23,8 +23,8 @@ O ponto inicial é `src/main/java/com/salgaderia/app/model/comanda/`.
 
 ```text
 comanda/  # Domínio das mesas e comandas coletivas.
-├── Comanda.java  # Resumo imutável com itens, pagamentos, total e saldo.
-├── ItemComanda.java  # Item lançado com preço e quantidade paga.
+├── Comanda.java  # Sessão da mesa e cálculo monetário de total, pagamentos e saldo.
+├── ItemComanda.java  # Item lançado na comanda, com quantidade disponível e cotação por unidade.
 ├── Mesa.java  # Identificação, número e status da mesa.
 ├── PagamentoComanda.java  # Dados de pagamento parcial por valor ou item.
 ├── README.md  # Guia de navegação e explicações desta pasta.

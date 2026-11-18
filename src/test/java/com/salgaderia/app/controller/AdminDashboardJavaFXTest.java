@@ -39,6 +39,15 @@ class AdminDashboardJavaFXTest {
             aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#pdv-produto-1")!=null));
             fx(()->{Parent root=janela.get().getScene().getRoot();((Button)root.lookup("#pdv-produto-1")).fire();((TextField)root.lookup("#pdv-cupom")).setText("UIKFOMI10");((TextField)root.lookup("#pdv-recebido")).setText("10,00");return null;});
             aguardar(()->fx(()->((Label)janela.get().getScene().getRoot().lookup("#pdv-troco")).getText().contains("2,80")));
+            fx(()->{
+                Parent root=janela.get().getScene().getRoot();
+                @SuppressWarnings("unchecked") ComboBox<FormaPagamento> escolha=(ComboBox<FormaPagamento>)root.lookup("#pdv-forma");
+                escolha.setValue(FormaPagamento.PIX);
+                var pix=(com.salgaderia.app.util.PixPainel)root.lookup("#pdv-pix");
+                assertTrue(pix.isVisible());assertTrue(((Label)pix.getChildren().get(0)).getText().contains("7,20"));
+                assertTrue(pix.lookup("#pix-copiar").isVisible());
+                escolha.setValue(FormaPagamento.DINHEIRO);assertFalse(pix.isVisible());return null;
+            });
             Timeline timer=fx(()->{Timeline t=new Timeline(new KeyFrame(Duration.millis(50),e->{for(var w:List.copyOf(javafx.stage.Window.getWindows()))if(w instanceof Stage s&&s!=janela.get()&&s.getScene()!=null&&s.getScene().getRoot() instanceof DialogPane d){var ok=d.lookupButton(ButtonType.OK);if(ok instanceof Button b)b.fire();}}));t.setCycleCount(Animation.INDEFINITE);t.play();return t;});
             fx(()->{((Button)janela.get().getScene().getRoot().lookup("#pdv-concluir")).fire();return null;});
             aguardar(()->vendas.enviado.get()!=null);assertEquals(FormaPagamento.DINHEIRO,vendas.forma.get());assertEquals(new BigDecimal("10.00"),vendas.recebido.get());assertEquals("UIKFOMI10",vendas.codigo.get());
@@ -78,6 +87,18 @@ class AdminDashboardJavaFXTest {
             aguardar(()->comandas.quantidade.get()!=null);
             assertEquals(0,BigDecimal.ONE.compareTo(comandas.quantidade.get()));
             aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#comanda-fechar")!=null));
+            fx(()->{
+                Parent root=janela.get().getScene().getRoot();
+                ((Button)root.lookup("#comanda-fechar")).fire();
+                var pix=(com.salgaderia.app.util.PixPainel)root.lookup("#comanda-pix");
+                Label aviso=(Label)pix.getChildren().get(0);
+                assertTrue(pix.isVisible());assertTrue(aviso.getText().contains("8,00"));
+                ((TextField)root.lookup("#comanda-valor")).setText("3,50");
+                assertTrue(aviso.getText().contains("3,50"));
+                ((RadioButton)root.lookup("#comanda-por-item")).fire();
+                ((ComboBox<?>)root.lookup("#comanda-item-pagamento")).getSelectionModel().selectFirst();
+                assertTrue(aviso.getText().contains("8,00"));return null;
+            });
         }finally{fx(()->{janela.get().close();return null;});}
     }
     private static <T>T fx(Callable<T> c)throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
@@ -101,7 +122,10 @@ class AdminDashboardJavaFXTest {
     private static class ComandasTeste implements ComandaService {
         final AtomicReference<BigDecimal> quantidade=new AtomicReference<>();
         public List<Mesa> listarMesas(){return java.util.stream.IntStream.rangeClosed(1,10).mapToObj(i->new Mesa(i,i,"Mesa "+i,StatusMesa.LIVRE)).toList();}
-        public Comanda abrirOuConsultar(long id,Usuario u){return new Comanda(new Mesa(id,(int)id,"Mesa "+id,StatusMesa.OCUPADA),1,List.of(),List.of());}
+        public Comanda abrirOuConsultar(long id,Usuario u){
+            var itens=quantidade.get()==null?List.<ItemComanda>of():List.of(new ItemComanda(1,1,"Coxinha",new BigDecimal("1.000"),new BigDecimal("8.00"),BigDecimal.ZERO));
+            return new Comanda(new Mesa(id,(int)id,"Mesa "+id,StatusMesa.OCUPADA),1,itens,List.of());
+        }
         public Comanda consultar(long id,long a,Usuario u){return abrirOuConsultar(id,u);}
         public Comanda adicionarItem(long m,long a,long p,BigDecimal q,Usuario u){quantidade.set(q);return abrirOuConsultar(m,u);}
         public boolean pagarValor(long m,long a,String p,FormaPagamento f,BigDecimal v,Usuario u){return false;}

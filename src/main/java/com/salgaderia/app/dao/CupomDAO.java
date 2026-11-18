@@ -6,5 +6,6 @@ import java.sql.SQLException;
 import java.util.Optional;
 
 public interface CupomDAO {
-    Optional<Cupom> buscarAtivo(Connection conexao, String codigo) throws SQLException;
+    Optional<Cupom> buscarAtivo(Connection conexao,String codigo,Long usuarioVitrine) throws SQLException;
+    void encerrarCuponsExclusivos(Connection c,long usuarioVitrine) throws SQLException;
 }

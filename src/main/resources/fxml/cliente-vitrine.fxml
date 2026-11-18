@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import com.salgaderia.app.util.PixPainel?>
 <BorderPane fx:id="raiz" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.salgaderia.app.controller.ClienteVitrineController" stylesheets="@../css/cliente-vitrine.css" styleClass="vitrine-page">
     <top>
         <VBox spacing="16" styleClass="vitrine-header">
@@ -11,6 +12,7 @@
                 </VBox>
                 <Button fx:id="botaoCatalogo" text="Cardápio" onAction="#mostrarVitrine" styleClass="button-outline" />
                 <Button fx:id="botaoPedidos" text="Meus Pedidos" onAction="#mostrarPedidos" styleClass="button-secondary" />
+                <Button fx:id="botaoClube" text="Clube da Fome" onAction="#mostrarClube" styleClass="button-secondary" />
                 <Button fx:id="pedirDeSempre" text="Pedir o de Sempre (2 Cliques)" onAction="#pedirDeSempre" styleClass="button-secondary" />
                 <Button text="Sair" onAction="#sair" styleClass="button-outline" />
             </HBox>
@@ -56,15 +58,25 @@
                     </content>
                 </ScrollPane>
             </VBox>
+            <VBox fx:id="painelClube" spacing="12">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="Clube da Fome Ui K'Fomi" styleClass="secao-titulo" HBox.hgrow="ALWAYS" />
+                    <Button text="Atualizar clube" onAction="#mostrarClube" styleClass="button-outline" />
+                </HBox>
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" styleClass="rolagem-transparente">
+                    <content><VBox fx:id="conteudoClube" spacing="12" /></content>
+                </ScrollPane>
+            </VBox>
         </StackPane>
     </center>
     <right>
-        <VBox prefWidth="295" minWidth="270" spacing="12" styleClass="painel-carrinho">
+        <ScrollPane prefWidth="315" minWidth="280" hbarPolicy="NEVER" fitToWidth="true" styleClass="rolagem-transparente">
+            <content><VBox spacing="12" styleClass="painel-carrinho">
             <HBox alignment="CENTER_LEFT" spacing="8">
                 <Label text="Seu carrinho" styleClass="secao-titulo" HBox.hgrow="ALWAYS" />
                 <Label fx:id="contador" styleClass="subtitle" />
             </HBox>
-            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" styleClass="rolagem-transparente">
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefViewportHeight="140" styleClass="rolagem-transparente">
                 <content><VBox fx:id="itensCarrinho" spacing="8" /></content>
             </ScrollPane>
             <Separator />
@@ -84,6 +96,8 @@
             <Label fx:id="mensagemDesconto" wrapText="true" styleClass="subtitle" />
             <HBox alignment="CENTER_LEFT"><Label text="Total" HBox.hgrow="ALWAYS" styleClass="field-label" /><Label fx:id="total" styleClass="produto-preco" /></HBox>
             <Button fx:id="finalizar" text="Finalizar Pedido" maxWidth="Infinity" onAction="#finalizar" styleClass="button-primary" />
-        </VBox>
+            <PixPainel fx:id="pixCheckout" />
+            </VBox></content>
+        </ScrollPane>
     </right>
 </BorderPane>

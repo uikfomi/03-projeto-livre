@@ -23,6 +23,7 @@ import java.awt.image.BufferedImage;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.*;
 import javax.imageio.ImageIO;
@@ -78,6 +79,10 @@ class VitrineJavaFXTest {
                 assertTrue(((Button)loader.getNamespace().get("finalizar")).isDisabled());
                 @SuppressWarnings("unchecked") ComboBox<FormaPagamento> pagamento=(ComboBox<FormaPagamento>)loader.getNamespace().get("formaPagamento");
                 assertEquals(List.of(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO),List.copyOf(pagamento.getItems()));
+                pagamento.setValue(FormaPagamento.PIX);
+                var pix=(com.salgaderia.app.util.PixPainel)loader.getNamespace().get("pixCheckout");
+                assertTrue(pix.isVisible());assertTrue(((Label)pix.getChildren().get(0)).getText().contains("14,40"));
+                assertTrue(pix.lookup("#pix-copiar").isVisible());
                 pagamento.setValue(FormaPagamento.CARTAO);assertFalse(((Button)loader.getNamespace().get("finalizar")).isDisabled());return null;
             });
             fx(()->{((TextField)loader.getNamespace().get("busca")).setText("nada encontrado");return null;});
@@ -211,6 +216,54 @@ class VitrineJavaFXTest {
             try{fx(()->{if(stage.get()!=null){dialogoAberto(stage.get()).ifPresent(p->p.getScene().getWindow().hide());stage.get().close();}return null;});}
             finally{storage.excluir(foto);}
         }
+    }
+    @Test void clubeExibeVigenciaESelosERoletaAnimaOPremioPersistido() throws Exception {
+        Categoria categoria=new Categoria(1L,"Fritos",null);
+        Produto produto=new Produto(1L,categoria,"Coxinha",null,BigDecimal.TEN,BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
+        Cliente cliente=new Cliente(10L,"Ana",null,null,null,null,null);
+        UsuarioCliente usuario=new UsuarioCliente(20L,"Ana","ana","senha",true,cliente);
+        Pedido pedido=new Pedido(42L,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),
+                List.of(new PedidoItem(null,produto,BigDecimal.ONE,produto.getPrecoVenda())));
+        pedido.setRoletaLiberada(true);
+        ClubeService clube=new ClubeService(){
+            public Vitrine vitrine(UsuarioCliente u){
+                return new Vitrine(List.of(),new AssinaturaCliente(u.getId(),u.getNome(),1,"Fome Semanal",LocalDate.now().plusDays(10),new BigDecimal("5"),false),null,LocalDate.now());
+            }
+            public Painel painel(UsuarioAdmin u){throw new UnsupportedOperationException();}
+            public void salvarPlano(UsuarioAdmin u,PlanoAssinatura p){throw new UnsupportedOperationException();}
+            public void solicitar(UsuarioCliente u,long p){throw new UnsupportedOperationException();}
+            public void cancelar(UsuarioCliente u){throw new UnsupportedOperationException();}
+            public void confirmar(UsuarioAdmin u,long c,long m){throw new UnsupportedOperationException();}
+        };
+        GamificacaoService jogo=new GamificacaoService(){
+            public Perfil perfil(UsuarioCliente u){return new Perfil(List.of(new ConquistaCliente("PRIMEIRO_PEDIDO","Primeiro Pedido","Fez um pedido",LocalDateTime.now())),20,List.of());}
+            public PremioRoleta girar(UsuarioCliente u,long id){return new PremioRoleta(id,PremioRoleta.Tipo.CUPOM_7,"FOME-CUPOM-TESTE",true);}
+        };
+        var loader=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stage=new java.util.concurrent.atomic.AtomicReference<Stage>();
+        fx(()->{
+            FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));
+            l.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of(produto)),new PedidosTeste(List.of(pedido)),new AvaliacoesTeste(),clube,jogo));
+            Stage s=new Stage();s.setScene(new Scene(l.load(),1100,800));s.show();stage.set(s);loader.set(l);
+            ((ClienteVitrineController)l.getController()).definirUsuario(usuario);((Button)l.getNamespace().get("botaoClube")).fire();return null;
+        });
+        try {
+            aguardar(()->fx(()->stage.get().getScene().getRoot().lookup("#clube-status") instanceof Label l&&l.getText().contains("Ativa")));
+            fx(()->{
+                assertTrue(stage.get().getScene().getRoot().lookupAll(".label").stream().filter(Label.class::isInstance)
+                        .map(Label.class::cast).anyMatch(l->l.getText().contains("Primeiro Pedido")));
+                ((Button)loader.get().getNamespace().get("botaoPedidos")).fire();return null;
+            });
+            aguardar(()->fx(()->stage.get().getScene().getRoot().lookup("#roleta-42")!=null));
+            fx(()->{Platform.runLater(()->((Button)stage.get().getScene().getRoot().lookup("#roleta-42")).fire());return null;});
+            aguardar(()->fx(()->dialogoAberto(stage.get()).isPresent()));
+            fx(()->{confirmar(dialogoAberto(stage.get()).orElseThrow());return null;});
+            aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.lookup("#roleta-resultado") instanceof Label l&&l.getText().contains("Você ganhou")).orElse(false)));
+            fx(()->{
+                DialogPane p=dialogoAberto(stage.get()).orElseThrow();
+                assertEquals("FOME-CUPOM-TESTE",((TextField)p.lookup(".text-field")).getText());
+                ((Button)p.lookupButton(ButtonType.CLOSE)).fire();return null;
+            });
+        }finally{fx(()->{dialogoAberto(stage.get()).ifPresent(p->p.getScene().getWindow().hide());stage.get().close();return null;});}
     }
     private static Optional<DialogPane> dialogoAberto(Stage dona){
         for(var w:List.copyOf(javafx.stage.Window.getWindows()))

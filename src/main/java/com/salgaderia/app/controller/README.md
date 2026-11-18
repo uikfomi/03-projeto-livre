@@ -11,9 +11,9 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | Caminho | Conteúdo e responsabilidade |
 |---|---|
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
-| [AdminDashboardController.java](AdminDashboardController.java) | Coordena PDV, fila, fichas de produto, comandas, financeiro e moderação de avaliações. |
+| [AdminDashboardController.java](AdminDashboardController.java) | Coordena PDV, fila, produtos, comandas, financeiro, Clube da Fome e moderação. |
 | [AgendaController.java](AgendaController.java) | Interface da agenda de clientes e fornecedores. |
-| [ClienteVitrineController.java](ClienteVitrineController.java) | Coordena catálogo, carrinho, combos, caixa, checkout, pedidos e fotos de avaliações. |
+| [ClienteVitrineController.java](ClienteVitrineController.java) | Coordena vitrine, personalização, carrinho, Pix, pedidos, clube e roleta. |
 | [LoginController.java](LoginController.java) | Tela de login e cadastro público. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [SelecaoModulosController.java](SelecaoModulosController.java) | Seleção de módulos administrativos. |
@@ -25,9 +25,9 @@ O ponto inicial é `src/main/java/com/salgaderia/app/controller/`.
 ```text
 src/main/java/com/salgaderia/app/controller/  # Coordena a interação das telas e delega operações de negócio aos serviços.
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── AdminDashboardController.java  # Coordena PDV, fila, fichas de produto, comandas, financeiro e moderação de avaliações.
+├── AdminDashboardController.java  # Coordena PDV, fila, produtos, comandas, financeiro, Clube da Fome e moderação.
 ├── AgendaController.java  # Interface da agenda de clientes e fornecedores.
-├── ClienteVitrineController.java  # Coordena catálogo, carrinho, combos, caixa, checkout, pedidos e fotos de avaliações.
+├── ClienteVitrineController.java  # Coordena vitrine, personalização, carrinho, Pix, pedidos, clube e roleta.
 ├── LoginController.java  # Tela de login e cadastro público.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 └── SelecaoModulosController.java  # Seleção de módulos administrativos.

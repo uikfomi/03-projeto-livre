@@ -8,7 +8,6 @@ import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.ComandaService;
 import com.salgaderia.app.util.ConnectionFactory;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -61,10 +60,9 @@ public final class ComandaServiceImpl implements ComandaService {
             if(itemId!=null){
                 validarUnidades(quantidade);
                 ItemComanda item=comanda.itens().stream().filter(i->i.id()==itemId).findFirst().orElseThrow(()->new IllegalArgumentException("Item não pertence à comanda"));
-                if(quantidade.compareTo(item.quantidadeDisponivel())>0)throw new IllegalArgumentException("Quantidade de item já paga ou indisponível");
-                valorPagamento=item.precoUnitario().multiply(quantidade).setScale(2,RoundingMode.HALF_UP);
+                valorPagamento=item.cotarPagamento(quantidade);
             }
-            if(valorPagamento==null||valorPagamento.scale()>2||valorPagamento.signum()<=0||valorPagamento.compareTo(comanda.saldo())>0)throw new IllegalArgumentException("Valor deve ser positivo e não ultrapassar o saldo");
+            if(!comanda.aceitaPagamento(valorPagamento))throw new IllegalArgumentException("Valor deve ser positivo e não ultrapassar o saldo");
             comandas.inserirPagamento(c,comanda.atendimentoId(),pessoa.trim(),forma,valorPagamento,itemId,quantidade);
             if(comanda.saldo().compareTo(valorPagamento)==0){concluir(c,mesa,comanda,usuario);return true;}return false;
         });

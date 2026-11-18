@@ -5,6 +5,9 @@ import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.PedidoVendaService;
 import com.salgaderia.app.service.PersonalizacaoService;
+import com.salgaderia.app.service.BarramentoPedido;
+import com.salgaderia.app.service.ConquistasObserver;
+import com.salgaderia.app.service.PedidoConcluidoObserver.*;
 import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.service.desconto.*;
 import com.salgaderia.app.util.ConnectionFactory;
@@ -12,10 +15,15 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.*;
 public class PedidoVendaServiceImpl implements PedidoVendaService {
     private final PedidoDAO pedidos;private final ProdutoDAO produtos;private final MovimentacaoEstoqueDAO movimentos;
     private final CupomDAO cupons = new CupomDAOImpl();
+    private final ClubeDAO clube = new ClubeDAOImpl();
+    private final GamificacaoDAO jogo = new GamificacaoDAOImpl();
+    private final UsuarioDAO usuarios = new UsuarioDAOImpl(new ContatoDAOImpl());
+    private final BarramentoPedido eventos = new BarramentoPedido(new ConquistasObserver(jogo));
     private final CalculadoraDescontos calculadora = new CalculadoraDescontos();
     public PedidoVendaServiceImpl(){this(new PedidoDAOImpl(),new ProdutoDAOImpl(),new MovimentacaoEstoqueDAOImpl());}
     public PedidoVendaServiceImpl(PedidoDAO pedidos,ProdutoDAO produtos,MovimentacaoEstoqueDAO movimentos){this.pedidos=Objects.requireNonNull(pedidos);this.produtos=Objects.requireNonNull(produtos);this.movimentos=Objects.requireNonNull(movimentos);}
@@ -84,14 +92,17 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         for(PedidoItem item:pedido.getItens())itens.add(item.comProdutoAtual(atuais.get(item.getProduto().getId())));
         PersonalizacaoService.validarComposicao(itens);
         long entregues=pedido.getCliente()==null||pedido.getCliente().getId()==null?0:pedidos.contarEntreguesDoCliente(c,pedido.getCliente().getId());
+        Long contaVitrine=pedido.getUsuario() instanceof UsuarioCliente u?u.getId():null;
         Cupom cupom=null;
         if(codigo!=null&&!codigo.isBlank()){
             String normalizado=codigo.trim().toUpperCase(Locale.ROOT);
-            cupom=cupons.buscarAtivo(c,normalizado).orElseThrow(()->new IllegalArgumentException("Cupom inválido ou inativo"));
+            cupom=cupons.buscarAtivo(c,normalizado,contaVitrine).orElseThrow(()->new IllegalArgumentException("Cupom inválido, indisponível ou inativo"));
             BigDecimal subtotal=itens.stream().map(PedidoItem::calcularSubtotal).reduce(BigDecimal.ZERO,BigDecimal::add);
             if(subtotal.compareTo(cupom.minimo())<0)throw new IllegalArgumentException("Valor mínimo do cupom: R$ "+cupom.minimo());
         }
-        return calculadora.calcular(new ContextoDesconto(itens,entregues,cupom));
+        BigDecimal percentual=contaVitrine==null?BigDecimal.ZERO:clube.assinatura(c,contaVitrine,false)
+                .filter(a->a.ativa(LocalDate.now())).map(AssinaturaCliente::descontoVigente).orElse(BigDecimal.ZERO);
+        return calculadora.calcular(new ContextoDesconto(itens,entregues,cupom,percentual));
     }
     private long finalizarInterno(Pedido pedido,FormaPagamento forma,BigDecimal recebido,String codigo,ResultadoDesconto esperado){
         Objects.requireNonNull(pedido);if(pedido.getId()!=null||pedido.getStatus()!=StatusPedido.PENDENTE||pedido.getItens().isEmpty())throw new IllegalArgumentException("Pedido deve ser novo, pendente e conter itens");
@@ -113,8 +124,17 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         }
         long id=ConnectionFactory.executarEmTransacao(c->{
             if(forma!=null){
-                Usuario responsavel=new UsuarioDAOImpl(new ContatoDAOImpl()).buscarPorId(c,pedido.getUsuario().getId()).orElseThrow(()->new IllegalArgumentException("Administrador não encontrado"));
+                Usuario responsavel=usuarios.buscarPorId(c,pedido.getUsuario().getId()).orElseThrow(()->new IllegalArgumentException("Administrador não encontrado"));
                 if(!(responsavel instanceof UsuarioAdmin)||!responsavel.isAtivo())throw new IllegalArgumentException("Venda PDV exige administrador ativo");
+            }
+            boolean vitrine=pedido.getUsuario() instanceof UsuarioCliente;
+            GamificacaoDAO.Conta conta=null;
+            if(vitrine){
+                conta=new GamificacaoDAO.Conta(pedido.getUsuario().getId(),pedido.getCliente().getId());
+                if(!usuarios.bloquearClienteAtivo(c,conta.usuarioId(),conta.contatoId()))
+                    throw new IllegalArgumentException("Cliente ativo obrigatório.");
+            }else if(forma!=null&&pedido.getCliente()!=null){
+                conta=bloquearConta(c,jogo.contaPorContato(c,pedido.getCliente().getId()).orElse(null));
             }
             Map<Long,Produto> bloqueados=new LinkedHashMap<>();Map<Long,BigDecimal> custos=new HashMap<>();
             for(var entrada:quantidades.entrySet()){
@@ -133,11 +153,15 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             for(var entrada:bloqueados.entrySet()){
                 Produto p=entrada.getValue();if(!produtos.atualizarEstoque(c,entrada.getKey(),p.getEstoqueAtual()))throw new IllegalStateException("Produto não atualizado");
                 movimentos.inserir(c,new MovimentacaoEstoque(null,p,TipoMovimentacaoEstoque.SAIDA,quantidades.get(entrada.getKey()),"Pedido "+pedidoId,LocalDateTime.now()),null,"VENDA",p.getCustoProducao());
-            }return pedidoId;
-        });pedido.setId(id);return id;
+            }
+            if(vitrine)cupons.encerrarCuponsExclusivos(c,conta.usuarioId());
+            eventos.publicar(c,new Evento(pedidoId,conta,forma==null?Etapa.FINALIZADO:Etapa.ENTREGUE,vitrine));
+            return pedidoId;
+        });pedido.setId(id);pedido.setRoletaLiberada(pedido.getUsuario() instanceof UsuarioCliente);return id;
     }
     @Override public void transicionar(long pedidoId,StatusPedido destino){
         ConnectionFactory.executarEmTransacao(c->{
+            var conta=bloquearConta(c,jogo.contaDoPedido(c,pedidoId).orElse(null));
             StatusPedido atual=pedidos.bloquearStatus(c,pedidoId);
             if(!atual.podeTransicionarPara(destino))throw new IllegalStateException("Transição inválida: "+atual+" -> "+destino);
             if(destino==StatusPedido.CANCELADO){
@@ -148,8 +172,14 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
                     movimentos.inserir(c,new MovimentacaoEstoque(null,p,TipoMovimentacaoEstoque.ENTRADA,item.getValue(),"Cancelamento do pedido "+pedidoId,LocalDateTime.now()),null,"AJUSTE",p.getCustoProducao());
                 }
             }
-            pedidos.atualizarStatus(c,pedidoId,destino);return null;
+            pedidos.atualizarStatus(c,pedidoId,destino);
+            if(destino==StatusPedido.ENTREGUE||destino==StatusPedido.CANCELADO)
+                eventos.publicar(c,new Evento(pedidoId,conta,destino==StatusPedido.ENTREGUE?Etapa.ENTREGUE:Etapa.CANCELADO,false));
+            return null;
         });
+    }
+    private GamificacaoDAO.Conta bloquearConta(Connection c,GamificacaoDAO.Conta conta)throws SQLException{
+        return conta!=null&&usuarios.bloquearClienteAtivo(c,conta.usuarioId(),conta.contatoId())?conta:null;
     }
 
 }

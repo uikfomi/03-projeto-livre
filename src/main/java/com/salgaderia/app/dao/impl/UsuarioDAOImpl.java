@@ -15,6 +15,11 @@ public class UsuarioDAOImpl implements UsuarioDAO {
     }
     @Override public Optional<Usuario> buscarPorLogin(Connection c,String login) throws SQLException { return buscar(c,"login",login); }
     @Override public Optional<Usuario> buscarPorId(Connection c,long id) throws SQLException { return buscar(c,"id",id); }
+    @Override public boolean bloquearClienteAtivo(Connection c,long id,long contatoId) throws SQLException {
+        try(var ps=c.prepareStatement("SELECT id FROM usuarios WHERE id=? AND cliente_id=? AND perfil='CLIENTE' AND ativo=TRUE FOR UPDATE")){
+            ps.setLong(1,id);ps.setLong(2,contatoId);try(var rs=ps.executeQuery()){return rs.next();}
+        }
+    }
     private Optional<Usuario> buscar(Connection c,String coluna,Object valor) throws SQLException {
         try(PreparedStatement ps=c.prepareStatement("SELECT id,nome,login,senha,perfil,ativo,cliente_id FROM usuarios WHERE "+coluna+"=?")) {
             ps.setObject(1,valor); try(ResultSet rs=ps.executeQuery()){

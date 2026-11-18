@@ -21,6 +21,7 @@ public class Pedido {
     private BigDecimal desconto = BigDecimal.ZERO;
     private FormaPagamento formaPagamento;
     private LocalDateTime agendadoPara;
+    private boolean roletaLiberada;
 
     public Pedido(Long id, Usuario usuario, Cliente cliente, StatusPedido status, TipoEntrega tipoEntrega,
                   String enderecoEntrega, LocalDateTime criadoEm, List<PedidoItem> itens) {
@@ -44,6 +45,8 @@ public class Pedido {
     public String getEnderecoEntrega() { return enderecoEntrega; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
     public LocalDateTime getAgendadoPara() { return agendadoPara; }
+    public boolean isRoletaLiberada() { return roletaLiberada; }
+    public void setRoletaLiberada(boolean roletaLiberada) { this.roletaLiberada = roletaLiberada; }
     /** Pedidos históricos também podem ser carregados com agendamentos já passados. */
     public void setAgendadoPara(LocalDateTime agendadoPara) { this.agendadoPara = agendadoPara; }
     public List<PedidoItem> getItens() { return List.copyOf(itens); }

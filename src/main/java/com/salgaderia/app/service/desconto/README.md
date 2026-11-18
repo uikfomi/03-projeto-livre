@@ -11,8 +11,9 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | Caminho | Conteúdo e responsabilidade |
 |---|---|
 | [CalculadoraDescontos.java](CalculadoraDescontos.java) | Seleciona o maior desconto elegível. |
-| [ContextoDesconto.java](ContextoDesconto.java) | Dados de entrada para estratégias de desconto. |
+| [ContextoDesconto.java](ContextoDesconto.java) | Agrupa itens, fidelidade, cupom e benefício mensal para as estratégias. |
 | [Cupom.java](Cupom.java) | Valor de domínio de cupom. |
+| [DescontoAssinante.java](DescontoAssinante.java) | Calcula o desconto de assinatura ativa como candidato não cumulativo. |
 | [DescontoCaixaMisteriosa.java](DescontoCaixaMisteriosa.java) | Oferece 15% sobre o valor de cada caixa como desconto não cumulativo. |
 | [DescontoCentoSalgados.java](DescontoCentoSalgados.java) | Estratégia de desconto para cento de salgados. |
 | [DescontoCupomPercentual.java](DescontoCupomPercentual.java) | Estratégia percentual por cupom. |
@@ -28,8 +29,9 @@ O ponto inicial é `src/main/java/com/salgaderia/app/service/desconto/`.
 ```text
 src/main/java/com/salgaderia/app/service/desconto/  # Agrupa os contratos, contextos e implementações Strategy para calcular descontos.
 ├── CalculadoraDescontos.java  # Seleciona o maior desconto elegível.
-├── ContextoDesconto.java  # Dados de entrada para estratégias de desconto.
+├── ContextoDesconto.java  # Agrupa itens, fidelidade, cupom e benefício mensal para as estratégias.
 ├── Cupom.java  # Valor de domínio de cupom.
+├── DescontoAssinante.java  # Calcula o desconto de assinatura ativa como candidato não cumulativo.
 ├── DescontoCaixaMisteriosa.java  # Oferece 15% sobre o valor de cada caixa como desconto não cumulativo.
 ├── DescontoCentoSalgados.java  # Estratégia de desconto para cento de salgados.
 ├── DescontoCupomPercentual.java  # Estratégia percentual por cupom.

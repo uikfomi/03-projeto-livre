@@ -11,9 +11,9 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | Caminho | Conteúdo e responsabilidade |
 |---|---|
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
-| [admin-dashboard.fxml](admin-dashboard.fxml) | Estrutura visual do painel administrativo. |
+| [admin-dashboard.fxml](admin-dashboard.fxml) | Estrutura visual do painel administrativo, com navegação para o Clube da Fome. |
 | [agenda-contatos.fxml](agenda-contatos.fxml) | Estrutura visual da agenda. |
-| [cliente-vitrine.fxml](cliente-vitrine.fxml) | Estrutura visual da vitrine, ações de personalização, galeria e checkout. |
+| [cliente-vitrine.fxml](cliente-vitrine.fxml) | Estrutura da vitrine com personalização, galeria, checkout Pix e Clube da Fome. |
 | [login.fxml](login.fxml) | Estrutura visual de login e cadastro. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [selecao-modulos.fxml](selecao-modulos.fxml) | Estrutura visual da seleção de módulos. |
@@ -25,9 +25,9 @@ O ponto inicial é `src/main/resources/fxml/`.
 ```text
 src/main/resources/fxml/  # Declara a estrutura visual das telas carregadas pelo JavaFX.
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── admin-dashboard.fxml  # Estrutura visual do painel administrativo.
+├── admin-dashboard.fxml  # Estrutura visual do painel administrativo, com navegação para o Clube da Fome.
 ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-├── cliente-vitrine.fxml  # Estrutura visual da vitrine, ações de personalização, galeria e checkout.
+├── cliente-vitrine.fxml  # Estrutura da vitrine com personalização, galeria, checkout Pix e Clube da Fome.
 ├── login.fxml  # Estrutura visual de login e cadastro.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.
