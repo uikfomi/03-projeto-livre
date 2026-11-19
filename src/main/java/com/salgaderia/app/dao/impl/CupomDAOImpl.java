@@ -9,19 +9,36 @@ import java.util.Optional;
 public final class CupomDAOImpl implements CupomDAO {
     @Override public Optional<Cupom> buscarAtivo(Connection conexao,String codigo,Long usuarioVitrine) throws SQLException {
         try (var ps = conexao.prepareStatement("""
-                SELECT codigo,percentual,valor_minimo FROM cupons WHERE codigo=? AND ativo=TRUE
+                SELECT codigo,percentual,valor_minimo,beneficio,brinde_descricao,valor_beneficio FROM cupons WHERE codigo=? AND ativo=TRUE
                   AND (usuario_exclusivo_id IS NULL OR usuario_exclusivo_id=?)
+                  AND (valido_ate IS NULL OR valido_ate>NOW()) AND usado_pedido_id IS NULL
                 """)) {
             ps.setString(1, codigo);
             ps.setObject(2,usuarioVitrine,java.sql.Types.BIGINT);
             try (var rs = ps.executeQuery()) {
-                return rs.next() ? Optional.of(new Cupom(rs.getString(1), rs.getBigDecimal(2), rs.getBigDecimal(3))) : Optional.empty();
+                return rs.next()?Optional.of(new Cupom(rs.getString(1),rs.getBigDecimal(2),rs.getBigDecimal(3),
+                        Cupom.Beneficio.valueOf(rs.getString(4)),rs.getString(5),rs.getBigDecimal(6))):Optional.empty();
             }
         }
     }
-    @Override public void encerrarCuponsExclusivos(Connection c,long usuarioVitrine)throws SQLException{
-        try(var ps=c.prepareStatement("UPDATE cupons SET ativo=FALSE WHERE usuario_exclusivo_id=? AND ativo")){
-            ps.setLong(1,usuarioVitrine);ps.executeUpdate();
+    @Override public void reservar(Connection c,long usuarioVitrine,String codigo,long pedidoId)throws SQLException{
+        try(var ps=c.prepareStatement("""
+                UPDATE cupons SET usado_pedido_id=? WHERE codigo=? AND usuario_exclusivo_id=?
+                AND ativo AND usado_pedido_id IS NULL AND (valido_ate IS NULL OR valido_ate>NOW())
+                """)){
+            ps.setLong(1,pedidoId);ps.setString(2,codigo);ps.setLong(3,usuarioVitrine);
+            int atualizados=ps.executeUpdate();
+            if(atualizados==0){
+                try(var verificar=c.prepareStatement("SELECT id FROM cupons WHERE codigo=? AND usuario_exclusivo_id=?")){
+                    verificar.setString(1,codigo);verificar.setLong(2,usuarioVitrine);
+                    try(var rs=verificar.executeQuery()){if(rs.next())throw new IllegalArgumentException("Cupom exclusivo expirado ou já utilizado.");}
+                }
+            }
+        }
+    }
+    @Override public void liberarReserva(Connection c,long pedidoId)throws SQLException{
+        try(var ps=c.prepareStatement("UPDATE cupons SET usado_pedido_id=NULL WHERE usado_pedido_id=?")){
+            ps.setLong(1,pedidoId);ps.executeUpdate();
         }
     }
 }

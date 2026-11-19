@@ -13,11 +13,12 @@ public final class ConquistasObserver implements PedidoConcluidoObserver {
 
     @Override public void aoAlterarPedido(Connection c,Evento evento)throws SQLException {
         if(evento.etapa()==Etapa.CANCELADO){dados.revogarCupomDoPremio(c,evento.pedidoId());return;}
+        if(evento.etapa()==Etapa.PAGAMENTO_CONFIRMADO){dados.liberarRoleta(c,evento.pedidoId());return;}
         var cliente=evento.cliente();
         if(cliente==null)return;
         dados.desbloquear(c,cliente.usuarioId(),"PRIMEIRO_PEDIDO");
-        if(evento.etapa()==Etapa.FINALIZADO&&evento.vitrine())dados.liberarRoleta(c,evento.pedidoId());
         if(evento.etapa()==Etapa.ENTREGUE){
+            dados.liberarRoleta(c,evento.pedidoId());
             BigDecimal quantidade=dados.quantidadesPorCategoria(c,evento.pedidoId()).stream()
                     .filter(q->FichaVitrine.categoriaSalgado(q.categoria()))
                     .map(GamificacaoDAO.QuantidadeCategoria::quantidade).reduce(BigDecimal.ZERO,BigDecimal::add);

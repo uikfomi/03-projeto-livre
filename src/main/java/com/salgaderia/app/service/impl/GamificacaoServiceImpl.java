@@ -10,6 +10,7 @@ import com.salgaderia.app.util.ConnectionFactory;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
@@ -30,22 +31,38 @@ public final class GamificacaoServiceImpl implements GamificacaoService {
         return ConnectionFactory.executarEmTransacao(c->{
             long id=validarCliente(c,cliente);
             return new Perfil(dados.conquistas(c,id),
-                    dados.premiosValidos(c,id).stream().mapToLong(p->p.tipo().pontos()).sum(),
+                    dados.pontosDosPedidos(c,id)+dados.premiosValidos(c,id).stream().mapToLong(p->p.tipo().pontos()).sum(),
                     dados.cuponsValidos(c,id));
         });
     }
 
     @Override public PremioRoleta girar(UsuarioCliente cliente,long pedidoId) {
+        return sortear(cliente,pedidoId,false);
+    }
+    @Override public PremioRoleta girarExtra(UsuarioCliente cliente,long pedidoId) {
+        return sortear(cliente,pedidoId,true);
+    }
+    private PremioRoleta sortear(UsuarioCliente cliente,long pedidoId,boolean extra){
         return ConnectionFactory.executarEmTransacao(c->{
             long id=validarCliente(c,cliente);
-            if(!dados.roletaDisponivel(c,pedidoId,id))throw new IllegalArgumentException("A roleta não está disponível para este pedido.");
+            var elegivel=dados.roletaElegivel(c,pedidoId,id).orElseThrow(()->new IllegalArgumentException("A roleta não está disponível antes do pagamento ou da entrega."));
             var existente=dados.premio(c,pedidoId);
-            if(existente.isPresent())return existente.get();
-            var tipos=PremioRoleta.Tipo.values();
-            var tipo=tipos[aleatorio.nextInt(tipos.length)];
-            String codigo=tipo.temCupom()?"FOME-"+UUID.randomUUID().toString().replace("-","").toUpperCase(Locale.ROOT):null;
-            PremioRoleta premio=new PremioRoleta(pedidoId,tipo,codigo,true);
-            dados.registrarPremio(c,id,premio);return premio;
+            LocalDateTime agora=dados.horarioDoBanco(c);
+            if(existente.isPresent()&&!extra)return existente.get();
+            boolean vip=elegivel.valor().compareTo(PremioRoleta.LIMITE_VIP)>0;
+            LocalDateTime inicio=agora;
+            if(extra){
+                var anterior=existente.filter(PremioRoleta::giroExtra).orElseThrow(()->new IllegalArgumentException("Não há giro extra disponível."));
+                if(!agora.isBefore(anterior.validoAte()))throw new IllegalArgumentException("O giro extra expirou.");
+                vip=anterior.vip();inicio=anterior.registradoEm();
+            }else dados.ultimoGiro(c,id).map(t->t.plusHours(24)).filter(agora::isBefore).ifPresent(t->{
+                throw new IllegalArgumentException("Limite de um pedido por 24 horas. Próximo giro a partir de "+t.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm"))+".");
+            });
+            var tipos=PremioRoleta.fatias(vip).stream().filter(t->!extra||t!=PremioRoleta.Tipo.GIRO_EXTRA).toList();
+            var tipo=tipos.get(aleatorio.nextInt(tipos.size()));
+            String codigo=tipo.temCupom()&&!elegivel.demo()?"FOME-"+UUID.randomUUID().toString().replace("-","").toUpperCase(Locale.ROOT):null;
+            PremioRoleta premio=new PremioRoleta(pedidoId,tipo,codigo,true,vip,tipo==PremioRoleta.Tipo.GIRO_EXTRA,inicio);
+            dados.registrarPremio(c,id,premio,extra);return premio;
         });
     }
 

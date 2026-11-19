@@ -16,7 +16,25 @@ public final class CalculadoraDescontos {
             BigDecimal valor = estrategia.calcular(contexto);
             if (valor.compareTo(melhor) > 0) { melhor = valor; nome = estrategia.nome(); }
         }
-        return new ResultadoDesconto(subtotal, melhor, subtotal.subtract(melhor), nome,
-                nome.equals("CUPOM") ? contexto.cupom().codigo() : null);
+        Cupom cupom=contexto.cupom();
+        String codigo=nome.equals("CUPOM")?cupom.codigo():null;
+        String brinde=null;
+        if(cupom!=null&&subtotal.compareTo(cupom.minimo())>=0){
+            // Benefícios sem abatimento só são escolhidos se forem a maior vantagem única.
+            switch(cupom.beneficio()){
+                case FRETE -> {
+                    if(contexto.taxaEntrega().compareTo(melhor)>0){melhor=contexto.taxaEntrega();nome="FRETE";codigo=cupom.codigo();}
+                }
+                case BRINDE -> {
+                    if(cupom.valorBeneficio().compareTo(melhor)>0){melhor=BigDecimal.ZERO.setScale(2);nome="BRINDE";codigo=cupom.codigo();brinde=cupom.brinde();}
+                }
+                case PONTOS_DOBRO -> {
+                    if(nome.equals("NENHUM")){nome="PONTOS_DOBRO";codigo=cupom.codigo();}
+                }
+                default -> { }
+            }
+        }
+        return new ResultadoDesconto(subtotal,melhor,subtotal.add(contexto.taxaEntrega()).subtract(melhor),nome,codigo,
+                contexto.taxaEntrega(),brinde);
     }
 }

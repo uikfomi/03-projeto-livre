@@ -16,10 +16,11 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [ClubeDAOImpl.java](ClubeDAOImpl.java) | Executa consultas e atualizações JDBC para adesões, vigência e mensalidades. |
 | [ComandaDAOImpl.java](ComandaDAOImpl.java) | Implementa operações JDBC de mesas e comandas com bloqueio de linha. |
 | [ContatoDAOImpl.java](ContatoDAOImpl.java) | Operações JDBC de contatos com filtros de clientes e fornecedores. |
-| [CupomDAOImpl.java](CupomDAOImpl.java) | Valida disponibilidade e titular de cupons e encerra os exclusivos na compra seguinte. |
-| [GamificacaoDAOImpl.java](GamificacaoDAOImpl.java) | Grava selos e prêmios e consulta os fatos de pedido usados pelo Observer. |
+| [CupomDAOImpl.java](CupomDAOImpl.java) | Consulta elegibilidade, reserva cupons exclusivos e os devolve no cancelamento. |
+| [GamificacaoDAOImpl.java](GamificacaoDAOImpl.java) | Persiste selos, giros, resgates e trava de 24 horas usando o relógio do banco. |
 | [MovimentacaoEstoqueDAOImpl.java](MovimentacaoEstoqueDAOImpl.java) | Grava movimentações de estoque e consulta perdas por período via JDBC. |
-| [PedidoDAOImpl.java](PedidoDAOImpl.java) | Persiste pedidos e personalizações e consulta histórico, fila, roleta e indicadores. |
+| [PedidoDAOImpl.java](PedidoDAOImpl.java) | Persiste pedidos, frete e brindes e só inclui PIX aprovado na fila. |
+| [PixPagamentoDAOImpl.java](PixPagamentoDAOImpl.java) | Consulta pagamentos e vincula tentativas, IDs remotos e aprovação ao pedido em JDBC. |
 | [ProdutoDAOImpl.java](ProdutoDAOImpl.java) | Persiste produtos, estoque e fichas de personalização com JDBC. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [UsuarioDAOImpl.java](UsuarioDAOImpl.java) | Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio. |
@@ -36,10 +37,11 @@ src/main/java/com/salgaderia/app/dao/impl/  # Reúne implementações dos contra
 ├── ClubeDAOImpl.java  # Executa consultas e atualizações JDBC para adesões, vigência e mensalidades.
 ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
-├── CupomDAOImpl.java  # Valida disponibilidade e titular de cupons e encerra os exclusivos na compra seguinte.
-├── GamificacaoDAOImpl.java  # Grava selos e prêmios e consulta os fatos de pedido usados pelo Observer.
+├── CupomDAOImpl.java  # Consulta elegibilidade, reserva cupons exclusivos e os devolve no cancelamento.
+├── GamificacaoDAOImpl.java  # Persiste selos, giros, resgates e trava de 24 horas usando o relógio do banco.
 ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-├── PedidoDAOImpl.java  # Persiste pedidos e personalizações e consulta histórico, fila, roleta e indicadores.
+├── PedidoDAOImpl.java  # Persiste pedidos, frete e brindes e só inclui PIX aprovado na fila.
+├── PixPagamentoDAOImpl.java  # Consulta pagamentos e vincula tentativas, IDs remotos e aprovação ao pedido em JDBC.
 ├── ProdutoDAOImpl.java  # Persiste produtos, estoque e fichas de personalização com JDBC.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 └── UsuarioDAOImpl.java  # Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio.

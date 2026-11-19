@@ -16,8 +16,8 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [AvaliacaoServiceImpl.java](AvaliacaoServiceImpl.java) | Valida a entrega e coordena avaliações, upload e exclusão de fotos na moderação. |
 | [ClubeServiceImpl.java](ClubeServiceImpl.java) | Valida adesão, vigência, renovação e confirmação manual no Clube da Fome. |
 | [ComandaServiceImpl.java](ComandaServiceImpl.java) | Orquestra estoque, validação do operador, cotação de pagamentos e fechamento atômico. |
-| [GamificacaoServiceImpl.java](GamificacaoServiceImpl.java) | Autoriza o sorteio, persiste o prêmio uma única vez e exibe o perfil do cliente. |
-| [PedidoVendaServiceImpl.java](PedidoVendaServiceImpl.java) | Finaliza vendas transacionais, revalida estoque e descontos e publica eventos dos pedidos. |
+| [GamificacaoServiceImpl.java](GamificacaoServiceImpl.java) | Controla cooldown, separa sorteios de demonstração e aplica validade e giro extra. |
+| [PedidoVendaServiceImpl.java](PedidoVendaServiceImpl.java) | Finaliza pedidos com proteção de estoque, promoções e fila dependente do PIX. |
 | [ProdutoEstoqueServiceImpl.java](ProdutoEstoqueServiceImpl.java) | Valida produtos e coordena entradas, perdas e consultas de estoque. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [RelatorioFinanceiroServiceImpl.java](RelatorioFinanceiroServiceImpl.java) | Calcula indicadores financeiros e gera o balanço CSV. |
@@ -34,8 +34,8 @@ src/main/java/com/salgaderia/app/service/impl/  # Reúne implementações dos co
 ├── AvaliacaoServiceImpl.java  # Valida a entrega e coordena avaliações, upload e exclusão de fotos na moderação.
 ├── ClubeServiceImpl.java  # Valida adesão, vigência, renovação e confirmação manual no Clube da Fome.
 ├── ComandaServiceImpl.java  # Orquestra estoque, validação do operador, cotação de pagamentos e fechamento atômico.
-├── GamificacaoServiceImpl.java  # Autoriza o sorteio, persiste o prêmio uma única vez e exibe o perfil do cliente.
-├── PedidoVendaServiceImpl.java  # Finaliza vendas transacionais, revalida estoque e descontos e publica eventos dos pedidos.
+├── GamificacaoServiceImpl.java  # Controla cooldown, separa sorteios de demonstração e aplica validade e giro extra.
+├── PedidoVendaServiceImpl.java  # Finaliza pedidos com proteção de estoque, promoções e fila dependente do PIX.
 ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 └── RelatorioFinanceiroServiceImpl.java  # Calcula indicadores financeiros e gera o balanço CSV.

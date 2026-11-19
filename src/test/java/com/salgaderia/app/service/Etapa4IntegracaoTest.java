@@ -40,7 +40,7 @@ class Etapa4IntegracaoTest {
             var estoque=new ProdutoEstoqueServiceImpl();estoque.cadastrar(produto);estoque.entradaLote(produto.getId(),fornecedor.getId(),new BigDecimal("3"),"teste");
             LocalDateTime data=LocalDateTime.of(2001,1,1,12,0);
             Pedido pedido=new Pedido(null,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.LOCAL,null,data,List.of(new PedidoItem(null,produto,new BigDecimal("2"),new BigDecimal("8.00"))));
-            pedido.setFormaPagamento(FormaPagamento.PIX);
+            pedido.setFormaPagamento(FormaPagamento.CARTAO);
             LocalDateTime agendado=LocalDateTime.now().plusDays(1).withNano(0);pedido.setAgendadoPara(agendado);
             var vendas=new PedidoVendaServiceImpl();
             MovimentacaoEstoqueDAO falha=new MovimentacaoEstoqueDAO(){
@@ -68,7 +68,7 @@ class Etapa4IntegracaoTest {
             var historico=vendas.listarDoCliente(usuario);
             assertEquals(1,historico.size());
             assertEquals(StatusPedido.ENTREGUE,historico.get(0).getStatus());
-            assertEquals(FormaPagamento.PIX,historico.get(0).getFormaPagamento());
+            assertEquals(FormaPagamento.CARTAO,historico.get(0).getFormaPagamento());
             assertEquals(TipoEntrega.LOCAL,historico.get(0).getTipoEntrega());
             assertEquals(agendado,historico.get(0).getAgendadoPara());
             UsuarioCliente clienteParaRepeticao=usuario;

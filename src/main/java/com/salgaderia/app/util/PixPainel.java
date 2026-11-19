@@ -28,7 +28,7 @@ public final class PixPainel extends VBox {
 
     public PixPainel() {
         setSpacing(6); setAlignment(Pos.CENTER); getStyleClass().add("pix-painel");
-        aviso.setWrapText(true);qr.setAccessibleText("QR Code PIX");
+        aviso.setWrapText(true);aviso.setId("pix-aviso");qr.setAccessibleText("QR Code PIX");
         copiar.setId("pix-copiar");
         manual.setEditable(false);manual.setWrapText(true);manual.setPrefRowCount(3);visivel(manual,false);
         copiar.setOnAction(e -> {
@@ -52,7 +52,7 @@ public final class PixPainel extends VBox {
         }
         try {
             if (pix == null) pix = PixPayloadService.carregar();
-            if (payload == null || ultimoValor.compareTo(valor) != 0 || !Objects.equals(ultimaReferencia, referencia)) {
+            if (payload == null || ultimoValor==null || ultimoValor.compareTo(valor) != 0 || !Objects.equals(ultimaReferencia, referencia)) {
                 limpar();
                 String novo = pix.gerarPayload(valor, referencia);
                 qr.setImage(pix.gerarImagem(novo, 208)); payload=novo;
@@ -64,6 +64,16 @@ public final class PixPainel extends VBox {
         } catch (IllegalArgumentException | IllegalStateException erro) {
             limpar();aviso.setText(erro.getMessage());
         }
+    }
+
+    /** Desenha exatamente o Pix Copia e Cola recebido do provedor, sem reconstruir o payload. */
+    public void exibirCodigo(String codigo,String orientacao){
+        visivel(this,true);aviso.setText(orientacao);
+        if(codigo==null||codigo.isBlank()){limpar();return;}
+        if(!codigo.equals(payload)){
+            limpar();qr.setImage(new PixPayloadService(null,null,null).gerarImagem(codigo,242));payload=codigo;
+        }
+        visivel(qr,true);visivel(copiar,true);
     }
 
     private void limpar() {

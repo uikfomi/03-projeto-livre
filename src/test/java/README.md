@@ -27,7 +27,7 @@ src/test/java/  # Reúne testes automatizados dos componentes presentes neste pa
 │   │   │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
-│   │   │   │   └── VitrineJavaFXTest.java  # Testa disponibilidade, checkout Pix, combo, caixa, galeria, clube e roleta.
+│   │   │   │   └── VitrineJavaFXTest.java  # Valida catálogo, checkout, edição de pedidos, clube, roleta e consulta PIX automática.
 │   │   │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
 │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
@@ -37,7 +37,10 @@ src/test/java/  # Reúne testes automatizados dos componentes presentes neste pa
 │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
 │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   └── EstrategiasDescontoTest.java  # Testa as estratégias e a escolha do melhor desconto.
-│   │   │   │   ├── ClubeGamificacaoIntegracaoTest.java  # Verifica mensalidade, benefício, selos, concorrência da roleta e cupons exclusivos no MySQL.
+│   │   │   │   ├── pix/  # Testes HTTP em loopback para a integração PIX.
+│   │   │   │   │   ├── MercadoPagoPixGatewayTest.java  # Verifica a integração HTTP com um servidor local, sem emitir cobranças.
+│   │   │   │   │   └── README.md  # Guia dos testes HTTP locais.
+│   │   │   │   ├── ClubeGamificacaoIntegracaoTest.java  # Valida clube, cupons e roleta concorrentes e estados do pagamento PIX no MySQL.
 │   │   │   │   ├── ComandaIntegracaoTest.java  # Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL.
 │   │   │   │   ├── CozinhaStateTest.java  # Verifica mensagens e progresso dos estados da cozinha.
 │   │   │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.

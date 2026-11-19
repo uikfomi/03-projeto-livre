@@ -94,7 +94,7 @@ class VitrineV150IntegracaoTest {
     }
     private static Pedido pedido(UsuarioCliente usuario,List<PedidoItem> itens) {
         Pedido pedido=new Pedido(null,usuario,usuario.getCliente(),StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),itens);
-        pedido.setFormaPagamento(FormaPagamento.PIX);return pedido;
+        pedido.setFormaPagamento(FormaPagamento.DINHEIRO);return pedido;
     }
     private static void excluir(Connection c,String sql,long id) throws SQLException {
         try(var ps=c.prepareStatement(sql)){ps.setLong(1,id);ps.executeUpdate();}

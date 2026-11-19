@@ -14,7 +14,7 @@ Execute os testes compatíveis com o ambiente; os testes de integração podem e
 | [AgendaJavaFXTest.java](AgendaJavaFXTest.java) | Testes JavaFX da agenda. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [TelasJavaFXTest.java](TelasJavaFXTest.java) | Testes JavaFX de autenticação e navegação. |
-| [VitrineJavaFXTest.java](VitrineJavaFXTest.java) | Testa disponibilidade, checkout Pix, combo, caixa, galeria, clube e roleta. |
+| [VitrineJavaFXTest.java](VitrineJavaFXTest.java) | Valida catálogo, checkout, edição de pedidos, clube, roleta e consulta PIX automática. |
 
 ## Árvore estrutural comentada
 
@@ -26,7 +26,7 @@ src/test/java/com/salgaderia/app/controller/  # Reúne testes automatizados dos 
 ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
-└── VitrineJavaFXTest.java  # Testa disponibilidade, checkout Pix, combo, caixa, galeria, clube e roleta.
+└── VitrineJavaFXTest.java  # Valida catálogo, checkout, edição de pedidos, clube, roleta e consulta PIX automática.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../README.md)

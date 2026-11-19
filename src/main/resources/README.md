@@ -14,7 +14,7 @@ O arquivo database.local.properties é local e ignorado pelo Git; verifique se a
 | [fxml/](fxml/) | Descrições de interface JavaFX. [Abrir guia](fxml/README.md). |
 | [icons/](icons/) | Espaço reservado para ícones. |
 | [images/](images/) | Espaço reservado para imagens. |
-| [database.properties](database.properties) | Template de configuração JDBC e das propriedades opcionais de pagamento Pix. |
+| [database.properties](database.properties) | Template JDBC e propriedades opcionais de taxa de entrega e pagamentos PIX. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 
 ## Árvore estrutural comentada
@@ -34,7 +34,7 @@ src/main/resources/  # Agrupa telas FXML, estilos e configuração padrão consu
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo, com navegação para o Clube da Fome.
 │   ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-│   ├── cliente-vitrine.fxml  # Estrutura da vitrine com personalização, galeria, checkout Pix e Clube da Fome.
+│   ├── cliente-vitrine.fxml  # Estrutura do catálogo com checkout PIX, dados do pagador, urgência de cupons e clube.
 │   ├── login.fxml  # Estrutura visual de login e cadastro.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.
@@ -42,7 +42,7 @@ src/main/resources/  # Agrupa telas FXML, estilos e configuração padrão consu
 │   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── images/  # Espaço reservado para imagens.
 │   └── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-├── database.properties  # Template de configuração JDBC e das propriedades opcionais de pagamento Pix.
+├── database.properties  # Template JDBC e propriedades opcionais de taxa de entrega e pagamentos PIX.
 └── README.md  # Guia de navegação e explicações desta pasta.
 ```
 

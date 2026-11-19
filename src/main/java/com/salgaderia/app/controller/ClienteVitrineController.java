@@ -9,14 +9,17 @@ import com.salgaderia.app.model.PersonalizacaoItem.Tipo;
 import com.salgaderia.app.model.enums.StatusPedido;
 import com.salgaderia.app.model.enums.TipoEntrega;
 import com.salgaderia.app.model.enums.FormaPagamento;
+import com.salgaderia.app.model.enums.StatusPagamento;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
 import com.salgaderia.app.service.desconto.DescontoCaixaMisteriosa;
 import com.salgaderia.app.service.cozinha.EtapaCozinha;
+import com.salgaderia.app.service.pix.PixPagamentoService;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.FotoAvaliacaoUi;
 import com.salgaderia.app.util.PixPainel;
+import com.salgaderia.app.util.PagamentoPixUi;
 import com.salgaderia.app.util.RoletaUi;
 import com.salgaderia.app.util.TelaAutenticada;
 import com.salgaderia.app.util.WhatsAppUi;
@@ -51,6 +54,9 @@ public class ClienteVitrineController implements TelaAutenticada {
     @FXML private Label saudacao, mensagemProdutos, mensagemPedidos, endereco, total, contador;
     @FXML private TextField busca, cupom;
     @FXML private Label mensagemDesconto;
+    @FXML private Label mensagemFrete,cupomUrgente;
+    @FXML private VBox dadosPagadorPix;
+    @FXML private TextField emailPix,documentoPix;
     @FXML private ComboBox<FiltroCategoria> categorias;
     @FXML private ComboBox<FormaPagamento> formaPagamento;
     @FXML private FlowPane cards;
@@ -70,6 +76,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     private final AvaliacaoService avaliacoesService;
     private final ClubeService clube;
     private final GamificacaoService gamificacao;
+    private final PixPagamentoService pagamentosPix;
     private final Map<ChaveCarrinho,List<PedidoItem>> carrinho = new LinkedHashMap<>();
     private final PersonalizacaoService personalizacoes = new PersonalizacaoService();
     private List<Produto> produtos = List.of();
@@ -81,6 +88,10 @@ public class ClienteVitrineController implements TelaAutenticada {
     private boolean carregouProdutos;
     private final WhatsAppLinkService whatsapp = new WhatsAppLinkService();
     private final Timeline atualizacaoPedidos = new Timeline(new KeyFrame(Duration.seconds(5), e -> atualizarPedidos(false)));
+    private final Timeline contagemCupons=new Timeline(new KeyFrame(Duration.seconds(1),e->atualizarContagemCupons()));
+    private List<CupomRoleta> cuponsDaRoleta=List.of();
+    private long ultimoRelogioCupons;
+    private boolean consultandoCupons;
     private boolean consultaPedidosEmAndamento;
     private long geracaoDesconto;
     private ResultadoDesconto descontoAtual;
@@ -92,8 +103,13 @@ public class ClienteVitrineController implements TelaAutenticada {
     }
     public ClienteVitrineController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AvaliacaoService avaliacoes,
                                     ClubeService clube,GamificacaoService gamificacao) {
+        this(produtos,pedidos,avaliacoes,clube,gamificacao,new PixPagamentoService());
+    }
+    public ClienteVitrineController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AvaliacaoService avaliacoes,
+                                    ClubeService clube,GamificacaoService gamificacao,PixPagamentoService pagamentosPix) {
         this.produtosService=Objects.requireNonNull(produtos);this.pedidosService=Objects.requireNonNull(pedidos);this.avaliacoesService=Objects.requireNonNull(avaliacoes);
         this.clube=Objects.requireNonNull(clube);this.gamificacao=Objects.requireNonNull(gamificacao);
+        this.pagamentosPix=Objects.requireNonNull(pagamentosPix);
     }
     private record FiltroCategoria(Long id,String nome) { }
     private record ChaveCarrinho(Long produtoId, UUID grupo) {
@@ -108,6 +124,7 @@ public class ClienteVitrineController implements TelaAutenticada {
 
     @FXML private void initialize() {
         atualizacaoPedidos.setCycleCount(Timeline.INDEFINITE);
+        contagemCupons.setCycleCount(Timeline.INDEFINITE);
         formaPagamento.getItems().setAll(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO);
         formaPagamento.setConverter(new StringConverter<>() {
             public String toString(FormaPagamento forma){return forma==null?"":forma.descricao();}
@@ -115,16 +132,16 @@ public class ClienteVitrineController implements TelaAutenticada {
         });
         formaPagamento.valueProperty().addListener((o,a,n)->{finalizar.setDisable(descontoAtual==null||n==null);atualizarPix();});
         raiz.sceneProperty().addListener((obs, anterior, cena)->{
-            if(cena==null){atualizacaoPedidos.stop();geracaoPedidos++;return;}
+            if(cena==null){atualizacaoPedidos.stop();contagemCupons.stop();geracaoPedidos++;return;}
             cena.windowProperty().addListener((o, velha, janela)->{
-                if(janela==null){atualizacaoPedidos.stop();geracaoPedidos++;}
-                else janela.showingProperty().addListener((x,era,visivel)->{if(!visivel){atualizacaoPedidos.stop();geracaoPedidos++;}});
+                if(janela==null){atualizacaoPedidos.stop();contagemCupons.stop();geracaoPedidos++;}
+                else janela.showingProperty().addListener((x,era,visivel)->{if(!visivel){atualizacaoPedidos.stop();contagemCupons.stop();geracaoPedidos++;}});
             });
         });
         ToggleGroup grupo=new ToggleGroup();retirada.setToggleGroup(grupo);entrega.setToggleGroup(grupo);local.setToggleGroup(grupo);retirada.setSelected(true);
         dataAgendamento.disableProperty().bind(agendar.selectedProperty().not());
         horaAgendamento.disableProperty().bind(agendar.selectedProperty().not());
-        grupo.selectedToggleProperty().addListener((o,a,n)->{if(n==null)grupo.selectToggle(a);atualizarEndereco();});
+        grupo.selectedToggleProperty().addListener((o,a,n)->{if(n==null)grupo.selectToggle(a);atualizarEndereco();simularDesconto();});
         categorias.setConverter(new StringConverter<>() {
             @Override public String toString(FiltroCategoria filtro) { return filtro==null?"Todas as categorias":filtro.nome(); }
             @Override public FiltroCategoria fromString(String texto) { return null; }
@@ -138,6 +155,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     @Override public void definirUsuario(Usuario usuario) {
         if (!(usuario instanceof UsuarioCliente cliente) || !cliente.isAtivo()) throw new SecurityException("Acesso restrito a clientes ativos");
         this.usuario=cliente;saudacao.setText("Olá, "+usuario.getNome()+"!");atualizarEndereco();atualizarCarrinho();carregarProdutos();
+        carregarCupons();contagemCupons.playFromStart();
     }
     @FXML private void mostrarVitrine(){atualizacaoPedidos.stop();geracaoPedidos++;mostrarPainel(painelVitrine);simularDesconto();}
     @FXML private void mostrarPedidos(){mostrarPainel(painelPedidos);carregarPedidos();atualizacaoPedidos.playFromStart();}
@@ -198,11 +216,32 @@ public class ClienteVitrineController implements TelaAutenticada {
         conteudoClube.getChildren().addAll(new Separator(),new Label("Suas conquistas · "+perfil.pontos()+" pontos"));
         if(perfil.selos().isEmpty())conteudoClube.getChildren().add(textoClube("Nenhuma conquista desbloqueada ainda."));
         for(ConquistaCliente selo:perfil.selos())conteudoClube.getChildren().add(textoClube("🏅 "+selo.nome()+" — "+selo.descricao()));
-        for(String codigo:perfil.cupons()){
-            Button usar=new Button("Usar cupom "+codigo);usar.setWrapText(true);
-            usar.setOnAction(e->{cupom.setText(codigo);mostrarVitrine();});
-            conteudoClube.getChildren().add(usar);
+        cuponsDaRoleta=perfil.cupons();
+        atualizarContagemCupons();
+        for(CupomRoleta premio:perfil.cupons()){
+            Button usar=new Button("Usar "+premio.descricao()+" · "+premio.codigo());usar.setWrapText(true);
+            usar.setOnAction(e->{cupom.setText(premio.codigo());mostrarVitrine();});
+            conteudoClube.getChildren().addAll(textoClube("Válido até "+premio.validoAte().format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))
+                    +" · mínimo de "+moeda(premio.minimo())),usar);
         }
+    }
+    private void carregarCupons(){
+        if(usuario==null||consultandoCupons)return;
+        consultandoCupons=true;ultimoRelogioCupons=System.nanoTime();UsuarioCliente cliente=usuario;
+        Task<List<CupomRoleta>> tarefa=new Task<>(){@Override protected List<CupomRoleta> call(){return gamificacao.perfil(cliente).cupons();}};
+        tarefa.setOnSucceeded(e->{consultandoCupons=false;if(usuario==cliente){cuponsDaRoleta=tarefa.getValue();atualizarContagemCupons();}});
+        tarefa.setOnFailed(e->consultandoCupons=false);iniciar(tarefa);
+    }
+    private void atualizarContagemCupons(){
+        if(System.nanoTime()-ultimoRelogioCupons>=30_000_000_000L)carregarCupons();
+        LocalDateTime agora=LocalDateTime.now();
+        var proximo=cuponsDaRoleta.stream().filter(c->c.validoAte().isAfter(agora)&&c.validoAte().isBefore(agora.plusHours(24)))
+                .min(Comparator.comparing(CupomRoleta::validoAte));
+        if(proximo.isEmpty()){ocultar(cupomUrgente);return;}
+        CupomRoleta premio=proximo.get();
+        long segundos=Math.max(1,java.time.Duration.between(agora,premio.validoAte()).toSeconds()+1);
+        exibir(cupomUrgente,String.format(BR,"⏳ %s expira em %dh %02dmin %02ds · veja em Clube da Fome",
+                premio.descricao(),segundos/3600,(segundos/60)%60,segundos%60));
     }
     private void operarClube(Runnable operacao){
         raiz.setDisable(true);
@@ -432,18 +471,30 @@ public class ClienteVitrineController implements TelaAutenticada {
     private void simularDesconto(){
         long geracao=++geracaoDesconto;descontoAtual=null;finalizar.setDisable(true);
         atualizarPix();
+        ocultar(mensagemFrete);
         if(usuario==null||carrinho.isEmpty()){mensagemDesconto.setText("");return;}
         mensagemDesconto.setText("Calculando melhor desconto...");
         Pedido pedido=pedidoAtual();String codigo=cupom.getText();
         Task<ResultadoDesconto> tarefa=new Task<>(){@Override protected ResultadoDesconto call(){return pedidosService.simular(pedido,codigo);}};
         tarefa.setOnSucceeded(e->{if(geracao!=geracaoDesconto)return;descontoAtual=tarefa.getValue();total.setText(moeda(descontoAtual.total()));
-            mensagemDesconto.setText("Desconto: "+moeda(descontoAtual.desconto())+" ("+descontoAtual.estrategia()+")");finalizar.setDisable(formaPagamento.getValue()==null);atualizarPix();});
+            if(descontoAtual.taxaEntrega().signum()>0)exibir(mensagemFrete,"Taxa de entrega: "+moeda(descontoAtual.taxaEntrega()));
+            mensagemDesconto.setText(descontoAtual.brinde()!=null?"Brinde: "+descontoAtual.brinde():
+                    "PONTOS_DOBRO".equals(descontoAtual.estrategia())?"Prêmio aplicado: pontos em dobro":
+                    "Desconto: "+moeda(descontoAtual.desconto())+" ("+descontoAtual.estrategia()+")");
+            finalizar.setDisable(formaPagamento.getValue()==null);atualizarPix();});
         tarefa.setOnFailed(e->{if(geracao!=geracaoDesconto)return;Throwable erro=tarefa.getException();mensagemDesconto.setText(erro instanceof IllegalArgumentException?erro.getMessage():"Não foi possível calcular o desconto. Tente novamente.");});
         iniciar(tarefa);
     }
     private void atualizarPix(){
-        pixCheckout.atualizar(formaPagamento.getValue()==FormaPagamento.PIX,descontoAtual==null?null:descontoAtual.total(),null,
-                descontoAtual==null?"O código PIX aparece quando o total estiver disponível.":"Prévia · finalize o pedido antes de pagar.");
+        boolean selecionado=formaPagamento.getValue()==FormaPagamento.PIX;
+        BigDecimal valor=descontoAtual==null?null:descontoAtual.total();
+        boolean real=selecionado&&pagamentosPix.usaMercadoPago()&&(valor==null||valor.signum()>0);
+        dadosPagadorPix.setVisible(real);dadosPagadorPix.setManaged(real);
+        if(!selecionado)pixCheckout.atualizar(false,null,null,"");
+        else if(real)pixCheckout.exibirCodigo(null,"A cobrança Mercado Pago é gerada após finalizar o pedido.");
+        else if(valor!=null&&valor.signum()>0)pixCheckout.exibirCodigo(
+                new PixPayloadService(null,null,null).gerarPayload(valor,null),"Prévia PIX "+moeda(valor)+" · demonstração, não pague.");
+        else pixCheckout.exibirCodigo(null,valor==null?"O código PIX aparece quando o total estiver disponível.":"Nenhum valor a pagar por PIX.");
     }
     private void atualizarEndereco(){
         if(usuario==null)return;
@@ -458,6 +509,8 @@ public class ClienteVitrineController implements TelaAutenticada {
         if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())){avisar(Alert.AlertType.WARNING,"Endereço necessário","Seu cadastro não possui endereço. Escolha retirada ou atualize seu endereço antes de pedir entrega.");return;}
         Pedido pedido=new Pedido(null,usuario,usuario.getCliente(),StatusPedido.PENDENTE,tipo,enderecoEntrega,LocalDateTime.now(),itensDoCarrinho());
         pedido.setFormaPagamento(formaPagamento.getValue());
+        if(pedido.getFormaPagamento()==FormaPagamento.PIX&&pagamentosPix.usaMercadoPago())
+            pedido.setPagadorPix(emailPix.getText(),documentoPix.getText());
         if(agendar.isSelected()){
             try {
                 LocalDateTime data=LocalDateTime.of(Objects.requireNonNull(dataAgendamento.getValue()),LocalTime.parse(horaAgendamento.getText().trim()));
@@ -468,18 +521,18 @@ public class ClienteVitrineController implements TelaAutenticada {
         raiz.setDisable(true);
         ResultadoDesconto esperado=descontoAtual;String codigo=cupom.getText();
         Task<Long> tarefa=new Task<>() { @Override protected Long call(){return pedidosService.finalizar(pedido,codigo,esperado);} };
-        tarefa.setOnSucceeded(e->{raiz.setDisable(false);if(pedido.getId()==null)pedido.setId(tarefa.getValue());pedido.setDesconto(esperado.desconto());carrinho.clear();cupom.clear();formaPagamento.setValue(null);agendar.setSelected(false);dataAgendamento.setValue(null);horaAgendamento.clear();atualizarCarrinho();
-            Alert alerta=new Alert(Alert.AlertType.INFORMATION);alerta.initOwner(raiz.getScene().getWindow());alerta.setTitle("Pedido enviado");alerta.setHeaderText(null);alerta.setContentText("Pedido #"+tarefa.getValue()+" recebido com sucesso.");
-            if(pedido.getFormaPagamento()==FormaPagamento.PIX){
-                PixPainel pagamento=new PixPainel();
-                pagamento.atualizar(true,pedido.calcularTotal(),"P"+pedido.getId(),"Pague somente se ainda não pagou. A loja confere o recebimento.");
-                alerta.getDialogPane().setContent(new VBox(8,textoClube("Pedido #"+pedido.getId()+" recebido com sucesso."),pagamento));
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);if(pedido.getId()==null)pedido.setId(tarefa.getValue());
+            pedido.setTaxaEntrega(esperado.taxaEntrega());pedido.setDesconto(esperado.desconto());pedido.setBrinde(esperado.brinde());
+            carrinho.clear();cupom.clear();formaPagamento.setValue(null);agendar.setSelected(false);dataAgendamento.setValue(null);horaAgendamento.clear();
+            emailPix.clear();documentoPix.clear();pedido.setPagadorPix(null,null);atualizarCarrinho();
+            if(pedido.getStatusPagamento()==StatusPagamento.AGUARDANDO_PIX){
+                abrirPix(pedido);carregarProdutos();mostrarPedidos();return;
             }
-            ButtonType acompanhar=new ButtonType("Acompanhar no WhatsApp"),roleta=new ButtonType("Jogar roleta");
-            alerta.getButtonTypes().add(acompanhar);if(pedido.isRoletaLiberada())alerta.getButtonTypes().add(roleta);
+            Alert alerta=new Alert(Alert.AlertType.INFORMATION);alerta.initOwner(raiz.getScene().getWindow());alerta.setTitle("Pedido enviado");alerta.setHeaderText(null);alerta.setContentText("Pedido #"+tarefa.getValue()+" recebido com sucesso.");
+            ButtonType acompanhar=new ButtonType("Acompanhar no WhatsApp");alerta.getButtonTypes().add(acompanhar);
             ButtonType acao=alerta.showAndWait().orElse(ButtonType.OK);
-            if(acao==acompanhar)abrirWhatsApp(pedido);else if(acao==roleta)abrirRoleta(pedido.getId());
-            carregarProdutos();mostrarPedidos();});
+            if(acao==acompanhar)abrirWhatsApp(pedido);
+            carregarCupons();carregarProdutos();mostrarPedidos();});
         tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();
             if(erro instanceof EstoqueInsuficienteException estoque)estoqueInsuficiente(estoque.getNomeProduto());
             else if(erro instanceof IllegalArgumentException)avisar(Alert.AlertType.WARNING,"Pedido não finalizado",erro.getMessage());
@@ -505,7 +558,9 @@ public class ClienteVitrineController implements TelaAutenticada {
         ProgressBar termometro=new ProgressBar(etapa.progresso());termometro.setMaxWidth(Double.MAX_VALUE);
         boolean futuro=pedido.getAgendadoPara()!=null&&pedido.getAgendadoPara().isAfter(LocalDateTime.now());
         String estimativa=etapa.aguardaCozinha()?(futuro?" · aguardando horário agendado":" · estimativa: "+(Math.max(1,Math.min(fila,100000))*5)+" min (fila atual)"):"";
-        card.getChildren().addAll(new Label("🌡 Termômetro da Cozinha — "+etapa.mensagem(pedido.getTipoEntrega())+estimativa),termometro);
+        if(pedido.getStatus()!=StatusPedido.CANCELADO&&pedido.getStatusPagamento()==StatusPagamento.AGUARDANDO_PIX)
+            card.getChildren().add(textoClube("Aguardando PIX · a cozinha ainda não recebeu este pedido."));
+        else card.getChildren().addAll(new Label("🌡 Termômetro da Cozinha — "+etapa.mensagem(pedido.getTipoEntrega())+estimativa),termometro);
         if(pedido.getAgendadoPara()!=null)card.getChildren().add(new Label("Agendado: "+pedido.getAgendadoPara().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
         Set<UUID> gruposExibidos=new HashSet<>();
         for(PedidoItem item:pedido.getItens()){
@@ -519,24 +574,34 @@ public class ClienteVitrineController implements TelaAutenticada {
             HBox linha=new HBox(8,descricao,avaliar);linha.setAlignment(Pos.CENTER_LEFT);card.getChildren().add(linha);
         }
         Label totalPedido=new Label("Total: "+moeda(pedido.calcularTotal()));totalPedido.getStyleClass().add("produto-preco");
+        if(pedido.getTaxaEntrega().signum()>0)card.getChildren().add(textoClube("Taxa de entrega: "+moeda(pedido.getTaxaEntrega())));
+        if(pedido.getBrinde()!=null)card.getChildren().add(textoClube("Brinde: "+pedido.getBrinde()));
+        if(pedido.getStatusPagamento()==StatusPagamento.PAGO&&pedido.getStatus()!=StatusPedido.CANCELADO)
+            card.getChildren().add(textoClube(pedido.isPixDemonstracao()?"Pagamento simulado · nenhum PIX recebido.":"Pagamento confirmado."));
         Button whatsappPedido=new Button("Acompanhar no WhatsApp");whatsappPedido.setId("whatsapp-pedido-"+pedido.getId());whatsappPedido.getStyleClass().add("button-secondary");whatsappPedido.setOnAction(e->abrirWhatsApp(pedido));
         card.getChildren().addAll(totalPedido,whatsappPedido);
         if(pedido.isRoletaLiberada()&&pedido.getStatus()!=StatusPedido.CANCELADO){
-            Button roleta=new Button("Roleta de Premiação");roleta.setId("roleta-"+pedido.getId());
-            roleta.setOnAction(e->abrirRoleta(pedido.getId()));card.getChildren().add(roleta);
+            Button roleta=new Button(vip(pedido)?"Roleta VIP":"Roleta de Premiação");roleta.setId("roleta-"+pedido.getId());
+            roleta.setOnAction(e->abrirRoleta(pedido));card.getChildren().add(roleta);
         }
-        if(pedido.getFormaPagamento()==FormaPagamento.PIX&&pedido.getStatus()==StatusPedido.PENDENTE&&pedido.calcularTotal().signum()>0){
-            Button pix=new Button("Ver PIX do pedido");pix.setOnAction(e->{
-                Dialog<ButtonType> dialog=personalizar("Pagamento do pedido #"+pedido.getId(),ButtonType.OK);
-                PixPainel painel=new PixPainel();painel.atualizar(true,pedido.calcularTotal(),"P"+pedido.getId(),"Use somente se ainda não pagou.");
-                dialog.getDialogPane().setContent(painel);dialog.showAndWait();
-            });card.getChildren().add(pix);
+        if(pedido.getStatusPagamento()==StatusPagamento.AGUARDANDO_PIX&&pedido.getStatus()==StatusPedido.PENDENTE){
+            Button pix=new Button("Ver PIX do pedido");pix.setOnAction(e->{abrirPix(pedido);carregarPedidos();});card.getChildren().add(pix);
         }
         return card;
     }
-    private void abrirRoleta(long id){
+    private void abrirPix(Pedido pedido){
+        UsuarioCliente cliente=usuario;long id=pedido.getId();
+        boolean roleta=PagamentoPixUi.abrir(raiz.getScene().getWindow(),id,()->pagamentosPix.consultar(cliente,id),
+                ()->pagamentosPix.confirmarOffline(cliente,id));
+        if(roleta)abrirRoleta(pedido);
+        carregarCupons();
+    }
+    private static boolean vip(Pedido pedido){return pedido.calcularTotal().compareTo(PremioRoleta.LIMITE_VIP)>0;}
+    private void abrirRoleta(Pedido pedido){
         UsuarioCliente cliente=usuario;
-        RoletaUi.abrir(raiz.getScene().getWindow(),id,()->gamificacao.girar(cliente,id));
+        long id=pedido.getId();
+        RoletaUi.abrir(raiz.getScene().getWindow(),id,vip(pedido),()->gamificacao.girar(cliente,id),()->gamificacao.girarExtra(cliente,id));
+        carregarCupons();
     }
     @FXML private void pedirDeSempre(){
         if(usuario==null)return;raiz.setDisable(true);
@@ -581,7 +646,7 @@ public class ClienteVitrineController implements TelaAutenticada {
             else avisar(Alert.AlertType.ERROR,"Não foi possível avaliar","Verifique sua conexão e tente novamente.");});iniciar(tarefa);
     }
     @FXML private void sair(){
-        atualizacaoPedidos.stop();geracaoProdutos++;geracaoPedidos++;
+        atualizacaoPedidos.stop();contagemCupons.stop();geracaoProdutos++;geracaoPedidos++;
         try {Navegacao.abrirLogin((Stage)raiz.getScene().getWindow());}
         catch(IOException e){avisar(Alert.AlertType.ERROR,"Não foi possível sair","Tente novamente.");}
     }

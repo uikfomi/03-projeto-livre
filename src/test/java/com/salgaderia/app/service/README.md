@@ -11,7 +11,8 @@ Execute os testes compatíveis com o ambiente; os testes de integração podem e
 | Caminho | Conteúdo e responsabilidade |
 |---|---|
 | [desconto/](desconto/) | Estratégias de desconto e testes correspondentes. |
-| [ClubeGamificacaoIntegracaoTest.java](ClubeGamificacaoIntegracaoTest.java) | Verifica mensalidade, benefício, selos, concorrência da roleta e cupons exclusivos no MySQL. |
+| [pix/](pix/) | Testes HTTP em loopback para a integração PIX. [Abrir guia](pix/README.md). |
+| [ClubeGamificacaoIntegracaoTest.java](ClubeGamificacaoIntegracaoTest.java) | Valida clube, cupons e roleta concorrentes e estados do pagamento PIX no MySQL. |
 | [ComandaIntegracaoTest.java](ComandaIntegracaoTest.java) | Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL. |
 | [CozinhaStateTest.java](CozinhaStateTest.java) | Verifica mensagens e progresso dos estados da cozinha. |
 | [DescontoIntegracaoTest.java](DescontoIntegracaoTest.java) | Integração de descontos e pagamentos no MySQL. |
@@ -33,7 +34,10 @@ O ponto inicial é `src/test/java/com/salgaderia/app/service/`.
 src/test/java/com/salgaderia/app/service/  # Reúne testes automatizados dos componentes presentes neste pacote.
 ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   └── EstrategiasDescontoTest.java  # Testa as estratégias e a escolha do melhor desconto.
-├── ClubeGamificacaoIntegracaoTest.java  # Verifica mensalidade, benefício, selos, concorrência da roleta e cupons exclusivos no MySQL.
+├── pix/  # Testes HTTP em loopback para a integração PIX.
+│   ├── MercadoPagoPixGatewayTest.java  # Verifica a integração HTTP com um servidor local, sem emitir cobranças.
+│   └── README.md  # Guia dos testes HTTP locais.
+├── ClubeGamificacaoIntegracaoTest.java  # Valida clube, cupons e roleta concorrentes e estados do pagamento PIX no MySQL.
 ├── ComandaIntegracaoTest.java  # Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL.
 ├── CozinhaStateTest.java  # Verifica mensagens e progresso dos estados da cozinha.
 ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.

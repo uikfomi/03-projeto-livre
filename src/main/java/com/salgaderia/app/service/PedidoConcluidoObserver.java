@@ -7,7 +7,7 @@ import java.sql.SQLException;
 /** Observador síncrono: grava efeitos na mesma transação JDBC que gerou o evento. */
 @FunctionalInterface
 public interface PedidoConcluidoObserver {
-    enum Etapa { FINALIZADO, ENTREGUE, CANCELADO }
+    enum Etapa { FINALIZADO, PAGAMENTO_CONFIRMADO, ENTREGUE, CANCELADO }
     record Evento(long pedidoId,Conta cliente,Etapa etapa,boolean vitrine) { }
     void aoAlterarPedido(Connection c,Evento evento) throws SQLException;
 }

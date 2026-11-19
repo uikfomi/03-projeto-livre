@@ -3,6 +3,7 @@ package com.salgaderia.app.model;
 import com.salgaderia.app.model.enums.StatusPedido;
 import com.salgaderia.app.model.enums.TipoEntrega;
 import com.salgaderia.app.model.enums.FormaPagamento;
+import com.salgaderia.app.model.enums.StatusPagamento;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -22,6 +23,11 @@ public class Pedido {
     private FormaPagamento formaPagamento;
     private LocalDateTime agendadoPara;
     private boolean roletaLiberada;
+    private StatusPagamento statusPagamento=StatusPagamento.NA_ENTREGA;
+    private BigDecimal taxaEntrega=BigDecimal.ZERO;
+    private String brinde;
+    private String emailPix,documentoPix;
+    private boolean pixDemonstracao;
 
     public Pedido(Long id, Usuario usuario, Cliente cliente, StatusPedido status, TipoEntrega tipoEntrega,
                   String enderecoEntrega, LocalDateTime criadoEm, List<PedidoItem> itens) {
@@ -47,6 +53,17 @@ public class Pedido {
     public LocalDateTime getAgendadoPara() { return agendadoPara; }
     public boolean isRoletaLiberada() { return roletaLiberada; }
     public void setRoletaLiberada(boolean roletaLiberada) { this.roletaLiberada = roletaLiberada; }
+    public StatusPagamento getStatusPagamento(){return statusPagamento;}
+    public void setStatusPagamento(StatusPagamento status){this.statusPagamento=Validacao.obrigatorio(status,"status de pagamento");}
+    public BigDecimal getTaxaEntrega(){return taxaEntrega;}
+    public void setTaxaEntrega(BigDecimal taxa){this.taxaEntrega=Validacao.naoNegativo(taxa,"taxa de entrega");}
+    public String getBrinde(){return brinde;}
+    public void setBrinde(String brinde){this.brinde=brinde;}
+    public String getEmailPix(){return emailPix;}
+    public String getDocumentoPix(){return documentoPix;}
+    public void setPagadorPix(String email,String documento){this.emailPix=email;this.documentoPix=documento;}
+    public boolean isPixDemonstracao(){return pixDemonstracao;}
+    public void setPixDemonstracao(boolean pixDemonstracao){this.pixDemonstracao=pixDemonstracao;}
     /** Pedidos históricos também podem ser carregados com agendamentos já passados. */
     public void setAgendadoPara(LocalDateTime agendadoPara) { this.agendadoPara = agendadoPara; }
     public List<PedidoItem> getItens() { return List.copyOf(itens); }
@@ -60,11 +77,11 @@ public class Pedido {
     /** Valores nulos representam pedidos históricos anteriores ao registro de pagamento. */
     public void setFormaPagamento(FormaPagamento formaPagamento) { this.formaPagamento = formaPagamento; }
     public void setDesconto(BigDecimal desconto) {
-        if (desconto == null || desconto.signum() < 0 || desconto.compareTo(calcularSubtotal()) > 0)
+        if (desconto == null || desconto.signum() < 0 || desconto.compareTo(calcularSubtotal().add(taxaEntrega)) > 0)
             throw new IllegalArgumentException("Desconto inválido");
         this.desconto = desconto;
     }
-    public BigDecimal calcularTotal() { return calcularSubtotal().subtract(desconto); }
+    public BigDecimal calcularTotal() { return calcularSubtotal().add(taxaEntrega).subtract(desconto); }
     public void transicionarPara(StatusPedido destino) {
         if (!status.podeTransicionarPara(destino)) throw new IllegalStateException("Transição de pedido inválida: " + status + " -> " + destino);
         status = destino;

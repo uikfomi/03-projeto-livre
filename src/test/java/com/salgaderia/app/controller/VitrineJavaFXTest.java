@@ -50,7 +50,7 @@ class VitrineJavaFXTest {
         var loaderRef=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stageRef=new java.util.concurrent.atomic.AtomicReference<Stage>();
         fx(()->{
             FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));
-            loader.setControllerFactory(c->new ClienteVitrineController(estoque,pedidos,avaliacoes));
+            loader.setControllerFactory(c->vitrineTeste(estoque,pedidos,avaliacoes));
             Parent root=loader.load();Stage stage=new Stage();stage.setScene(new Scene(root,1000,700));stage.show();
             root.getStylesheets().add(getClass().getResource("/css/global.css").toExternalForm());root.applyCss();
             ((ClienteVitrineController)loader.getController()).definirUsuario(usuario);loaderRef.set(loader);stageRef.set(stage);return null;
@@ -125,7 +125,7 @@ class VitrineJavaFXTest {
         var loaderRef=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stageRef=new java.util.concurrent.atomic.AtomicReference<Stage>();
         fx(()->{
             FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));
-            loader.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of()),new PedidosTeste(List.of()),new AvaliacoesTeste()));
+            loader.setControllerFactory(c->vitrineTeste(new ProdutosTeste(List.of()),new PedidosTeste(List.of()),new AvaliacoesTeste()));
             Parent root=loader.load();Stage stage=new Stage();stage.setScene(new Scene(root,900,650));stage.show();
             Cliente cliente=new Cliente(10L,"Ana",null,null,null,null,null);
             ((ClienteVitrineController)loader.getController()).definirUsuario(new UsuarioCliente(20L,"Ana","ana","senha",true,cliente));
@@ -144,7 +144,7 @@ class VitrineJavaFXTest {
         List<Pedido> lista=new CopyOnWriteArrayList<>();
         lista.add(new Pedido(101L,usuario,cliente,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,produto,BigDecimal.ONE,BigDecimal.TEN))));
         var loaderRef=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stageRef=new java.util.concurrent.atomic.AtomicReference<Stage>();
-        fx(()->{FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));loader.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of()),new PedidosTeste(lista),new AvaliacoesTeste()));Parent root=loader.load();Stage stage=new Stage();stage.setScene(new Scene(root,1000,700));stage.show();((ClienteVitrineController)loader.getController()).definirUsuario(usuario);loaderRef.set(loader);stageRef.set(stage);((Button)loader.getNamespace().get("botaoPedidos")).fire();return null;});
+        fx(()->{FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));loader.setControllerFactory(c->vitrineTeste(new ProdutosTeste(List.of()),new PedidosTeste(lista),new AvaliacoesTeste()));Parent root=loader.load();Stage stage=new Stage();stage.setScene(new Scene(root,1000,700));stage.show();((ClienteVitrineController)loader.getController()).definirUsuario(usuario);loaderRef.set(loader);stageRef.set(stage);((Button)loader.getNamespace().get("botaoPedidos")).fire();return null;});
         try{
             aguardar(()->fx(()->stageRef.get().getScene().getRoot().lookup(".status-pendente")!=null));
             lista.set(0,new Pedido(101L,usuario,cliente,StatusPedido.PRONTO,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,produto,BigDecimal.ONE,BigDecimal.TEN))));
@@ -157,7 +157,7 @@ class VitrineJavaFXTest {
         Cliente cliente=new Cliente(10L,"Ana",null,null,null,null,null);UsuarioCliente usuario=new UsuarioCliente(20L,"Ana","ana","senha",true,cliente);
         Pedido anterior=new Pedido(101L,usuario,cliente,StatusPedido.ENTREGUE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),List.of(new PedidoItem(null,produto,BigDecimal.ONE,produto.getPrecoVenda())));
         PedidosTeste pedidos=new PedidosTeste(List.of(anterior));var loader=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stage=new java.util.concurrent.atomic.AtomicReference<Stage>();
-        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));l.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of(produto)),pedidos,new AvaliacoesTeste()));Parent root=l.load();Stage s=new Stage();s.setScene(new Scene(root,1100,800));s.show();((ClienteVitrineController)l.getController()).definirUsuario(usuario);loader.set(l);stage.set(s);((Button)l.getNamespace().get("pedirDeSempre")).fire();return null;});
+        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));l.setControllerFactory(c->vitrineTeste(new ProdutosTeste(List.of(produto)),pedidos,new AvaliacoesTeste()));Parent root=l.load();Stage s=new Stage();s.setScene(new Scene(root,1100,800));s.show();((ClienteVitrineController)l.getController()).definirUsuario(usuario);loader.set(l);stage.set(s);((Button)l.getNamespace().get("pedirDeSempre")).fire();return null;});
         try{
             aguardar(()->fx(()->((Label)loader.get().getNamespace().get("contador")).getText().equals("1 item")));
             LocalDateTime futuro=LocalDateTime.now().plusDays(2).withSecond(0).withNano(0);
@@ -186,7 +186,7 @@ class VitrineJavaFXTest {
         try {
             fx(()->{
                 FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));
-                l.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of(empada,molho)),new PedidosTeste(List.of()),avaliacoes));
+                l.setControllerFactory(c->vitrineTeste(new ProdutosTeste(List.of(empada,molho)),new PedidosTeste(List.of()),avaliacoes));
                 Stage s=new Stage();s.setScene(new Scene(l.load(),1100,800));s.show();stage.set(s);loader.set(l);
                 Cliente cliente=new Cliente(10L,"Ana",null,null,null,null,null);
                 ((ClienteVitrineController)l.getController()).definirUsuario(new UsuarioCliente(20L,"Ana","ana","senha",true,cliente));return null;
@@ -236,13 +236,14 @@ class VitrineJavaFXTest {
             public void confirmar(UsuarioAdmin u,long c,long m){throw new UnsupportedOperationException();}
         };
         GamificacaoService jogo=new GamificacaoService(){
-            public Perfil perfil(UsuarioCliente u){return new Perfil(List.of(new ConquistaCliente("PRIMEIRO_PEDIDO","Primeiro Pedido","Fez um pedido",LocalDateTime.now())),20,List.of());}
-            public PremioRoleta girar(UsuarioCliente u,long id){return new PremioRoleta(id,PremioRoleta.Tipo.CUPOM_7,"FOME-CUPOM-TESTE",true);}
+            public Perfil perfil(UsuarioCliente u){return new Perfil(List.of(new ConquistaCliente("PRIMEIRO_PEDIDO","Primeiro Pedido","Fez um pedido",LocalDateTime.now())),
+                    20,List.of(new CupomRoleta("FOME-CUPOM-TESTE","Cupom 10% OFF",new BigDecimal("25"),LocalDateTime.now().plusHours(20))));}
+            public PremioRoleta girar(UsuarioCliente u,long id){return new PremioRoleta(id,PremioRoleta.Tipo.CUPOM_10,"FOME-CUPOM-TESTE",true);}
         };
         var loader=new java.util.concurrent.atomic.AtomicReference<FXMLLoader>();var stage=new java.util.concurrent.atomic.AtomicReference<Stage>();
         fx(()->{
             FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));
-            l.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of(produto)),new PedidosTeste(List.of(pedido)),new AvaliacoesTeste(),clube,jogo));
+            l.setControllerFactory(c->new ClienteVitrineController(new ProdutosTeste(List.of(produto)),new PedidosTeste(List.of(pedido)),new AvaliacoesTeste(),clube,jogo,com.salgaderia.app.service.pix.PixPagamentoService.demonstracao()));
             Stage s=new Stage();s.setScene(new Scene(l.load(),1100,800));s.show();stage.set(s);loader.set(l);
             ((ClienteVitrineController)l.getController()).definirUsuario(usuario);((Button)l.getNamespace().get("botaoClube")).fire();return null;
         });
@@ -251,6 +252,7 @@ class VitrineJavaFXTest {
             fx(()->{
                 assertTrue(stage.get().getScene().getRoot().lookupAll(".label").stream().filter(Label.class::isInstance)
                         .map(Label.class::cast).anyMatch(l->l.getText().contains("Primeiro Pedido")));
+                assertTrue(((Label)stage.get().getScene().getRoot().lookup("#cupomUrgente")).getText().contains("expira em"));
                 ((Button)loader.get().getNamespace().get("botaoPedidos")).fire();return null;
             });
             aguardar(()->fx(()->stage.get().getScene().getRoot().lookup("#roleta-42")!=null));
@@ -265,6 +267,28 @@ class VitrineJavaFXTest {
             });
         }finally{fx(()->{dialogoAberto(stage.get()).ifPresent(p->p.getScene().getWindow().hide());stage.get().close();return null;});}
     }
+    @Test void dialogoPixConsultaNovamenteELiberaRoletaSemConfirmacaoOffline() throws Exception {
+        var consultas=new java.util.concurrent.atomic.AtomicInteger();
+        var escolheuRoleta=new java.util.concurrent.atomic.AtomicBoolean();
+        var referencias=new java.util.concurrent.atomic.AtomicReference<Stage>();
+        fx(()->{
+            Stage dona=new Stage();dona.setScene(new Scene(new javafx.scene.layout.VBox(),480,360));dona.show();referencias.set(dona);
+            Platform.runLater(()->escolheuRoleta.set(com.salgaderia.app.util.PagamentoPixUi.abrir(dona,42,()->{
+                var estado=consultas.incrementAndGet()==1?com.salgaderia.app.service.pix.PixPagamentoService.Estado.AGUARDANDO:
+                        com.salgaderia.app.service.pix.PixPagamentoService.Estado.PAGO;
+                return new com.salgaderia.app.service.pix.PixPagamentoService.Consulta(estado,new BigDecimal("72.15"),
+                        estado==com.salgaderia.app.service.pix.PixPagamentoService.Estado.AGUARDANDO?"000201TESTE":null,false,
+                        estado==com.salgaderia.app.service.pix.PixPagamentoService.Estado.AGUARDANDO?"Aguardando confirmação automática…":"Pagamento confirmado.");
+            },()->{throw new AssertionError("Offline não pode confirmar PIX real.");})));return null;
+        });
+        try {
+            aguardar(()->fx(()->dialogoAberto(referencias.get()).map(p->p.lookup("#pix-copiar")!=null&&p.lookup("#pix-copiar").isVisible()).orElse(false)));
+            fx(()->{var p=dialogoAberto(referencias.get()).orElseThrow();assertFalse(p.lookup("#pix-confirmar-offline").isVisible());return null;});
+            aguardar(()->fx(()->dialogoAberto(referencias.get()).map(p->p.lookup("#pix-abrir-roleta").isVisible()).orElse(false)));
+            fx(()->{((Button)dialogoAberto(referencias.get()).orElseThrow().lookup("#pix-abrir-roleta")).fire();return null;});
+            aguardar(escolheuRoleta::get);assertEquals(2,consultas.get());
+        }finally{fx(()->{referencias.get().close();return null;});}
+    }
     private static Optional<DialogPane> dialogoAberto(Stage dona){
         for(var w:List.copyOf(javafx.stage.Window.getWindows()))
             if(w instanceof Stage s&&s.getOwner()==dona&&s.getScene()!=null&&s.getScene().getRoot() instanceof DialogPane pane)return Optional.of(pane);
@@ -276,6 +300,10 @@ class VitrineJavaFXTest {
     private static void confirmar(DialogPane p){
         var tipo=p.getButtonTypes().stream().filter(t->t.getButtonData()==ButtonBar.ButtonData.OK_DONE).findFirst().orElseThrow();
         ((Button)p.lookupButton(tipo)).fire();
+    }
+    private static ClienteVitrineController vitrineTeste(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AvaliacaoService avaliacoes){
+        return new ClienteVitrineController(produtos,pedidos,avaliacoes,new com.salgaderia.app.service.impl.ClubeServiceImpl(),
+                new com.salgaderia.app.service.impl.GamificacaoServiceImpl(),com.salgaderia.app.service.pix.PixPagamentoService.demonstracao());
     }
     private static <T> T fx(Callable<T> c) throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> condicao) throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(condicao.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}

@@ -7,9 +7,12 @@ import com.salgaderia.app.service.PedidoVendaService;
 import com.salgaderia.app.service.PersonalizacaoService;
 import com.salgaderia.app.service.BarramentoPedido;
 import com.salgaderia.app.service.ConquistasObserver;
+import com.salgaderia.app.service.PedidoCancelamentoService;
 import com.salgaderia.app.service.PedidoConcluidoObserver.*;
 import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.service.desconto.*;
+import com.salgaderia.app.service.pix.PixConfiguracao;
+import com.salgaderia.app.service.pix.PixPagamentoService;
 import com.salgaderia.app.util.ConnectionFactory;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -25,8 +28,19 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
     private final UsuarioDAO usuarios = new UsuarioDAOImpl(new ContatoDAOImpl());
     private final BarramentoPedido eventos = new BarramentoPedido(new ConquistasObserver(jogo));
     private final CalculadoraDescontos calculadora = new CalculadoraDescontos();
+    private final PixPagamentoService pix;
+    private final PixPagamentoDAO pixDados=new PixPagamentoDAOImpl();
+    private final PedidoCancelamentoService cancelamento;
+    private record Venda(long id,ResultadoDesconto desconto,StatusPagamento pagamento,boolean demo) { }
     public PedidoVendaServiceImpl(){this(new PedidoDAOImpl(),new ProdutoDAOImpl(),new MovimentacaoEstoqueDAOImpl());}
-    public PedidoVendaServiceImpl(PedidoDAO pedidos,ProdutoDAO produtos,MovimentacaoEstoqueDAO movimentos){this.pedidos=Objects.requireNonNull(pedidos);this.produtos=Objects.requireNonNull(produtos);this.movimentos=Objects.requireNonNull(movimentos);}
+    public PedidoVendaServiceImpl(PixPagamentoService pix){this(new PedidoDAOImpl(),new ProdutoDAOImpl(),new MovimentacaoEstoqueDAOImpl(),pix);}
+    public PedidoVendaServiceImpl(PedidoDAO pedidos,ProdutoDAO produtos,MovimentacaoEstoqueDAO movimentos){
+        this(pedidos,produtos,movimentos,new PixPagamentoService());
+    }
+    public PedidoVendaServiceImpl(PedidoDAO pedidos,ProdutoDAO produtos,MovimentacaoEstoqueDAO movimentos,PixPagamentoService pix){
+        this.pedidos=Objects.requireNonNull(pedidos);this.produtos=Objects.requireNonNull(produtos);this.movimentos=Objects.requireNonNull(movimentos);
+        this.pix=Objects.requireNonNull(pix);this.cancelamento=new PedidoCancelamentoService(pedidos,produtos,movimentos,eventos);
+    }
     @Override public List<Pedido> listarDoCliente(UsuarioCliente usuario){
         if(usuario==null || usuario.getId()==null || !usuario.isAtivo())throw new IllegalArgumentException("Cliente autenticado obrigatório");
         return ConnectionFactory.executarEmTransacao(c->pedidos.listarDoCliente(c,usuario));
@@ -93,16 +107,19 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         PersonalizacaoService.validarComposicao(itens);
         long entregues=pedido.getCliente()==null||pedido.getCliente().getId()==null?0:pedidos.contarEntreguesDoCliente(c,pedido.getCliente().getId());
         Long contaVitrine=pedido.getUsuario() instanceof UsuarioCliente u?u.getId():null;
+        BigDecimal taxa=contaVitrine!=null&&pedido.getTipoEntrega()==TipoEntrega.ENTREGA?PixConfiguracao.taxaEntrega():BigDecimal.ZERO;
         Cupom cupom=null;
         if(codigo!=null&&!codigo.isBlank()){
             String normalizado=codigo.trim().toUpperCase(Locale.ROOT);
             cupom=cupons.buscarAtivo(c,normalizado,contaVitrine).orElseThrow(()->new IllegalArgumentException("Cupom inválido, indisponível ou inativo"));
             BigDecimal subtotal=itens.stream().map(PedidoItem::calcularSubtotal).reduce(BigDecimal.ZERO,BigDecimal::add);
             if(subtotal.compareTo(cupom.minimo())<0)throw new IllegalArgumentException("Valor mínimo do cupom: R$ "+cupom.minimo());
+            if(cupom.beneficio()==Cupom.Beneficio.FRETE&&taxa.signum()==0)
+                throw new IllegalArgumentException("O cupom de frete grátis só vale para pedidos com entrega e taxa.");
         }
         BigDecimal percentual=contaVitrine==null?BigDecimal.ZERO:clube.assinatura(c,contaVitrine,false)
                 .filter(a->a.ativa(LocalDate.now())).map(AssinaturaCliente::descontoVigente).orElse(BigDecimal.ZERO);
-        return calculadora.calcular(new ContextoDesconto(itens,entregues,cupom,percentual));
+        return calculadora.calcular(new ContextoDesconto(itens,entregues,cupom,percentual,taxa));
     }
     private long finalizarInterno(Pedido pedido,FormaPagamento forma,BigDecimal recebido,String codigo,ResultadoDesconto esperado){
         Objects.requireNonNull(pedido);if(pedido.getId()!=null||pedido.getStatus()!=StatusPedido.PENDENTE||pedido.getItens().isEmpty())throw new IllegalArgumentException("Pedido deve ser novo, pendente e conter itens");
@@ -122,7 +139,7 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             quantidades.merge(id,item.getQuantidade(),BigDecimal::add);
             ProdutoEstoqueServiceImpl.validarQuantidade(quantidades.get(id));
         }
-        long id=ConnectionFactory.executarEmTransacao(c->{
+        Venda venda=ConnectionFactory.executarEmTransacao(c->{
             if(forma!=null){
                 Usuario responsavel=usuarios.buscarPorId(c,pedido.getUsuario().getId()).orElseThrow(()->new IllegalArgumentException("Administrador não encontrado"));
                 if(!(responsavel instanceof UsuarioAdmin)||!responsavel.isAtivo())throw new IllegalArgumentException("Venda PDV exige administrador ativo");
@@ -143,38 +160,46 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             }
             for(PedidoItem item:pedido.getItens())if(item.getPrecoUnitario().compareTo(bloqueados.get(item.getProduto().getId()).getPrecoVenda())!=0)throw new IllegalArgumentException("Preço do pedido diverge do preço atual");
             ResultadoDesconto desconto=calcular(c,pedido,codigo,bloqueados);
-            if(esperado!=null && (desconto.subtotal().compareTo(esperado.subtotal())!=0 || desconto.desconto().compareTo(esperado.desconto())!=0 || !desconto.estrategia().equals(esperado.estrategia()) || !Objects.equals(desconto.cupom(),esperado.cupom())))
+            if(esperado!=null && (desconto.subtotal().compareTo(esperado.subtotal())!=0 || desconto.desconto().compareTo(esperado.desconto())!=0 ||
+                    desconto.taxaEntrega().compareTo(esperado.taxaEntrega())!=0 || !desconto.estrategia().equals(esperado.estrategia()) ||
+                    !Objects.equals(desconto.cupom(),esperado.cupom())||!Objects.equals(desconto.brinde(),esperado.brinde())))
                 throw new IllegalArgumentException("Desconto alterado; recalcule e confirme o pedido");
             if(forma!=null && forma.isPermiteTroco() && (recebido==null || recebido.scale()>2 || recebido.compareTo(desconto.total())<0 || recebido.compareTo(new BigDecimal("99999999.99"))>0))
                 throw new IllegalArgumentException("Valor recebido insuficiente ou inválido");
             long pedidoId=pedidos.inserir(c,pedido,custos);
             pedidos.registrarDesconto(c,pedidoId,desconto);
+            boolean pixVitrine=vitrine&&pedido.getFormaPagamento()==FormaPagamento.PIX;
+            if(pixVitrine)pix.registrar(c,pedidoId,pedido,desconto.total());
             if(forma!=null) pedidos.registrarPdv(c,pedidoId,forma,forma.isPermiteTroco()?recebido:desconto.total(),forma.isPermiteTroco()?recebido.subtract(desconto.total()):BigDecimal.ZERO);
             for(var entrada:bloqueados.entrySet()){
                 Produto p=entrada.getValue();if(!produtos.atualizarEstoque(c,entrada.getKey(),p.getEstoqueAtual()))throw new IllegalStateException("Produto não atualizado");
                 movimentos.inserir(c,new MovimentacaoEstoque(null,p,TipoMovimentacaoEstoque.SAIDA,quantidades.get(entrada.getKey()),"Pedido "+pedidoId,LocalDateTime.now()),null,"VENDA",p.getCustoProducao());
             }
-            if(vitrine)cupons.encerrarCuponsExclusivos(c,conta.usuarioId());
+            if(vitrine&&desconto.cupom()!=null)cupons.reservar(c,conta.usuarioId(),desconto.cupom(),pedidoId);
             eventos.publicar(c,new Evento(pedidoId,conta,forma==null?Etapa.FINALIZADO:Etapa.ENTREGUE,vitrine));
-            return pedidoId;
-        });pedido.setId(id);pedido.setRoletaLiberada(pedido.getUsuario() instanceof UsuarioCliente);return id;
+            boolean pendente=pixVitrine&&desconto.total().signum()>0;
+            StatusPagamento pagamento=pendente?StatusPagamento.AGUARDANDO_PIX:forma!=null||pixVitrine?StatusPagamento.PAGO:StatusPagamento.NA_ENTREGA;
+            return new Venda(pedidoId,desconto,pagamento,pendente&&!pix.usaMercadoPago());
+        });
+        pedido.setId(venda.id());pedido.setRoletaLiberada(false);pedido.setStatusPagamento(venda.pagamento());pedido.setPixDemonstracao(venda.demo());
+        pedido.setTaxaEntrega(venda.desconto().taxaEntrega());pedido.setDesconto(venda.desconto().desconto());pedido.setBrinde(venda.desconto().brinde());
+        return venda.id();
     }
     @Override public void transicionar(long pedidoId,StatusPedido destino){
         ConnectionFactory.executarEmTransacao(c->{
             var conta=bloquearConta(c,jogo.contaDoPedido(c,pedidoId).orElse(null));
             StatusPedido atual=pedidos.bloquearStatus(c,pedidoId);
             if(!atual.podeTransicionarPara(destino))throw new IllegalStateException("Transição inválida: "+atual+" -> "+destino);
+            if(destino!=StatusPedido.CANCELADO&&pedidos.statusPagamento(c,pedidoId)==StatusPagamento.AGUARDANDO_PIX)
+                throw new IllegalStateException("Aguarde a confirmação PIX antes de preparar o pedido.");
             if(destino==StatusPedido.CANCELADO){
-                for(var item:pedidos.quantidades(c,pedidoId).entrySet()){
-                    Produto p=produtos.buscarPorId(c,item.getKey(),true).orElseThrow(()->new IllegalStateException("Produto não encontrado"));
-                    p.adicionarEstoque(item.getValue());
-                    if(!produtos.atualizarEstoque(c,p.getId(),p.getEstoqueAtual()))throw new IllegalStateException("Produto não atualizado");
-                    movimentos.inserir(c,new MovimentacaoEstoque(null,p,TipoMovimentacaoEstoque.ENTRADA,item.getValue(),"Cancelamento do pedido "+pedidoId,LocalDateTime.now()),null,"AJUSTE",p.getCustoProducao());
-                }
+                var cobranca=pixDados.buscar(c,pedidoId,true).orElse(null);
+                if(cobranca!=null&&cobranca.provedor()==PixPagamentoDAO.Provedor.MERCADO_PAGO&&cobranca.tentativa()!=null)
+                    throw new IllegalStateException("PIX real iniciado: confira e trate a cobrança no Mercado Pago. O aplicativo não emite estornos.");
+                cancelamento.cancelar(c,pedidoId);return null;
             }
             pedidos.atualizarStatus(c,pedidoId,destino);
-            if(destino==StatusPedido.ENTREGUE||destino==StatusPedido.CANCELADO)
-                eventos.publicar(c,new Evento(pedidoId,conta,destino==StatusPedido.ENTREGUE?Etapa.ENTREGUE:Etapa.CANCELADO,false));
+            if(destino==StatusPedido.ENTREGUE)eventos.publicar(c,new Evento(pedidoId,conta,Etapa.ENTREGUE,false));
             return null;
         });
     }

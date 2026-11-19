@@ -34,7 +34,7 @@ class AdminDashboardJavaFXTest {
         Produto p=new Produto(1L,null,"Coxinha",null,new BigDecimal("8.00"),new BigDecimal("3.00"),new BigDecimal("4"),BigDecimal.ONE,null);
         Produtos produtos=new Produtos(p);Vendas vendas=new Vendas();
         AtomicReference<FXMLLoader> l=new AtomicReference<>();AtomicReference<Stage> janela=new AtomicReference<>();
-        fx(()->{FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));loader.setControllerFactory(c->new AdminDashboardController(produtos,vendas,new Agenda(),new Financeiro(),new Avaliacoes()));Parent raiz=loader.load();Stage stage=new Stage();stage.setScene(new Scene(raiz,1100,700));stage.show();((AdminDashboardController)loader.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));l.set(loader);janela.set(stage);return null;});
+        fx(()->{FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));loader.setControllerFactory(c->painel(produtos,vendas,new ComandasTeste()));Parent raiz=loader.load();Stage stage=new Stage();stage.setScene(new Scene(raiz,1100,700));stage.show();((AdminDashboardController)loader.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));l.set(loader);janela.set(stage);return null;});
         try {
             aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#pdv-produto-1")!=null));
             fx(()->{Parent root=janela.get().getScene().getRoot();((Button)root.lookup("#pdv-produto-1")).fire();((TextField)root.lookup("#pdv-cupom")).setText("UIKFOMI10");((TextField)root.lookup("#pdv-recebido")).setText("10,00");return null;});
@@ -67,7 +67,7 @@ class AdminDashboardJavaFXTest {
     @Test void notificaNovosPedidosPendentes() throws Exception {
         Produto produto=new Produto(1L,null,"Coxinha",null,new BigDecimal("8"),new BigDecimal("3"),BigDecimal.TEN,BigDecimal.ONE,null);
         Vendas vendas=new Vendas();AtomicReference<FXMLLoader> loader=new AtomicReference<>();AtomicReference<Stage> janela=new AtomicReference<>();
-        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));l.setControllerFactory(c->new AdminDashboardController(new Produtos(produto),vendas,new Agenda(),new Financeiro(),new Avaliacoes()));Parent root=l.load();Stage stage=new Stage();stage.setScene(new Scene(root,1100,700));stage.show();((AdminDashboardController)l.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));loader.set(l);janela.set(stage);return null;});
+        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));l.setControllerFactory(c->painel(new Produtos(produto),vendas,new ComandasTeste()));Parent root=l.load();Stage stage=new Stage();stage.setScene(new Scene(root,1100,700));stage.show();((AdminDashboardController)l.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));loader.set(l);janela.set(stage);return null;});
         try{
             aguardar(()->fx(()->((Label)loader.get().getNamespace().get("badgePendentes")).getText().endsWith("0")));
             vendas.fila.add(new PedidoFila(123,"Cliente",StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),BigDecimal.TEN,"1 x Coxinha","85999999999"));
@@ -78,7 +78,7 @@ class AdminDashboardJavaFXTest {
     @Test void mostraMesasEPermiteAbrirComanda() throws Exception {
         Produto produto=new Produto(1L,null,"Coxinha",null,new BigDecimal("8"),new BigDecimal("3"),BigDecimal.TEN,BigDecimal.ONE,null);
         ComandasTeste comandas=new ComandasTeste();AtomicReference<FXMLLoader> loader=new AtomicReference<>();AtomicReference<Stage> janela=new AtomicReference<>();
-        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));l.setControllerFactory(c->new AdminDashboardController(new Produtos(produto),new Vendas(),new Agenda(),new Financeiro(),new Avaliacoes(),comandas));Parent root=l.load();Stage stage=new Stage();stage.setScene(new Scene(root,1100,700));stage.show();((AdminDashboardController)l.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));loader.set(l);janela.set(stage);((Button)l.getNamespace().get("menuMesas")).fire();return null;});
+        fx(()->{FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));l.setControllerFactory(c->painel(new Produtos(produto),new Vendas(),comandas));Parent root=l.load();Stage stage=new Stage();stage.setScene(new Scene(root,1100,700));stage.show();((AdminDashboardController)l.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));loader.set(l);janela.set(stage);((Button)l.getNamespace().get("menuMesas")).fire();return null;});
         try{
             aguardar(()->fx(()->janela.get().getScene().getRoot().lookup("#mesa-10")!=null));
             fx(()->{Parent root=janela.get().getScene().getRoot();assertTrue(root.lookup("#mesa-1").getStyleClass().contains("mesa-livre"));((Button)root.lookup("#mesa-1")).fire();return null;});
@@ -100,6 +100,10 @@ class AdminDashboardJavaFXTest {
                 assertTrue(aviso.getText().contains("8,00"));return null;
             });
         }finally{fx(()->{janela.get().close();return null;});}
+    }
+    private static AdminDashboardController painel(ProdutoEstoqueService produtos,PedidoVendaService vendas,ComandaService comandas){
+        return new AdminDashboardController(produtos,vendas,new Agenda(),new Financeiro(),new Avaliacoes(),comandas,
+                new com.salgaderia.app.service.impl.ClubeServiceImpl(),com.salgaderia.app.service.pix.PixPagamentoService.demonstracao());
     }
     private static <T>T fx(Callable<T> c)throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> c)throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(c.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}

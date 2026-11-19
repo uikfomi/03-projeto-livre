@@ -17,10 +17,11 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [ClubeDAO.java](ClubeDAO.java) | Contrato de persistência de planos, assinaturas e mensalidades. |
 | [ComandaDAO.java](ComandaDAO.java) | Contrato JDBC para mesas, itens, pagamentos e fechamento transacional. |
 | [ContatoDAO.java](ContatoDAO.java) | Contrato para cadastro, edição, exclusão e busca filtrada de contatos. |
-| [CupomDAO.java](CupomDAO.java) | Contrato de consulta de cupons públicos ou exclusivos e expiração dos últimos. |
-| [GamificacaoDAO.java](GamificacaoDAO.java) | Contrato de contas, selos, elegibilidade da roleta e prêmios. |
+| [CupomDAO.java](CupomDAO.java) | Contrato de consulta, reserva e devolução de cupons com uso limitado. |
+| [GamificacaoDAO.java](GamificacaoDAO.java) | Contrato para selos, elegibilidade por pagamento, prêmios, prazos e pontos. |
 | [MovimentacaoEstoqueDAO.java](MovimentacaoEstoqueDAO.java) | Contrato para registrar movimentações e calcular perdas por período. |
-| [PedidoDAO.java](PedidoDAO.java) | Contrato para pedidos, fila, status, pagamentos, descontos e agregações de vendas. |
+| [PedidoDAO.java](PedidoDAO.java) | Contrato JDBC para pedidos, estados de pagamento, histórico, fila e balanço. |
+| [PixPagamentoDAO.java](PixPagamentoDAO.java) | Contrato de persistência de cobranças, conciliação e status de pagamento. |
 | [ProdutoDAO.java](ProdutoDAO.java) | Contrato para cadastro de produtos, consultas e atualização de estoque. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [UsuarioDAO.java](UsuarioDAO.java) | Contrato de acesso a usuários, credenciais e bloqueio transacional da conta do cliente. |
@@ -38,10 +39,11 @@ src/main/java/com/salgaderia/app/dao/  # Define operações de acesso a dados in
 │   ├── ClubeDAOImpl.java  # Executa consultas e atualizações JDBC para adesões, vigência e mensalidades.
 │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
-│   ├── CupomDAOImpl.java  # Valida disponibilidade e titular de cupons e encerra os exclusivos na compra seguinte.
-│   ├── GamificacaoDAOImpl.java  # Grava selos e prêmios e consulta os fatos de pedido usados pelo Observer.
+│   ├── CupomDAOImpl.java  # Consulta elegibilidade, reserva cupons exclusivos e os devolve no cancelamento.
+│   ├── GamificacaoDAOImpl.java  # Persiste selos, giros, resgates e trava de 24 horas usando o relógio do banco.
 │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-│   ├── PedidoDAOImpl.java  # Persiste pedidos e personalizações e consulta histórico, fila, roleta e indicadores.
+│   ├── PedidoDAOImpl.java  # Persiste pedidos, frete e brindes e só inclui PIX aprovado na fila.
+│   ├── PixPagamentoDAOImpl.java  # Consulta pagamentos e vincula tentativas, IDs remotos e aprovação ao pedido em JDBC.
 │   ├── ProdutoDAOImpl.java  # Persiste produtos, estoque e fichas de personalização com JDBC.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── UsuarioDAOImpl.java  # Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio.
@@ -51,10 +53,11 @@ src/main/java/com/salgaderia/app/dao/  # Define operações de acesso a dados in
 ├── ClubeDAO.java  # Contrato de persistência de planos, assinaturas e mensalidades.
 ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
 ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
-├── CupomDAO.java  # Contrato de consulta de cupons públicos ou exclusivos e expiração dos últimos.
-├── GamificacaoDAO.java  # Contrato de contas, selos, elegibilidade da roleta e prêmios.
+├── CupomDAO.java  # Contrato de consulta, reserva e devolução de cupons com uso limitado.
+├── GamificacaoDAO.java  # Contrato para selos, elegibilidade por pagamento, prêmios, prazos e pontos.
 ├── MovimentacaoEstoqueDAO.java  # Contrato para registrar movimentações e calcular perdas por período.
-├── PedidoDAO.java  # Contrato para pedidos, fila, status, pagamentos, descontos e agregações de vendas.
+├── PedidoDAO.java  # Contrato JDBC para pedidos, estados de pagamento, histórico, fila e balanço.
+├── PixPagamentoDAO.java  # Contrato de persistência de cobranças, conciliação e status de pagamento.
 ├── ProdutoDAO.java  # Contrato para cadastro de produtos, consultas e atualização de estoque.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 └── UsuarioDAO.java  # Contrato de acesso a usuários, credenciais e bloqueio transacional da conta do cliente.

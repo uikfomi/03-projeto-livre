@@ -7,5 +7,6 @@ import java.util.Optional;
 
 public interface CupomDAO {
     Optional<Cupom> buscarAtivo(Connection conexao,String codigo,Long usuarioVitrine) throws SQLException;
-    void encerrarCuponsExclusivos(Connection c,long usuarioVitrine) throws SQLException;
+    void reservar(Connection c,long usuarioVitrine,String codigo,long pedidoId) throws SQLException;
+    void liberarReserva(Connection c,long pedidoId) throws SQLException;
 }

@@ -24,12 +24,12 @@ import java.util.function.Supplier;
 public final class RoletaUi {
     private RoletaUi() { }
 
-    public static void abrir(Window dona,long pedidoId,Supplier<PremioRoleta> girar) {
-        Dialog<ButtonType> dialog=new Dialog<>();dialog.initOwner(dona);dialog.setTitle("Roleta de Premiação");
-        dialog.setHeaderText("Pedido #"+pedidoId+" · um prêmio por pedido");
+    public static void abrir(Window dona,long pedidoId,boolean vip,Supplier<PremioRoleta> girar,Supplier<PremioRoleta> extra) {
+        Dialog<ButtonType> dialog=new Dialog<>();dialog.initOwner(dona);dialog.setTitle(vip?"Roleta VIP":"Roleta de Premiação");
+        dialog.setHeaderText("Pedido #"+pedidoId+" · um pedido por cliente a cada 24 horas");
         ButtonType iniciar=new ButtonType("Girar roleta",ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().setAll(iniciar,ButtonType.CLOSE);
-        Canvas roda=roda();
+        Canvas roda=new Canvas(288,288);pintar(roda,vip);
         Polygon ponteiro=new Polygon(0,0,20,0,10,18);
         ponteiro.setFill(Color.web("#2a1407"));StackPane.setAlignment(ponteiro,Pos.TOP_CENTER);
         Label resultado=new Label("Gire para descobrir seu prêmio!");resultado.setWrapText(true);
@@ -40,26 +40,37 @@ public final class RoletaUi {
         var botao=dialog.getDialogPane().lookupButton(iniciar);
         var fechar=dialog.getDialogPane().lookupButton(ButtonType.CLOSE);
         dialog.setOnCloseRequest(e->{if(fechar.isDisabled())e.consume();});
+        boolean[] segundo={false};
         botao.addEventFilter(ActionEvent.ACTION,e->{
             e.consume();botao.setDisable(true);fechar.setDisable(true);resultado.setText("Consultando o sorteio…");
-            Task<PremioRoleta> tarefa=new Task<>(){@Override protected PremioRoleta call(){return girar.get();}};
+            boolean giroExtra=segundo[0];
+            Task<PremioRoleta> tarefa=new Task<>(){@Override protected PremioRoleta call(){return (giroExtra?extra:girar).get();}};
             tarefa.setOnFailed(f->{
                 Throwable erro=tarefa.getException();fechar.setDisable(false);botao.setDisable(false);
                 resultado.setText(erro instanceof IllegalArgumentException?erro.getMessage():"Não foi possível consultar o prêmio. Tente novamente.");
             });
             tarefa.setOnSucceeded(s->{
                 PremioRoleta premio=tarefa.getValue();
+                pintar(roda,premio.vip());
                 Runnable revelar=()->{
-                    resultado.setText((premio.novo()?"Você ganhou: ":"Seu prêmio foi: ")+premio.tipo().rotulo()
-                            +(premio.cupom()==null?"":premio.novo()?" · exclusivo para a próxima compra na vitrine":" · consulte a validade no Clube da Fome"));
+                    String detalhe=premio.giroExtra()?" · gire mais uma vez, sem ocupar outra vaga de 24h":
+                            premio.cupom()==null?(premio.tipo().temCupom()?" · simulação, sem cupom resgatável":""):
+                            " · mínimo de R$ 25,00, por até 5 dias. Confira a validade no Clube da Fome.";
+                    resultado.setText((premio.tipo()==PremioRoleta.Tipo.SEM_PREMIO?"Tente na próxima! ":
+                            premio.novo()?"Você ganhou: ":"Seu prêmio foi: ")+premio.tipo().rotulo()+detalhe);
                     if(premio.cupom()!=null){cupom.setText(premio.cupom());cupom.setVisible(true);cupom.setManaged(true);}
                     fechar.setDisable(false);
+                    if(premio.giroExtra()){
+                        segundo[0]=true;((Button)botao).setText("Girar de novo");botao.setDisable(false);
+                    }
                 };
-                int alvo=(360-premio.tipo().ordinal()*90)%360;
+                int setor=PremioRoleta.fatias(premio.vip()).indexOf(premio.tipo());
+                int alvo=setor<0?0:(360-setor*60)%360;
                 if(!premio.novo()){roda.setRotate(alvo);revelar.run();return;}
                 resultado.setText("Girando…");
                 var giro=new RotateTransition(Duration.seconds(2.7),roda);
-                giro.setInterpolator(Interpolator.EASE_OUT);giro.setToAngle(360*5+alvo);
+                giro.setInterpolator(Interpolator.EASE_OUT);
+                giro.setToAngle((Math.floor(roda.getRotate()/360)+5)*360+alvo);
                 giro.setOnFinished(f->revelar.run());giro.play();
             });
             Thread thread=new Thread(tarefa,"roleta-premiacao");thread.setDaemon(true);thread.start();
@@ -67,16 +78,23 @@ public final class RoletaUi {
         dialog.showAndWait();
     }
 
-    private static Canvas roda(){
-        Canvas roda=new Canvas(240,240);var desenho=roda.getGraphicsContext2D();
-        Color[] cores={Color.web("#9b431b"),Color.web("#38643c"),Color.web("#7b3f75"),Color.web("#244e70")};
-        for(var tipo:PremioRoleta.Tipo.values()){
-            int setor=tipo.ordinal();desenho.setFill(cores[setor]);
-            desenho.fillArc(6,6,228,228,45-setor*90,90,ArcType.ROUND);
-            double angulo=Math.toRadians(setor*90);
+    private static void pintar(Canvas roda,boolean vip){
+        var desenho=roda.getGraphicsContext2D();desenho.clearRect(0,0,288,288);
+        Color[] cores={Color.web("#9b431b"),Color.web("#38643c"),Color.web("#7b3f75"),Color.web("#244e70"),
+                Color.web("#98491b"),Color.web("#644721")};
+        var fatias=PremioRoleta.fatias(vip);
+        for(int setor=0;setor<fatias.size();setor++){
+            var tipo=fatias.get(setor);desenho.setFill(cores[setor]);
+            desenho.fillArc(6,6,276,276,60-setor*60,60,ArcType.ROUND);
+            double angulo=Math.toRadians(setor*60);
             desenho.setFill(Color.WHITE);desenho.setFont(Font.font(14));desenho.setTextAlign(TextAlignment.CENTER);
-            desenho.fillText(tipo.rotulo(),120+76*Math.sin(angulo),125-76*Math.cos(angulo));
+            String rotulo=switch(tipo){
+                case BRINDE_MINI->"Mini porção";case COMBO_BRINDE->"Combo VIP";case PONTOS_DOBRO->"2x pontos";
+                case CUPOM_10->"10% OFF";case CUPOM_15->"15% OFF";case FRETE_GRATIS->"Frete grátis";
+                case GIRO_EXTRA->"Giro extra";case SEM_PREMIO->"Tente depois";default->tipo.rotulo();
+            };
+            desenho.fillText(rotulo,144+92*Math.sin(angulo),149-92*Math.cos(angulo),85);
         }
-        desenho.setFill(Color.web("#fff4d8"));desenho.fillOval(108,108,24,24);return roda;
+        desenho.setFill(Color.web(vip?"#ffcf57":"#fff4d8"));desenho.fillOval(132,132,24,24);
     }
 }

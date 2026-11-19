@@ -4,6 +4,7 @@ import com.salgaderia.app.dao.impl.*;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.impl.*;
+import com.salgaderia.app.service.pix.*;
 import com.salgaderia.app.util.ConnectionFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -62,12 +63,140 @@ class ClubeGamificacaoIntegracaoTest {
         }
     }
 
+    @Test void freteEPontosEmDobroAplicamBeneficiosReaisSemAcumulo() throws Exception {
+        try(var fixture=new Cenario()){
+            var recebeFrete=fixture.cliente();
+            long anterior=fixture.vendas.finalizar(fixture.pedido(recebeFrete,3));fixture.entregar(anterior);
+            String frete=jogo(1).girar(recebeFrete,anterior).cupom();
+            assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(fixture.pedido(recebeFrete,3),frete));
+            var entrega=new Pedido(null,recebeFrete,recebeFrete.getCliente(),StatusPedido.PENDENTE,TipoEntrega.ENTREGA,"Endereço de teste",
+                    LocalDateTime.now(),List.of(new PedidoItem(null,fixture.produto,new BigDecimal("3"),fixture.produto.getPrecoVenda())));
+            entrega.setFormaPagamento(FormaPagamento.DINHEIRO);
+            var antes=fixture.vendas.simular(entrega,null);
+            if(antes.taxaEntrega().signum()>0){
+                var depois=fixture.vendas.simular(entrega,frete);
+                assertEquals("FRETE",depois.estrategia());
+                assertEquals(0,antes.taxaEntrega().compareTo(depois.desconto()));
+                long id=fixture.vendas.finalizar(entrega,frete,depois);
+                assertEquals(0,new BigDecimal("30.00").compareTo(fixture.vendas.listarDoCliente(recebeFrete).stream()
+                        .filter(p->p.getId()==id).findFirst().orElseThrow().calcularTotal()));
+            }else assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(entrega,frete));
+
+            var recebePontos=fixture.cliente();
+            long primeiro=fixture.vendas.finalizar(fixture.pedido(recebePontos,6));fixture.entregar(primeiro);
+            var premio=jogo(2).girar(recebePontos,primeiro);
+            assertFalse(premio.vip(),"R$ 60,00 exatos não liberam o modo VIP");
+            var proximo=fixture.pedido(recebePontos,3);
+            var cotado=fixture.vendas.simular(proximo,premio.cupom());
+            assertEquals("PONTOS_DOBRO",cotado.estrategia());assertEquals(0,cotado.desconto().signum());
+            long id=fixture.vendas.finalizar(proximo,premio.cupom(),cotado);
+            assertEquals(10,jogo(2).perfil(recebePontos).pontos());
+            fixture.entregar(id);
+            assertEquals(30,jogo(2).perfil(recebePontos).pontos());
+        }
+    }
+
+    @Test void pixRealSoLiberaPedidoComAprovacaoCompativelERetomaCobrancaComMesmaChave() throws Exception {
+        try(var fixture=new Cenario()){
+            UsuarioCliente cliente=fixture.cliente(),outro=fixture.cliente();
+            var gateway=new PixControlado();
+            var pix=new PixPagamentoService(gateway);
+            var vendas=new PedidoVendaServiceImpl(pix);
+            var pedido=fixture.pedido(cliente,7);
+            pedido.setFormaPagamento(FormaPagamento.PIX);pedido.setPagadorPix("comprador@example.invalid","19119119100");
+            long id=vendas.finalizar(pedido);
+            assertEquals(StatusPagamento.AGUARDANDO_PIX,pedido.getStatusPagamento());
+            assertFalse(pedido.isRoletaLiberada());
+            assertTrue(vendas.listarFila().stream().noneMatch(p->p.id()==id));
+            assertThrows(IllegalArgumentException.class,()->pix.consultar(outro,id));
+            assertThrows(IllegalStateException.class,()->vendas.transicionar(id,StatusPedido.PREPARANDO));
+
+            gateway.status="sem-rede";
+            var contingencia=pix.consultar(cliente,id);
+            assertNotNull(contingencia.payload());assertFalse(contingencia.confirmarDemo());
+            assertEquals(PixPagamentoService.Estado.INDISPONIVEL,contingencia.estado());
+            assertThrows(IllegalArgumentException.class,()->pix.confirmarOffline(cliente,id));
+            assertThrows(IllegalArgumentException.class,()->PixPagamentoService.demonstracao().confirmarOffline(cliente,id));
+            assertThrows(IllegalStateException.class,()->vendas.transicionar(id,StatusPedido.CANCELADO));
+
+            gateway.status="pending";
+            var pendente=pix.consultar(cliente,id);
+            assertEquals(2,gateway.postagens.size());
+            assertEquals(gateway.postagens.get(0),gateway.postagens.get(1));
+            assertEquals(new BigDecimal("70.00"),pendente.valor());
+            assertEquals(PixPagamentoService.Estado.AGUARDANDO,pendente.estado());
+            gateway.status="approved-errado";
+            assertThrows(PixGatewayService.RespostaInvalida.class,()->pix.consultar(cliente,id));
+            assertTrue(vendas.listarFila().stream().noneMatch(p->p.id()==id));
+            gateway.status="approved";
+            assertEquals(PixPagamentoService.Estado.PAGO,pix.consultar(cliente,id).estado());
+            assertEquals(PixPagamentoService.Estado.PAGO,pix.consultar(cliente,id).estado());
+            assertEquals(2,gateway.postagens.size());
+            var fila=vendas.listarFila().stream().filter(p->p.id()==id).findFirst().orElseThrow();
+            assertTrue(fila.pixReal());assertEquals(StatusPagamento.PAGO,fila.statusPagamento());
+            assertTrue(vendas.listarDoCliente(cliente).get(0).isRoletaLiberada());
+            assertTrue(jogo(3).girar(cliente,id).vip());
+        }
+    }
+
+    @Test void cancelamentoPixVerificadoDevolveEstoqueEModoDemoNaoGeraReceita() throws Exception {
+        try(var fixture=new Cenario()){
+            var usuario=fixture.cliente();
+            var gateway=new PixControlado();
+            var pix=new PixPagamentoService(gateway);
+            var vendaReal=new PedidoVendaServiceImpl(pix);
+            var pedido=fixture.pedido(usuario,2);
+            pedido.setFormaPagamento(FormaPagamento.PIX);pedido.setPagadorPix("comprador@example.invalid","19119119100");
+            long id=vendaReal.finalizar(pedido);
+            pix.consultar(usuario,id);
+            gateway.status="cancelled";
+            assertEquals(PixPagamentoService.Estado.CANCELADO,pix.consultar(usuario,id).estado());
+            assertEquals(0,new BigDecimal("200.000").compareTo(ConnectionFactory.executarEmTransacao(c->
+                    new ProdutoDAOImpl().buscarPorId(c,fixture.produto.getId(),false).orElseThrow().getEstoqueAtual())));
+            assertFalse(vendaReal.listarDoCliente(usuario).stream().filter(p->p.getId()==id).findFirst().orElseThrow().isRoletaLiberada());
+
+            var demo=PixPagamentoService.demonstracao();
+            var vendaDemo=new PedidoVendaServiceImpl(demo);
+            var simulacao=fixture.pedido(usuario,2);simulacao.setFormaPagamento(FormaPagamento.PIX);
+            var financeiro=new RelatorioFinanceiroServiceImpl();
+            LocalDateTime ini=LocalDateTime.now().minusDays(1),fim=LocalDateTime.now().plusDays(1);
+            var antes=financeiro.calcular(ini,fim);
+            long demoId=vendaDemo.finalizar(simulacao);
+            assertTrue(demo.consultar(usuario,demoId).confirmarDemo());
+            assertEquals(PixPagamentoService.Estado.PAGO,demo.confirmarOffline(usuario,demoId).estado());
+            assertTrue(vendaDemo.listarFila().stream().anyMatch(p->p.id()==demoId&&p.pixDemonstracao()));
+            fixture.entregar(demoId);
+            assertEquals(antes,financeiro.calcular(ini,fim));
+            var premioDemo=jogo(3).girar(usuario,demoId);
+            assertEquals(PremioRoleta.Tipo.CUPOM_10,premioDemo.tipo());
+            assertNull(premioDemo.cupom());
+            assertEquals(0,jogo(3).perfil(usuario).pontos());
+        }
+    }
+
+    private static final class PixControlado implements PixGatewayService {
+        final String id=Long.toUnsignedString(new java.security.SecureRandom().nextLong());
+        final List<Solicitacao> postagens=new ArrayList<>();
+        String status="pending";
+        @Override public Cobranca criar(Solicitacao solicitacao){postagens.add(solicitacao);return resposta();}
+        @Override public Cobranca consultar(String idConsultado){assertEquals(id,idConsultado);return resposta();}
+        private Cobranca resposta(){
+            if(status.equals("sem-rede"))throw new Indisponivel("erro de teste");
+            Solicitacao s=postagens.get(0);
+            boolean divergente=status.equals("approved-errado");
+            return new Cobranca(id,divergente?"approved":status,status.equals("pending")?"000201TESTE":null,
+                    divergente?s.valor().add(BigDecimal.ONE):s.valor(),"BRL","pix",s.referencia());
+        }
+    }
+
     @Test void observerRoletaEPremiosSaoPersistentesExclusivosEIdempotentes() throws Exception {
         try(var fixture=new Cenario()){
             UsuarioCliente cliente=fixture.cliente(),outro=fixture.cliente();
-            GamificacaoService jogo=jogo(1);
+            GamificacaoService jogo=jogo(3);
             long primeiro=fixture.vendas.finalizar(fixture.pedido(cliente,100));
             assertEquals(Set.of("PRIMEIRO_PEDIDO"),selos(jogo,cliente));
+            assertThrows(IllegalArgumentException.class,()->jogo.girar(cliente,primeiro));
+            fixture.entregar(primeiro);
             assertThrows(IllegalArgumentException.class,()->jogo.girar(outro,primeiro));
             PremioRoleta premio;
             var executor=Executors.newFixedThreadPool(2);
@@ -78,31 +207,38 @@ class ClubeGamificacaoIntegracaoTest {
                 assertNotEquals(premio.novo(),repetido.novo());
                 assertEquals(premio.cupom(),repetido.cupom());
             }finally{executor.shutdownNow();}
-            assertEquals(PremioRoleta.Tipo.CUPOM_7,premio.tipo());
-            assertEquals(List.of(premio.cupom()),jogo.perfil(cliente).cupons());
-            assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(fixture.pedido(outro,1),premio.cupom()));
-            fixture.entregar(primeiro);
+            assertEquals(PremioRoleta.Tipo.CUPOM_15,premio.tipo());assertTrue(premio.vip());
+            assertEquals(List.of(premio.cupom()),jogo.perfil(cliente).cupons().stream().map(CupomRoleta::codigo).toList());
+            assertEquals(5,Duration.between(premio.registradoEm(),premio.validoAte()).toDays());
+            assertEquals(new BigDecimal("25.00"),jogo.perfil(cliente).cupons().get(0).minimo());
+            assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(fixture.pedido(outro,3),premio.cupom()));
+            assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(fixture.pedido(cliente,2),premio.cupom()));
             assertTrue(selos(jogo,cliente).contains("REI_DO_CENTO"));
 
-            Pedido segundo=fixture.pedido(cliente,1);
+            Pedido segundo=fixture.pedido(cliente,3);
             var desconto=fixture.vendas.simular(segundo,premio.cupom());
-            assertEquals(new BigDecimal("0.70"),desconto.desconto());
-            fixture.entregar(fixture.vendas.finalizar(segundo,premio.cupom(),desconto));
-            assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(fixture.pedido(cliente,1),premio.cupom()));
+            assertEquals(new BigDecimal("4.50"),desconto.desconto());
+            long usado=fixture.vendas.finalizar(segundo,premio.cupom(),desconto);
+            assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(fixture.pedido(cliente,3),premio.cupom()));
+            fixture.vendas.transicionar(usado,StatusPedido.CANCELADO);
+            assertTrue(jogo.perfil(cliente).cupons().stream().anyMatch(c->c.codigo().equals(premio.cupom())));
+            long idSegundo=fixture.vendas.finalizar(fixture.pedido(cliente,3),premio.cupom(),desconto);
+            fixture.entregar(idSegundo);
+            assertThrows(IllegalArgumentException.class,()->jogo.girar(cliente,idSegundo));
             assertTrue(jogo.perfil(cliente).cupons().isEmpty());
             long terceiro=fixture.vendas.finalizar(fixture.pedido(cliente,1));fixture.entregar(terceiro);
             assertEquals(Set.of("PRIMEIRO_PEDIDO","REI_DO_CENTO","CLIENTE_FIEL"),selos(jogo,cliente));
-            var pontos=jogo(2);
-            assertEquals(PremioRoleta.Tipo.PONTOS_50,pontos.girar(cliente,terceiro).tipo());
-            assertEquals(50,pontos.perfil(cliente).pontos());
-            assertEquals(50,pontos.perfil(cliente).pontos());
-
-            long cancelavel=fixture.vendas.finalizar(fixture.pedido(cliente,1));
-            String revogado=jogo.girar(cliente,cancelavel).cupom();
-            assertTrue(jogo.perfil(cliente).cupons().contains(revogado));
-            fixture.vendas.transicionar(cancelavel,StatusPedido.CANCELADO);
+            assertEquals(30,jogo.perfil(cliente).pontos());
+            ConnectionFactory.executarEmTransacao(c->{Cenario.excluir(c,"UPDATE roleta_premios SET criado_em=DATE_SUB(NOW(),INTERVAL 25 HOUR) WHERE pedido_id=?",primeiro);return null;});
+            var extra=jogo(4).girar(cliente,terceiro);assertTrue(extra.giroExtra());assertFalse(extra.vip());
+            var definitivo=jogo(0).girarExtra(cliente,terceiro);assertEquals(PremioRoleta.Tipo.BRINDE_MINI,definitivo.tipo());
+            assertThrows(IllegalArgumentException.class,()->jogo(0).girarExtra(cliente,terceiro));
+            var brinde=fixture.vendas.simular(fixture.pedido(cliente,3),definitivo.cupom());
+            assertEquals("BRINDE",brinde.estrategia());assertEquals("Mini porção surpresa",brinde.brinde());
+            assertEquals(0,brinde.desconto().signum());
+            ConnectionFactory.executarEmTransacao(c->{Cenario.excluir(c,"UPDATE cupons SET valido_ate=NOW() WHERE usado_pedido_id IS NULL AND usuario_exclusivo_id=?",cliente.getId());return null;});
+            assertThrows(IllegalArgumentException.class,()->fixture.vendas.simular(fixture.pedido(cliente,3),definitivo.cupom()));
             assertTrue(jogo.perfil(cliente).cupons().isEmpty());
-            assertThrows(IllegalArgumentException.class,()->jogo.girar(cliente,cancelavel));
         }
     }
 
@@ -142,7 +278,7 @@ class ClubeGamificacaoIntegracaoTest {
         Pedido pedido(UsuarioCliente u,int quantidade){
             var p=new Pedido(null,u,u.getCliente(),StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),
                     List.of(new PedidoItem(null,produto,BigDecimal.valueOf(quantidade),produto.getPrecoVenda())));
-            p.setFormaPagamento(FormaPagamento.PIX);return p;
+            p.setFormaPagamento(FormaPagamento.DINHEIRO);return p;
         }
         void entregar(long id){
             for(StatusPedido status:List.of(StatusPedido.PREPARANDO,StatusPedido.PRONTO,StatusPedido.ENTREGUE))vendas.transicionar(id,status);

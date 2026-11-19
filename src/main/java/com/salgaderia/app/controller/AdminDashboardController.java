@@ -10,6 +10,7 @@ import com.salgaderia.app.model.comanda.*;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
+import com.salgaderia.app.service.pix.PixPagamentoService;
 import com.salgaderia.app.util.Navegacao;
 import com.salgaderia.app.util.FotoAvaliacaoUi;
 import com.salgaderia.app.util.PixPainel;
@@ -54,13 +55,15 @@ public class AdminDashboardController implements TelaAutenticada {
     private final AvaliacaoService avaliacoes;
     private final ComandaService comandas;
     private final ClubeService clube;
+    private final PixPagamentoService pagamentosPix;
     private Usuario usuario;
     private long telaAtual;
     private final WhatsAppLinkService whatsapp = new WhatsAppLinkService();
-    private final Timeline notificacoes = new Timeline(new KeyFrame(Duration.seconds(5),e->atualizarNotificacoes()));
+    private final Timeline notificacoes = new Timeline(new KeyFrame(Duration.seconds(5),e->{atualizarNotificacoes();conciliarPix();}));
     private final Set<Long> pedidosConhecidos = new HashSet<>();
     private boolean primeiraConsulta = true, consultaNotificacoes;
     private boolean notificacoesAtivas;
+    private boolean conciliandoPix;
     private final CheckBox notificarStatus = new CheckBox("Notificar via WhatsApp ao mudar status");
     private final Map<Long,ItemVenda> carrinho = new LinkedHashMap<>();
     private static final Locale BR=Locale.forLanguageTag("pt-BR");
@@ -78,8 +81,11 @@ public class AdminDashboardController implements TelaAutenticada {
         this(produtos,pedidos,agenda,financeiro,avaliacoes,comandas,new ClubeServiceImpl());
     }
     public AdminDashboardController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AgendaService agenda,RelatorioFinanceiroService financeiro,AvaliacaoService avaliacoes,ComandaService comandas,ClubeService clube){
+        this(produtos,pedidos,agenda,financeiro,avaliacoes,comandas,clube,new PixPagamentoService());
+    }
+    public AdminDashboardController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AgendaService agenda,RelatorioFinanceiroService financeiro,AvaliacaoService avaliacoes,ComandaService comandas,ClubeService clube,PixPagamentoService pagamentosPix){
         this.produtos=Objects.requireNonNull(produtos);this.pedidos=Objects.requireNonNull(pedidos);this.agenda=Objects.requireNonNull(agenda);this.financeiro=Objects.requireNonNull(financeiro);this.avaliacoes=Objects.requireNonNull(avaliacoes);this.comandas=Objects.requireNonNull(comandas);
-        this.clube=Objects.requireNonNull(clube);
+        this.clube=Objects.requireNonNull(clube);this.pagamentosPix=Objects.requireNonNull(pagamentosPix);
     }
     @FXML private void initialize(){
         notificarStatus.setSelected(true);notificarStatus.setId("notificar-status");
@@ -94,7 +100,7 @@ public class AdminDashboardController implements TelaAutenticada {
     }
     @Override public void definirUsuario(Usuario usuario){
         if(usuario==null||!usuario.isAtivo()||!usuario.podeAcessarPainelGerencial())throw new SecurityException("Acesso gerencial restrito");
-        this.usuario=usuario;usuarioNome.setText(usuario.getNome());notificacoesAtivas=true;atualizarNotificacoes();notificacoes.playFromStart();pdv();
+        this.usuario=usuario;usuarioNome.setText(usuario.getNome());notificacoesAtivas=true;atualizarNotificacoes();conciliarPix();notificacoes.playFromStart();pdv();
     }
     private void atualizarNotificacoes(){
         if(!notificacoesAtivas||consultaNotificacoes)return;consultaNotificacoes=true;
@@ -102,16 +108,28 @@ public class AdminDashboardController implements TelaAutenticada {
         tarefa.setOnSucceeded(e->{consultaNotificacoes=false;if(!notificacoesAtivas)return;
             List<PedidoFila> pendentes=tarefa.getValue().stream().filter(p->p.status()==StatusPedido.PENDENTE).toList();
             badgePendentes.setText("Pedidos pendentes: "+pendentes.size());
+            boolean mudou=false;
             for(PedidoFila pedido:pendentes)if(pedidosConhecidos.add(pedido.id())&&!primeiraConsulta){
+                mudou=true;
                 if(alertasRecentes.getChildren().size()==1 && alertasRecentes.getChildren().get(0) instanceof Label l && l.getText().equals("Nenhum alerta recente."))alertasRecentes.getChildren().clear();
-                alertasRecentes.getChildren().add(0,new Label("Novo pedido #"+pedido.id()+" · "+pedido.cliente()));
-                avisoPedido.setText("Novo pedido #"+pedido.id());
+                String aviso=(pedido.pixReal()?"PIX confirmado · pedido #":pedido.pixDemonstracao()?"Pedido simulado #":"Novo pedido #")+pedido.id();
+                alertasRecentes.getChildren().add(0,new Label(aviso+" · "+pedido.cliente()));
+                avisoPedido.setText(aviso);
                 if(alertasRecentes.getChildren().size()>5)alertasRecentes.getChildren().remove(5);
             }
             primeiraConsulta=false;
+            if(mudou&&"Fila de pedidos".equals(titulo.getText()))fila();
         });
         tarefa.setOnFailed(e->{consultaNotificacoes=false;if(notificacoesAtivas)badgePendentes.setText("Pedidos pendentes: indisponível");});
         Thread t=new Thread(tarefa,"admin-notificacoes");t.setDaemon(true);t.start();
+    }
+    private void conciliarPix(){
+        if(!notificacoesAtivas||conciliandoPix||!pagamentosPix.usaMercadoPago())return;
+        conciliandoPix=true;
+        Task<Void> tarefa=new Task<>(){@Override protected Void call(){pagamentosPix.reconciliarPendentes();return null;}};
+        tarefa.setOnSucceeded(e->{conciliandoPix=false;atualizarNotificacoes();});
+        tarefa.setOnFailed(e->conciliandoPix=false);
+        Thread t=new Thread(tarefa,"admin-conciliacao-pix");t.setDaemon(true);t.start();
     }
     private long iniciarTela(String nome){titulo.setText(nome);conteudo.getChildren().setAll(estado("Carregando..."));return ++telaAtual;}
     private <T> void carregar(long versao,Supplier<T> operacao,Consumer<T> sucesso){
@@ -296,10 +314,13 @@ public class AdminDashboardController implements TelaAutenticada {
             conteudo.getChildren().clear();conteudo.getChildren().addAll(texto("Pedidos da vitrine aguardando preparo ou entrega.","subtitle"),notificarStatus);
             if(lista.isEmpty()){conteudo.getChildren().add(estado("Nenhum pedido aguardando atendimento."));return;}
             for(PedidoFila p:lista){
-                Label info=new Label("#"+p.id()+"  ·  "+p.cliente()+"  ·  "+p.status()+"  ·  "+p.entrega()+"  ·  "+moeda(p.total())+"\n"+p.itens()+(p.enderecoEntrega()==null||p.enderecoEntrega().isBlank()?"":"\nEndereço: "+p.enderecoEntrega())+(p.agendadoPara()==null?"":"\nAgendado: "+p.agendadoPara().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));info.setWrapText(true);HBox.setHgrow(info,Priority.ALWAYS);
+                String pagamento=p.pixDemonstracao()?" · SIMULAÇÃO (nenhum pagamento real)":p.pixReal()?" · PIX confirmado":" · Pagamento na entrega";
+                Label info=new Label("#"+p.id()+"  ·  "+p.cliente()+"  ·  "+p.status()+"  ·  "+p.entrega()+"  ·  "+moeda(p.total())+pagamento+"\n"+p.itens()+(p.enderecoEntrega()==null||p.enderecoEntrega().isBlank()?"":"\nEndereço: "+p.enderecoEntrega())+(p.agendadoPara()==null?"":"\nAgendado: "+p.agendadoPara().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));info.setWrapText(true);HBox.setHgrow(info,Priority.ALWAYS);
                 StatusPedido proximo=switch(p.status()){case PENDENTE->StatusPedido.PREPARANDO;case PREPARANDO->StatusPedido.PRONTO;case PRONTO->StatusPedido.ENTREGUE;default->null;};
                 Button avancar=botao("Avançar para "+proximo,()->mudarStatus(p,proximo),"button-primary");
                 Button cancelar=botao("Cancelar",()->{if(confirmar("Cancelar pedido #"+p.id()+"? O estoque será devolvido."))mudarStatus(p,StatusPedido.CANCELADO);},"button-outline");
+                cancelar.setDisable(p.pixReal());
+                if(p.pixReal())cancelar.setTooltip(new Tooltip("Estornos de PIX real devem ser tratados no Mercado Pago."));
                 Button chamar=botao("Chamar no WhatsApp",()->chamarCliente(p,p.status()),"button-secondary");
                 chamar.setDisable(p.telefone()==null||p.telefone().isBlank());
                 HBox linha=new HBox(10,info,avancar,cancelar,chamar);linha.setAlignment(Pos.CENTER_LEFT);linha.getStyleClass().add("admin-card");conteudo.getChildren().add(linha);

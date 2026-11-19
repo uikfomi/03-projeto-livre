@@ -12,6 +12,7 @@ public interface PedidoDAO {
     java.util.Map<String,BigDecimal> receitaPorCategoria(Connection c,java.time.LocalDateTime inicio,java.time.LocalDateTime fim) throws SQLException;
     long inserir(Connection c, Pedido pedido, Map<Long,BigDecimal> custos) throws SQLException;
     com.salgaderia.app.model.enums.StatusPedido bloquearStatus(Connection c,long id) throws SQLException;
+    com.salgaderia.app.model.enums.StatusPagamento statusPagamento(Connection c,long id) throws SQLException;
     Map<Long,BigDecimal> quantidades(Connection c,long id) throws SQLException;
     void atualizarStatus(Connection c,long id,com.salgaderia.app.model.enums.StatusPedido status) throws SQLException;
     boolean possuiPedidoEntregue(Connection c,long usuarioId,long produtoId) throws SQLException;

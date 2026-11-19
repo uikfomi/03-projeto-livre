@@ -77,7 +77,10 @@ public final class WhatsAppLinkService {
             case LOCAL -> "Consumir no local";
         });
         if(pedido.getAgendadoPara()!=null)builder.linha("Agendado para: "+pedido.getAgendadoPara().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-        builder.linha("Pagamento: " + (pedido.getFormaPagamento()==null?"não informado":pedido.getFormaPagamento().descricao())).linha("Total: " + NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(pedido.calcularTotal()));
+        var moeda=NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"));
+        if(pedido.getTaxaEntrega().signum()>0)builder.linha("Taxa de entrega: "+moeda.format(pedido.getTaxaEntrega()));
+        if(pedido.getBrinde()!=null)builder.linha("Brinde: "+pedido.getBrinde());
+        builder.linha("Pagamento: " + (pedido.getFormaPagamento()==null?"não informado":pedido.getFormaPagamento().descricao())).linha("Total: " + moeda.format(pedido.calcularTotal()));
         return builder.construir();
     }
     public URI status(String telefone, long pedido, StatusPedido status) {

@@ -15,6 +15,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [FormaPagamento.java](FormaPagamento.java) | Formas de pagamento e regra de troco. |
 | [PerfilUsuario.java](PerfilUsuario.java) | Perfis de acesso do usuário. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
+| [StatusPagamento.java](StatusPagamento.java) | Distingue PIX pendente, pagamento confirmado e cobrança na entrega. |
 | [StatusPedido.java](StatusPedido.java) | Estados e transições permitidas do pedido. |
 | [TipoEntrega.java](TipoEntrega.java) | Modalidades de entrega. |
 | [TipoMovimentacaoEstoque.java](TipoMovimentacaoEstoque.java) | Tipos de movimentação de estoque. |
@@ -30,6 +31,7 @@ src/main/java/com/salgaderia/app/model/enums/  # Agrupa enumerações e os compo
 ├── FormaPagamento.java  # Formas de pagamento e regra de troco.
 ├── PerfilUsuario.java  # Perfis de acesso do usuário.
 ├── README.md  # Guia de navegação e explicações desta pasta.
+├── StatusPagamento.java  # Distingue PIX pendente, pagamento confirmado e cobrança na entrega.
 ├── StatusPedido.java  # Estados e transições permitidas do pedido.
 ├── TipoEntrega.java  # Modalidades de entrega.
 └── TipoMovimentacaoEstoque.java  # Tipos de movimentação de estoque.
