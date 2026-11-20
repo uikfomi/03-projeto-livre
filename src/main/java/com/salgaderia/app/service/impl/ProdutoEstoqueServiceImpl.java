@@ -17,7 +17,23 @@ public class ProdutoEstoqueServiceImpl implements ProdutoEstoqueService {
         if(produto.getId()!=null||produto.getEstoqueAtual().signum()!=0)throw new IllegalArgumentException("Novo produto deve iniciar sem ID e com estoque zero");
         long id=ConnectionFactory.executarEmTransacao(c->produtos.inserir(c,produto));produto.setId(id);return id;
     }
-    @Override public boolean atualizar(Produto produto){return ConnectionFactory.executarEmTransacao(c->produtos.atualizar(c,produto));}
+    @Override public boolean atualizar(Produto produto){return atualizar(produto,null);}
+    @Override public boolean atualizar(Produto produto, BigDecimal ajustePara){
+        if(ajustePara!=null && ajustePara.signum()!=0)validarQuantidade(ajustePara);
+        return ConnectionFactory.executarEmTransacao(c->{
+            if(ajustePara==null)return produtos.atualizar(c,produto);
+            var atual=produtos.buscarPorId(c,Objects.requireNonNull(produto.getId()),true);
+            if(atual.isEmpty() || !produtos.atualizar(c,produto))return false;
+            BigDecimal diferenca=ajustePara.subtract(atual.get().getEstoqueAtual());
+            if(diferenca.signum()!=0){
+                if(!produtos.atualizarEstoque(c,produto.getId(),ajustePara))throw new IllegalStateException("Produto não atualizado");
+                var tipo=diferenca.signum()>0?TipoMovimentacaoEstoque.ENTRADA:TipoMovimentacaoEstoque.SAIDA;
+                movimentos.inserir(c,new MovimentacaoEstoque(null,produto,tipo,diferenca.abs(),"Ajuste manual do estoque",LocalDateTime.now()),null,"AJUSTE",produto.getCustoProducao());
+            }
+            return true;
+        });
+    }
+    @Override public boolean alternarDisponibilidade(long id){return ConnectionFactory.executarEmTransacao(c->produtos.alternarDisponibilidade(c,id));}
     @Override public boolean excluir(long id){return ConnectionFactory.executarEmTransacao(c->produtos.excluir(c,id));}
     @Override public Optional<Produto> buscarPorId(long id){return ConnectionFactory.executarEmTransacao(c->produtos.buscarPorId(c,id,false));}
     @Override public List<Produto> listar(){return ConnectionFactory.executarEmTransacao(produtos::listar);}

@@ -1,6 +1,7 @@
 package com.salgaderia.app.model;
 
 import com.salgaderia.app.exception.EstoqueInsuficienteException;
+import com.salgaderia.app.exception.ProdutoIndisponivelException;
 import java.math.BigDecimal;
 
 public class Produto {
@@ -13,6 +14,7 @@ public class Produto {
     private BigDecimal estoqueAtual;
     private BigDecimal estoqueMinimo;
     private String urlImagem;
+    private boolean disponivelVenda = true;
     private FichaVitrine fichaVitrine = FichaVitrine.VAZIA;
     public Produto(Long id, Categoria categoria, String nome, String descricao, BigDecimal precoVenda,
                    BigDecimal custoProducao, BigDecimal estoqueAtual, BigDecimal estoqueMinimo, String urlImagem) {
@@ -35,6 +37,11 @@ public class Produto {
     public void setEstoqueAtual(BigDecimal valor) { estoqueAtual = Validacao.naoNegativo(valor, "estoque atual"); }
     public BigDecimal getEstoqueMinimo() { return estoqueMinimo; }
     public void setEstoqueMinimo(BigDecimal valor) { estoqueMinimo = Validacao.naoNegativo(valor, "estoque mínimo"); }
+    public boolean isDisponivelVenda() { return disponivelVenda; }
+    public void setDisponivelVenda(boolean disponivel) { this.disponivelVenda = disponivel; }
+    public void exigirDisponivelParaVenda() {
+        if (!disponivelVenda) throw new ProdutoIndisponivelException(nome);
+    }
     public String getUrlImagem() { return urlImagem; }
     public void setUrlImagem(String urlImagem) { this.urlImagem = urlImagem; }
     public FichaVitrine getFichaVitrine() { return fichaVitrine; }

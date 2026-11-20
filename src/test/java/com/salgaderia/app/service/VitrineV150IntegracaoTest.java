@@ -1,7 +1,7 @@
 package com.salgaderia.app.service;
 
 import com.salgaderia.app.dao.impl.ProdutoDAOImpl;
-import com.salgaderia.app.exception.EstoqueInsuficienteException;
+import com.salgaderia.app.exception.ProdutoIndisponivelException;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.PersonalizacaoItem.Restricao;
@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Usa somente registros de teste próprios e os remove mesmo em caso de falha. */
 @EnabledIfEnvironmentVariable(named="SALGADERIA_TESTE_MYSQL",matches="true")
 class VitrineV150IntegracaoTest {
-    @Test void comboECaixaTemEstoqueCompartilhadoRevalidacaoEHistorico() {
+    @Test void comboECaixaValidamRestricoesDisponibilidadeEBaixaReal() {
         String token=UUID.randomUUID().toString().replace("-","");
         var dao=new ProdutoDAOImpl();
-        var vendas=new PedidoVendaServiceImpl();
+        var vendas=VendaTeste.vendas();
         Produto base=new Produto(null,null,"Empada "+token,null,new BigDecimal("8.00"),BigDecimal.ONE,new BigDecimal("12"),BigDecimal.ZERO,null);
         FichaVitrine ficha=new FichaVitrine(TipoCombo.EMPADA,"Carne de Sol",false,false,true);
         base.setFichaVitrine(ficha);
@@ -39,7 +39,7 @@ class VitrineV150IntegracaoTest {
             base.setId(ids[0]);molho.setId(ids[1]);
             List<PedidoItem> itens=new ArrayList<>(new ComboBuilder().massa(TipoCombo.EMPADA).recheio(base).acompanhamento(molho).montar());
             itens.addAll(new PersonalizacaoService(new Random(123)).sortearCaixa(Tipo.FOME_LEVE,
-                    Set.of(Restricao.SEM_QUEIJO,Restricao.SO_ASSADOS),List.of(base,molho),PersonalizacaoService.quantidades(itens)));
+                    Set.of(Restricao.SEM_QUEIJO,Restricao.SO_ASSADOS),List.of(base,molho)));
             Pedido pedido=pedido(usuario,itens);
             var esperado=vendas.simular(pedido,null);
             assertEquals(new BigDecimal("78.00"),esperado.total());
@@ -62,7 +62,13 @@ class VitrineV150IntegracaoTest {
             assertEquals(2,PersonalizacaoService.grupos(historico.getItens()).size());
             assertEquals(new BigDecimal("78.00000"),historico.calcularTotal());
             assertEquals(itens.get(2).getPersonalizacao(),historico.getItens().get(2).getPersonalizacao());
-            assertThrows(EstoqueInsuficienteException.class,()->vendas.finalizar(pedido(usuario,itens)));
+            ConnectionFactory.executarEmTransacao(c->dao.alternarDisponibilidade(c,base.getId()));
+            assertThrows(ProdutoIndisponivelException.class,()->vendas.finalizar(pedido(usuario,itens)));
+            ConnectionFactory.executarEmTransacao(c->dao.alternarDisponibilidade(c,base.getId()));
+            long sobDemanda=vendas.finalizar(pedido(usuario,itens));
+            assertEquals(new BigDecimal("0.000"),saldo(dao,base.getId()));
+            vendas.transicionar(sobDemanda,StatusPedido.CANCELADO);
+            assertEquals(new BigDecimal("1.000"),saldo(dao,base.getId()));
             vendas.transicionar(id,StatusPedido.CANCELADO);
             assertEquals(new BigDecimal("12.000"),saldo(dao,base.getId()));
             assertEquals(new BigDecimal("2.000"),saldo(dao,molho.getId()));
@@ -70,8 +76,6 @@ class VitrineV150IntegracaoTest {
             long entregue=vendas.finalizar(pedido(usuario,itens),null,esperado);
             for(StatusPedido status:List.of(StatusPedido.PREPARANDO,StatusPedido.PRONTO,StatusPedido.ENTREGUE))
                 vendas.transicionar(entregue,status);
-            assertThrows(EstoqueInsuficienteException.class,()->vendas.repetirUltimoPedido(usuario));
-            ConnectionFactory.executarEmTransacao(c->dao.atualizarEstoque(c,base.getId(),new BigDecimal("12")));
             List<PedidoItem> repetidos=vendas.repetirUltimoPedido(usuario);
             assertEquals(2,PersonalizacaoService.grupos(repetidos).size());
             assertEquals(esperado.total(),vendas.simular(pedido(usuario,repetidos),null).total());

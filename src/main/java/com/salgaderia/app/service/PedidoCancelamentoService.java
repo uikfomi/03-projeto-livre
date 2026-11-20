@@ -24,7 +24,7 @@ public final class PedidoCancelamentoService {
     }
 
     public void cancelar(Connection c,long pedidoId)throws SQLException{
-        for(var item:pedidos.quantidades(c,pedidoId).entrySet()){
+        for(var item:pedidos.quantidadesBaixadas(c,pedidoId).entrySet()){
             Produto p=produtos.buscarPorId(c,item.getKey(),true).orElseThrow(()->new IllegalStateException("Produto não encontrado"));
             p.adicionarEstoque(item.getValue());
             if(!produtos.atualizarEstoque(c,p.getId(),p.getEstoqueAtual()))throw new IllegalStateException("Produto não atualizado");

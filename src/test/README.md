@@ -28,7 +28,7 @@ src/test/  # Contém os testes das regras de domínio, serviços, persistência 
 │   │   │   │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
-│   │   │   │   │   └── VitrineJavaFXTest.java  # Valida catálogo, checkout, edição de pedidos, clube, roleta e consulta PIX automática.
+│   │   │   │   │   └── VitrineJavaFXTest.java  # Verifica catálogo, checkout, expediente e atualização da entrega na vitrine.
 │   │   │   │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   │   │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
 │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
@@ -47,12 +47,15 @@ src/test/  # Contém os testes das regras de domínio, serviços, persistência 
 │   │   │   │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
 │   │   │   │   │   ├── Etapa4IntegracaoTest.java  # Verifica transações de estoque, pedidos, PDV, avaliações com foto e financeiro no MySQL.
 │   │   │   │   │   ├── FotoAvaliacaoStorageTest.java  # Testa a cópia validada, limites, caminhos locais e remoção de anexos.
+│   │   │   │   │   ├── OperacaoLojaServiceTest.java  # Testa os limites do expediente e a combinação dos modos manual e automático.
+│   │   │   │   │   ├── OperacaoV162IntegracaoTest.java  # Valida configuração persistida, agendamento, venda sob demanda, bloqueio e despacho no MySQL.
 │   │   │   │   │   ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
 │   │   │   │   │   ├── PersonalizacaoServiceTest.java  # Testa a composição do combo, sorteio com restrições e desconto não cumulativo.
 │   │   │   │   │   ├── PixPayloadServiceTest.java  # Valida valor, referência e CRC16 e decodifica a imagem QR que foi gerada.
 │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
-│   │   │   │   │   ├── VitrineV150IntegracaoTest.java  # Valida baixa e devolução de estoque, restrições e histórico de combos e caixas no MySQL.
+│   │   │   │   │   ├── VendaTeste.java  # Fornece relógio fixo e configuração isolada aos testes do fluxo de venda.
+│   │   │   │   │   ├── VitrineV150IntegracaoTest.java  # Verifica combos e caixas, restrições e cancelamento com devolução da baixa real.
 │   │   │   │   │   └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.
 │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.

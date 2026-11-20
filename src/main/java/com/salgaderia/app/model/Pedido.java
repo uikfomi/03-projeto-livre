@@ -28,6 +28,7 @@ public class Pedido {
     private String brinde;
     private String emailPix,documentoPix;
     private boolean pixDemonstracao;
+    private String nomeEntregador;
 
     public Pedido(Long id, Usuario usuario, Cliente cliente, StatusPedido status, TipoEntrega tipoEntrega,
                   String enderecoEntrega, LocalDateTime criadoEm, List<PedidoItem> itens) {
@@ -41,6 +42,15 @@ public class Pedido {
         this.criadoEm = Validacao.obrigatorio(criadoEm, "data de criação");
         this.itens = new ArrayList<>(Validacao.obrigatorio(itens, "itens"));
         if (this.itens.stream().anyMatch(java.util.Objects::isNull)) throw new IllegalArgumentException("item não pode ser nulo");
+    }
+    public String getNomeEntregador() { return nomeEntregador; }
+    public void setNomeEntregador(String nome) { this.nomeEntregador = nome; }
+    public static String validarNomeEntregador(String nome) {
+        String limpo = nome == null ? "" : nome.strip();
+        if (limpo.isEmpty() || limpo.codePointCount(0, limpo.length()) > 100 ||
+                limpo.codePoints().anyMatch(Character::isISOControl))
+            throw new IllegalArgumentException("Informe o nome do entregador (até 100 caracteres).");
+        return limpo;
     }
     public Long getId() { return id; }
     public void setId(Long id) { this.id = Validacao.id(id); }
@@ -83,7 +93,11 @@ public class Pedido {
     }
     public BigDecimal calcularTotal() { return calcularSubtotal().add(taxaEntrega).subtract(desconto); }
     public void transicionarPara(StatusPedido destino) {
-        if (!status.podeTransicionarPara(destino)) throw new IllegalStateException("Transição de pedido inválida: " + status + " -> " + destino);
+        transicionarPara(destino, null);
+    }
+    public void transicionarPara(StatusPedido destino, String entregador) {
+        if (!status.podeTransicionarPara(destino, tipoEntrega)) throw new IllegalStateException("Transição de pedido inválida: " + status + " -> " + destino);
+        if (destino == StatusPedido.SAIU_ENTREGA) nomeEntregador = validarNomeEntregador(entregador);
         status = destino;
     }
     private void exigirPendente() {

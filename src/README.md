@@ -27,9 +27,9 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   ├── app/  # Componentes da aplicação e suas camadas.
 │   │   │   │   │   ├── controller/  # Controllers das telas e testes de interface, conforme a localização.
 │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   │   │   │   │   │   ├── AdminDashboardController.java  # Apresenta vendas, estoque, comandas, clube, moderação e conciliação e notificações PIX.
+│   │   │   │   │   │   ├── AdminDashboardController.java  # Coordena PDV, fila e despacho, expediente, catálogo e demais operações gerenciais.
 │   │   │   │   │   │   ├── AgendaController.java  # Interface da agenda de clientes e fornecedores.
-│   │   │   │   │   │   ├── ClienteVitrineController.java  # Coordena catálogo, checkout PIX, urgência de cupons, pedidos, clube e roleta VIP.
+│   │   │   │   │   │   ├── ClienteVitrineController.java  # Coordena catálogo, carrinho, expediente e acompanhamento do pedido em rota.
 │   │   │   │   │   │   ├── LoginController.java  # Tela de login e cadastro público.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   └── SelecaoModulosController.java  # Seleção de módulos administrativos.
@@ -40,13 +40,14 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
 │   │   │   │   │   │   │   ├── ClubeDAOImpl.java  # Executa consultas e atualizações JDBC para adesões, vigência e mensalidades.
 │   │   │   │   │   │   │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
+│   │   │   │   │   │   │   ├── ConfiguracaoLojaDAOImpl.java  # Persiste expediente e estado manual separadamente com JDBC.
 │   │   │   │   │   │   │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
 │   │   │   │   │   │   │   ├── CupomDAOImpl.java  # Consulta elegibilidade, reserva cupons exclusivos e os devolve no cancelamento.
 │   │   │   │   │   │   │   ├── GamificacaoDAOImpl.java  # Persiste selos, giros, resgates e trava de 24 horas usando o relógio do banco.
 │   │   │   │   │   │   │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-│   │   │   │   │   │   │   ├── PedidoDAOImpl.java  # Persiste pedidos, frete e brindes e só inclui PIX aprovado na fila.
+│   │   │   │   │   │   │   ├── PedidoDAOImpl.java  # Persiste pedidos, baixa física e despacho; consulta fila, histórico e relatórios.
 │   │   │   │   │   │   │   ├── PixPagamentoDAOImpl.java  # Consulta pagamentos e vincula tentativas, IDs remotos e aprovação ao pedido em JDBC.
-│   │   │   │   │   │   │   ├── ProdutoDAOImpl.java  # Persiste produtos, estoque e fichas de personalização com JDBC.
+│   │   │   │   │   │   │   ├── ProdutoDAOImpl.java  # Persiste catálogo, disponibilidade de venda, estoque e fichas de personalização.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   └── UsuarioDAOImpl.java  # Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio.
 │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
@@ -54,21 +55,23 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
 │   │   │   │   │   │   ├── ClubeDAO.java  # Contrato de persistência de planos, assinaturas e mensalidades.
 │   │   │   │   │   │   ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
+│   │   │   │   │   │   ├── ConfiguracaoLojaDAO.java  # Define leitura e gravação da configuração operacional única da loja.
 │   │   │   │   │   │   ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
 │   │   │   │   │   │   ├── CupomDAO.java  # Contrato de consulta, reserva e devolução de cupons com uso limitado.
 │   │   │   │   │   │   ├── GamificacaoDAO.java  # Contrato para selos, elegibilidade por pagamento, prêmios, prazos e pontos.
 │   │   │   │   │   │   ├── MovimentacaoEstoqueDAO.java  # Contrato para registrar movimentações e calcular perdas por período.
-│   │   │   │   │   │   ├── PedidoDAO.java  # Contrato JDBC para pedidos, estados de pagamento, histórico, fila e balanço.
+│   │   │   │   │   │   ├── PedidoDAO.java  # Define operações transacionais de pedidos, despacho, relatórios e baixa física.
 │   │   │   │   │   │   ├── PixPagamentoDAO.java  # Contrato de persistência de cobranças, conciliação e status de pagamento.
-│   │   │   │   │   │   ├── ProdutoDAO.java  # Contrato para cadastro de produtos, consultas e atualização de estoque.
+│   │   │   │   │   │   ├── ProdutoDAO.java  # Define cadastro, consulta, bloqueio de venda e atualização de estoque físico.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   └── UsuarioDAO.java  # Contrato de acesso a usuários, credenciais e bloqueio transacional da conta do cliente.
 │   │   │   │   │   ├── exception/  # Exceções personalizadas de domínio e persistência.
 │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   ├── AutenticacaoInvalidaException.java  # Falha de autenticação.
 │   │   │   │   │   │   ├── AvaliacaoNaoPermitidaException.java  # Avaliação sem compra elegível.
-│   │   │   │   │   │   ├── EstoqueInsuficienteException.java  # Erro de quantidade indisponível.
+│   │   │   │   │   │   ├── EstoqueInsuficienteException.java  # Indica saldo físico insuficiente para uma movimentação de estoque.
 │   │   │   │   │   │   ├── PersistenciaException.java  # Encapsula erro de persistência.
+│   │   │   │   │   │   ├── ProdutoIndisponivelException.java  # Indica que um produto foi bloqueado para venda, independentemente do estoque.
 │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
 │   │   │   │   │   │   ├── comanda/  # Entidades de mesa, comanda, itens e pagamentos parciais.
@@ -85,7 +88,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   │   ├── PerfilUsuario.java  # Perfis de acesso do usuário.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── StatusPagamento.java  # Distingue PIX pendente, pagamento confirmado e cobrança na entrega.
-│   │   │   │   │   │   │   ├── StatusPedido.java  # Estados e transições permitidas do pedido.
+│   │   │   │   │   │   │   ├── StatusPedido.java  # Define as transições por modalidade, incluindo saída exclusiva para entrega.
 │   │   │   │   │   │   │   ├── TipoEntrega.java  # Modalidades de entrega.
 │   │   │   │   │   │   │   └── TipoMovimentacaoEstoque.java  # Tipos de movimentação de estoque.
 │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
@@ -95,6 +98,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── AvaliacaoResumo.java  # Projeção de avaliação com comentário, resposta oficial e foto para moderação.
 │   │   │   │   │   │   ├── Categoria.java  # Categoria de produtos.
 │   │   │   │   │   │   ├── Cliente.java  # Contato especializado em cliente.
+│   │   │   │   │   │   ├── ConfiguracaoLoja.java  # Representa o expediente, o modo automático e a chave manual da loja.
 │   │   │   │   │   │   ├── ConquistaCliente.java  # Representa um selo e a data em que foi desbloqueado.
 │   │   │   │   │   │   ├── Contato.java  # Abstração comum de contatos.
 │   │   │   │   │   │   ├── CupomRoleta.java  # Projeção de código de resgate com benefício, mínimo e data de expiração.
@@ -108,7 +112,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── PersonalizacaoItem.java  # Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes.
 │   │   │   │   │   │   ├── PlanoAssinatura.java  # Valida nome, descrição, preço mensal e percentual do plano.
 │   │   │   │   │   │   ├── PremioRoleta.java  # Define fatias comuns/VIP e registra resultado, prazo e giro extra.
-│   │   │   │   │   │   ├── Produto.java  # Representa custos, preços, estoque e ficha de personalização do catálogo.
+│   │   │   │   │   │   ├── Produto.java  # Representa preço, custos, saldo físico, disponibilidade de venda e ficha do catálogo.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── Usuario.java  # Abstração de usuário e permissões.
 │   │   │   │   │   │   ├── UsuarioAdmin.java  # Usuário administrativo.
@@ -117,7 +121,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
 │   │   │   │   │   │   ├── cozinha/  # Estados do termômetro visual de preparo dos pedidos.
 │   │   │   │   │   │   │   ├── EstadoCozinha.java  # Contrato State de mensagem, progresso e espera.
-│   │   │   │   │   │   │   ├── EtapaCozinha.java  # Mapeia os status persistidos aos estados visuais da cozinha.
+│   │   │   │   │   │   │   ├── EtapaCozinha.java  # Mapeia os status aos estados visuais de preparo, saída em rota e conclusão.
 │   │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   │   │   ├── CalculadoraDescontos.java  # Escolhe uma única vantagem entre estratégias de desconto, frete, brindes e pontos.
@@ -139,8 +143,8 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   │   ├── ClubeServiceImpl.java  # Valida adesão, vigência, renovação e confirmação manual no Clube da Fome.
 │   │   │   │   │   │   │   ├── ComandaServiceImpl.java  # Orquestra estoque, validação do operador, cotação de pagamentos e fechamento atômico.
 │   │   │   │   │   │   │   ├── GamificacaoServiceImpl.java  # Controla cooldown, separa sorteios de demonstração e aplica validade e giro extra.
-│   │   │   │   │   │   │   ├── PedidoVendaServiceImpl.java  # Finaliza pedidos com proteção de estoque, promoções e fila dependente do PIX.
-│   │   │   │   │   │   │   ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
+│   │   │   │   │   │   │   ├── PedidoVendaServiceImpl.java  # Valida expediente e disponibilidade e coordena baixa física, PIX e despacho.
+│   │   │   │   │   │   │   ├── ProdutoEstoqueServiceImpl.java  # Gerencia disponibilidade, ajustes, lotes e perdas do estoque físico.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   └── RelatorioFinanceiroServiceImpl.java  # Calcula indicadores financeiros e gera o balanço CSV.
 │   │   │   │   │   │   ├── pix/  # Porta, adapters e conciliação da cobrança PIX na vitrine.
@@ -161,15 +165,16 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── ConquistasObserver.java  # Avalia selos, libera a roleta após pagamento ou entrega e revoga prêmios cancelados.
 │   │   │   │   │   │   ├── FotoAvaliacaoStorage.java  # Valida, redimensiona, salva e remove imagens locais de avaliações.
 │   │   │   │   │   │   ├── GamificacaoService.java  # Contrato de selos, pontos, cupons, giro regular e giro extra.
-│   │   │   │   │   │   ├── PedidoCancelamentoService.java  # Libera estoque e cupom ao cancelar a reserva de um pedido.
+│   │   │   │   │   │   ├── OperacaoLojaService.java  # Avalia a abertura e valida agendamentos pelo expediente local, inclusive após a meia-noite.
+│   │   │   │   │   │   ├── PedidoCancelamentoService.java  # Devolve somente o saldo físico baixado e libera o cupom ao cancelar.
 │   │   │   │   │   │   ├── PedidoConcluidoObserver.java  # Contrato Observer para finalização, confirmação PIX, entrega e cancelamento.
 │   │   │   │   │   │   ├── PedidoVendaService.java  # Contrato para simular descontos, finalizar pedidos e alterar status de vendas.
-│   │   │   │   │   │   ├── PersonalizacaoService.java  # Sorteia caixas, agrega estoque reservado no carrinho e valida composições e restrições.
+│   │   │   │   │   │   ├── PersonalizacaoService.java  # Sorteia caixas com produtos liberados e valida composições e restrições.
 │   │   │   │   │   │   ├── PixPayloadService.java  # Monta BR Code com CRC16 e gera a imagem Pix em memória com ZXing.
-│   │   │   │   │   │   ├── ProdutoEstoqueService.java  # Contrato para produtos, consultas de estoque, entradas e perdas.
+│   │   │   │   │   │   ├── ProdutoEstoqueService.java  # Define operações do catálogo, bloqueio de venda e movimentações do estoque físico.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── RelatorioFinanceiroService.java  # Contrato de cálculos de balanço, gráficos e exportação CSV.
-│   │   │   │   │   │   └── WhatsAppLinkService.java  # Constrói e abre links de mensagens WhatsApp.
+│   │   │   │   │   │   └── WhatsAppLinkService.java  # Gera e abre links do WhatsApp com o acompanhamento, status e nome do entregador.
 │   │   │   │   │   ├── util/  # Conexão, autenticação auxiliar e navegação.
 │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   ├── ConnectionFactory.java  # Pool HikariCP e transações JDBC.
@@ -192,14 +197,14 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   ├── admin.css  # Estilos do painel administrativo.
 │   │   │   ├── agenda.css  # Estilos da agenda.
-│   │   │   ├── cliente-vitrine.css  # Estilos da vitrine.
+│   │   │   ├── cliente-vitrine.css  # Estiliza catálogo, checkout, disponibilidade e banner de entrega em rota.
 │   │   │   ├── global.css  # Estilos compartilhados da aplicação.
 │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   ├── fxml/  # Descrições de interface JavaFX.
 │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   │   │   ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo, com navegação para o Clube da Fome.
+│   │   │   ├── admin-dashboard.fxml  # Estrutura a navegação administrativa, incluindo o painel de status da loja.
 │   │   │   ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-│   │   │   ├── cliente-vitrine.fxml  # Estrutura do catálogo com checkout PIX, dados do pagador, urgência de cupons e clube.
+│   │   │   ├── cliente-vitrine.fxml  # Estrutura a vitrine, o selo de funcionamento, o carrinho e o histórico de pedidos.
 │   │   │   ├── login.fxml  # Estrutura visual de login e cadastro.
 │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.
@@ -220,7 +225,7 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
-│   │   │   │   │   │   └── VitrineJavaFXTest.java  # Valida catálogo, checkout, edição de pedidos, clube, roleta e consulta PIX automática.
+│   │   │   │   │   │   └── VitrineJavaFXTest.java  # Verifica catálogo, checkout, expediente e atualização da entrega na vitrine.
 │   │   │   │   │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   │   │   │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
 │   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
@@ -239,12 +244,15 @@ src/  # Reúne o código da aplicação, os recursos carregados pelo JavaFX e, q
 │   │   │   │   │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
 │   │   │   │   │   │   ├── Etapa4IntegracaoTest.java  # Verifica transações de estoque, pedidos, PDV, avaliações com foto e financeiro no MySQL.
 │   │   │   │   │   │   ├── FotoAvaliacaoStorageTest.java  # Testa a cópia validada, limites, caminhos locais e remoção de anexos.
+│   │   │   │   │   │   ├── OperacaoLojaServiceTest.java  # Testa os limites do expediente e a combinação dos modos manual e automático.
+│   │   │   │   │   │   ├── OperacaoV162IntegracaoTest.java  # Valida configuração persistida, agendamento, venda sob demanda, bloqueio e despacho no MySQL.
 │   │   │   │   │   │   ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
 │   │   │   │   │   │   ├── PersonalizacaoServiceTest.java  # Testa a composição do combo, sorteio com restrições e desconto não cumulativo.
 │   │   │   │   │   │   ├── PixPayloadServiceTest.java  # Valida valor, referência e CRC16 e decodifica a imagem QR que foi gerada.
 │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
-│   │   │   │   │   │   ├── VitrineV150IntegracaoTest.java  # Valida baixa e devolução de estoque, restrições e histórico de combos e caixas no MySQL.
+│   │   │   │   │   │   ├── VendaTeste.java  # Fornece relógio fixo e configuração isolada aos testes do fluxo de venda.
+│   │   │   │   │   │   ├── VitrineV150IntegracaoTest.java  # Verifica combos e caixas, restrições e cancelamento com devolução da baixa real.
 │   │   │   │   │   │   └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.
 │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.

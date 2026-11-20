@@ -9,7 +9,7 @@ import com.salgaderia.app.service.BarramentoPedido;
 import com.salgaderia.app.service.ConquistasObserver;
 import com.salgaderia.app.service.PedidoCancelamentoService;
 import com.salgaderia.app.service.PedidoConcluidoObserver.*;
-import com.salgaderia.app.exception.EstoqueInsuficienteException;
+import com.salgaderia.app.service.OperacaoLojaService;
 import com.salgaderia.app.service.desconto.*;
 import com.salgaderia.app.service.pix.PixConfiguracao;
 import com.salgaderia.app.service.pix.PixPagamentoService;
@@ -31,6 +31,7 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
     private final PixPagamentoService pix;
     private final PixPagamentoDAO pixDados=new PixPagamentoDAOImpl();
     private final PedidoCancelamentoService cancelamento;
+    private final OperacaoLojaService operacao;
     private record Venda(long id,ResultadoDesconto desconto,StatusPagamento pagamento,boolean demo) { }
     public PedidoVendaServiceImpl(){this(new PedidoDAOImpl(),new ProdutoDAOImpl(),new MovimentacaoEstoqueDAOImpl());}
     public PedidoVendaServiceImpl(PixPagamentoService pix){this(new PedidoDAOImpl(),new ProdutoDAOImpl(),new MovimentacaoEstoqueDAOImpl(),pix);}
@@ -38,6 +39,10 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         this(pedidos,produtos,movimentos,new PixPagamentoService());
     }
     public PedidoVendaServiceImpl(PedidoDAO pedidos,ProdutoDAO produtos,MovimentacaoEstoqueDAO movimentos,PixPagamentoService pix){
+        this(pedidos,produtos,movimentos,pix,new OperacaoLojaService());
+    }
+    public PedidoVendaServiceImpl(PedidoDAO pedidos,ProdutoDAO produtos,MovimentacaoEstoqueDAO movimentos,PixPagamentoService pix,OperacaoLojaService operacao){
+        this.operacao=Objects.requireNonNull(operacao);
         this.pedidos=Objects.requireNonNull(pedidos);this.produtos=Objects.requireNonNull(produtos);this.movimentos=Objects.requireNonNull(movimentos);
         this.pix=Objects.requireNonNull(pix);this.cancelamento=new PedidoCancelamentoService(pedidos,produtos,movimentos,eventos);
     }
@@ -56,7 +61,7 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             List<PedidoItem> resultado=new ArrayList<>();
             for(var entrada:quantidades.entrySet()){
                 Produto atual=produtos.buscarPorId(c,entrada.getKey(),false).orElseThrow(()->new IllegalArgumentException("Um produto do pedido anterior não está mais disponível."));
-                if(atual.getEstoqueAtual().compareTo(entrada.getValue())<0)throw new EstoqueInsuficienteException(atual.getNome(),atual.getEstoqueAtual(),entrada.getValue());
+                atual.exigirDisponivelParaVenda();
                 try{entrada.getValue().intValueExact();}catch(ArithmeticException e){throw new IllegalArgumentException("O pedido anterior contém quantidade não inteira.",e);}
                 atuais.put(entrada.getKey(),atual);
             }
@@ -95,6 +100,7 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
                 if(id==null)throw new IllegalArgumentException("Produto sem ID");
                 Produto p=atuais.get(id);
                 if(p==null)p=produtos.buscarPorId(c,id,false).orElseThrow(()->new IllegalArgumentException("Produto não encontrado"));
+                p.exigirDisponivelParaVenda();
                 if(p.getPrecoVenda().compareTo(item.getPrecoUnitario())!=0)throw new IllegalArgumentException("Preço do produto mudou");
                 atuais.put(id,p);
             }
@@ -123,7 +129,7 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
     }
     private long finalizarInterno(Pedido pedido,FormaPagamento forma,BigDecimal recebido,String codigo,ResultadoDesconto esperado){
         Objects.requireNonNull(pedido);if(pedido.getId()!=null||pedido.getStatus()!=StatusPedido.PENDENTE||pedido.getItens().isEmpty())throw new IllegalArgumentException("Pedido deve ser novo, pendente e conter itens");
-        if(pedido.getAgendadoPara()!=null&&!pedido.getAgendadoPara().isAfter(LocalDateTime.now()))throw new IllegalArgumentException("O agendamento deve estar no futuro");
+        if(!(pedido.getUsuario() instanceof UsuarioCliente)&&pedido.getAgendadoPara()!=null&&!pedido.getAgendadoPara().isAfter(LocalDateTime.now()))throw new IllegalArgumentException("O agendamento deve estar no futuro");
         if(pedido.getUsuario()!=null && pedido.getUsuario().getId()==null)throw new IllegalArgumentException("Usuário sem ID");
         if(forma!=null && (!(pedido.getUsuario() instanceof UsuarioAdmin) || pedido.getUsuario().getId()==null || !pedido.getUsuario().isAtivo()))
             throw new IllegalArgumentException("Venda PDV exige administrador ativo");
@@ -147,16 +153,21 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
             boolean vitrine=pedido.getUsuario() instanceof UsuarioCliente;
             GamificacaoDAO.Conta conta=null;
             if(vitrine){
+                operacao.validarPedido(c,pedido.getAgendadoPara());
                 conta=new GamificacaoDAO.Conta(pedido.getUsuario().getId(),pedido.getCliente().getId());
                 if(!usuarios.bloquearClienteAtivo(c,conta.usuarioId(),conta.contatoId()))
                     throw new IllegalArgumentException("Cliente ativo obrigatório.");
             }else if(forma!=null&&pedido.getCliente()!=null){
                 conta=bloquearConta(c,jogo.contaPorContato(c,pedido.getCliente().getId()).orElse(null));
             }
-            Map<Long,Produto> bloqueados=new LinkedHashMap<>();Map<Long,BigDecimal> custos=new HashMap<>();
+            Map<Long,Produto> bloqueados=new LinkedHashMap<>();Map<Long,BigDecimal> custos=new HashMap<>();Map<Long,BigDecimal> baixas=new HashMap<>();
             for(var entrada:quantidades.entrySet()){
                 Produto p=produtos.buscarPorId(c,entrada.getKey(),true).orElseThrow(()->new IllegalArgumentException("Produto não encontrado"));
-                p.removerEstoque(entrada.getValue());bloqueados.put(entrada.getKey(),p);custos.put(entrada.getKey(),p.getCustoProducao());
+                p.exigirDisponivelParaVenda();
+                BigDecimal baixa=p.getEstoqueAtual().min(entrada.getValue());
+                baixas.put(entrada.getKey(),baixa);
+                if(baixa.signum()>0)p.removerEstoque(baixa);
+                bloqueados.put(entrada.getKey(),p);custos.put(entrada.getKey(),p.getCustoProducao());
             }
             for(PedidoItem item:pedido.getItens())if(item.getPrecoUnitario().compareTo(bloqueados.get(item.getProduto().getId()).getPrecoVenda())!=0)throw new IllegalArgumentException("Preço do pedido diverge do preço atual");
             ResultadoDesconto desconto=calcular(c,pedido,codigo,bloqueados);
@@ -166,14 +177,16 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
                 throw new IllegalArgumentException("Desconto alterado; recalcule e confirme o pedido");
             if(forma!=null && forma.isPermiteTroco() && (recebido==null || recebido.scale()>2 || recebido.compareTo(desconto.total())<0 || recebido.compareTo(new BigDecimal("99999999.99"))>0))
                 throw new IllegalArgumentException("Valor recebido insuficiente ou inválido");
-            long pedidoId=pedidos.inserir(c,pedido,custos);
+            long pedidoId=pedidos.inserir(c,pedido,custos,baixas);
             pedidos.registrarDesconto(c,pedidoId,desconto);
             boolean pixVitrine=vitrine&&pedido.getFormaPagamento()==FormaPagamento.PIX;
             if(pixVitrine)pix.registrar(c,pedidoId,pedido,desconto.total());
             if(forma!=null) pedidos.registrarPdv(c,pedidoId,forma,forma.isPermiteTroco()?recebido:desconto.total(),forma.isPermiteTroco()?recebido.subtract(desconto.total()):BigDecimal.ZERO);
             for(var entrada:bloqueados.entrySet()){
+                BigDecimal baixa=baixas.get(entrada.getKey());
+                if(baixa.signum()==0)continue;
                 Produto p=entrada.getValue();if(!produtos.atualizarEstoque(c,entrada.getKey(),p.getEstoqueAtual()))throw new IllegalStateException("Produto não atualizado");
-                movimentos.inserir(c,new MovimentacaoEstoque(null,p,TipoMovimentacaoEstoque.SAIDA,quantidades.get(entrada.getKey()),"Pedido "+pedidoId,LocalDateTime.now()),null,"VENDA",p.getCustoProducao());
+                movimentos.inserir(c,new MovimentacaoEstoque(null,p,TipoMovimentacaoEstoque.SAIDA,baixa,"Pedido "+pedidoId,LocalDateTime.now()),null,"VENDA",p.getCustoProducao());
             }
             if(vitrine&&desconto.cupom()!=null)cupons.reservar(c,conta.usuarioId(),desconto.cupom(),pedidoId);
             eventos.publicar(c,new Evento(pedidoId,conta,forma==null?Etapa.FINALIZADO:Etapa.ENTREGUE,vitrine));
@@ -185,11 +198,12 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         pedido.setTaxaEntrega(venda.desconto().taxaEntrega());pedido.setDesconto(venda.desconto().desconto());pedido.setBrinde(venda.desconto().brinde());
         return venda.id();
     }
-    @Override public void transicionar(long pedidoId,StatusPedido destino){
+    @Override public void transicionar(long pedidoId,StatusPedido destino,String entregador){
         ConnectionFactory.executarEmTransacao(c->{
             var conta=bloquearConta(c,jogo.contaDoPedido(c,pedidoId).orElse(null));
-            StatusPedido atual=pedidos.bloquearStatus(c,pedidoId);
-            if(!atual.podeTransicionarPara(destino))throw new IllegalStateException("Transição inválida: "+atual+" -> "+destino);
+            var fluxo=pedidos.bloquearFluxo(c,pedidoId);
+            StatusPedido atual=fluxo.status();
+            if(!atual.podeTransicionarPara(destino,fluxo.modalidade()))throw new IllegalStateException("Transição inválida: "+atual+" -> "+destino);
             if(destino!=StatusPedido.CANCELADO&&pedidos.statusPagamento(c,pedidoId)==StatusPagamento.AGUARDANDO_PIX)
                 throw new IllegalStateException("Aguarde a confirmação PIX antes de preparar o pedido.");
             if(destino==StatusPedido.CANCELADO){
@@ -198,7 +212,8 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
                     throw new IllegalStateException("PIX real iniciado: confira e trate a cobrança no Mercado Pago. O aplicativo não emite estornos.");
                 cancelamento.cancelar(c,pedidoId);return null;
             }
-            pedidos.atualizarStatus(c,pedidoId,destino);
+            if(destino==StatusPedido.SAIU_ENTREGA)pedidos.registrarSaidaEntrega(c,pedidoId,Pedido.validarNomeEntregador(entregador));
+            else pedidos.atualizarStatus(c,pedidoId,destino);
             if(destino==StatusPedido.ENTREGUE)eventos.publicar(c,new Evento(pedidoId,conta,Etapa.ENTREGUE,false));
             return null;
         });

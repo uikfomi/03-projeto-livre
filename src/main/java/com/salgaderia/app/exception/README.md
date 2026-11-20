@@ -13,8 +13,9 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [AutenticacaoInvalidaException.java](AutenticacaoInvalidaException.java) | Falha de autenticação. |
 | [AvaliacaoNaoPermitidaException.java](AvaliacaoNaoPermitidaException.java) | Avaliação sem compra elegível. |
-| [EstoqueInsuficienteException.java](EstoqueInsuficienteException.java) | Erro de quantidade indisponível. |
+| [EstoqueInsuficienteException.java](EstoqueInsuficienteException.java) | Indica saldo físico insuficiente para uma movimentação de estoque. |
 | [PersistenciaException.java](PersistenciaException.java) | Encapsula erro de persistência. |
+| [ProdutoIndisponivelException.java](ProdutoIndisponivelException.java) | Indica que um produto foi bloqueado para venda, independentemente do estoque. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 
 ## Árvore estrutural comentada
@@ -26,8 +27,9 @@ src/main/java/com/salgaderia/app/exception/  # Define falhas específicas do dom
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── AutenticacaoInvalidaException.java  # Falha de autenticação.
 ├── AvaliacaoNaoPermitidaException.java  # Avaliação sem compra elegível.
-├── EstoqueInsuficienteException.java  # Erro de quantidade indisponível.
+├── EstoqueInsuficienteException.java  # Indica saldo físico insuficiente para uma movimentação de estoque.
 ├── PersistenciaException.java  # Encapsula erro de persistência.
+├── ProdutoIndisponivelException.java  # Indica que um produto foi bloqueado para venda, independentemente do estoque.
 └── README.md  # Guia de navegação e explicações desta pasta.
 ```
 

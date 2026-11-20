@@ -19,6 +19,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [AvaliacaoResumo.java](AvaliacaoResumo.java) | Projeção de avaliação com comentário, resposta oficial e foto para moderação. |
 | [Categoria.java](Categoria.java) | Categoria de produtos. |
 | [Cliente.java](Cliente.java) | Contato especializado em cliente. |
+| [ConfiguracaoLoja.java](ConfiguracaoLoja.java) | Representa o expediente, o modo automático e a chave manual da loja. |
 | [ConquistaCliente.java](ConquistaCliente.java) | Representa um selo e a data em que foi desbloqueado. |
 | [Contato.java](Contato.java) | Abstração comum de contatos. |
 | [CupomRoleta.java](CupomRoleta.java) | Projeção de código de resgate com benefício, mínimo e data de expiração. |
@@ -32,7 +33,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [PersonalizacaoItem.java](PersonalizacaoItem.java) | Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes. |
 | [PlanoAssinatura.java](PlanoAssinatura.java) | Valida nome, descrição, preço mensal e percentual do plano. |
 | [PremioRoleta.java](PremioRoleta.java) | Define fatias comuns/VIP e registra resultado, prazo e giro extra. |
-| [Produto.java](Produto.java) | Representa custos, preços, estoque e ficha de personalização do catálogo. |
+| [Produto.java](Produto.java) | Representa preço, custos, saldo físico, disponibilidade de venda e ficha do catálogo. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [Usuario.java](Usuario.java) | Abstração de usuário e permissões. |
 | [UsuarioAdmin.java](UsuarioAdmin.java) | Usuário administrativo. |
@@ -59,7 +60,7 @@ src/main/java/com/salgaderia/app/model/  # Agrupa entidades, tipos de domínio e
 │   ├── PerfilUsuario.java  # Perfis de acesso do usuário.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   ├── StatusPagamento.java  # Distingue PIX pendente, pagamento confirmado e cobrança na entrega.
-│   ├── StatusPedido.java  # Estados e transições permitidas do pedido.
+│   ├── StatusPedido.java  # Define as transições por modalidade, incluindo saída exclusiva para entrega.
 │   ├── TipoEntrega.java  # Modalidades de entrega.
 │   └── TipoMovimentacaoEstoque.java  # Tipos de movimentação de estoque.
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
@@ -69,6 +70,7 @@ src/main/java/com/salgaderia/app/model/  # Agrupa entidades, tipos de domínio e
 ├── AvaliacaoResumo.java  # Projeção de avaliação com comentário, resposta oficial e foto para moderação.
 ├── Categoria.java  # Categoria de produtos.
 ├── Cliente.java  # Contato especializado em cliente.
+├── ConfiguracaoLoja.java  # Representa o expediente, o modo automático e a chave manual da loja.
 ├── ConquistaCliente.java  # Representa um selo e a data em que foi desbloqueado.
 ├── Contato.java  # Abstração comum de contatos.
 ├── CupomRoleta.java  # Projeção de código de resgate com benefício, mínimo e data de expiração.
@@ -82,7 +84,7 @@ src/main/java/com/salgaderia/app/model/  # Agrupa entidades, tipos de domínio e
 ├── PersonalizacaoItem.java  # Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes.
 ├── PlanoAssinatura.java  # Valida nome, descrição, preço mensal e percentual do plano.
 ├── PremioRoleta.java  # Define fatias comuns/VIP e registra resultado, prazo e giro extra.
-├── Produto.java  # Representa custos, preços, estoque e ficha de personalização do catálogo.
+├── Produto.java  # Representa preço, custos, saldo físico, disponibilidade de venda e ficha do catálogo.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 ├── Usuario.java  # Abstração de usuário e permissões.
 ├── UsuarioAdmin.java  # Usuário administrativo.

@@ -1,7 +1,7 @@
 package com.salgaderia.app.controller;
 
 import com.salgaderia.app.exception.AvaliacaoNaoPermitidaException;
-import com.salgaderia.app.exception.EstoqueInsuficienteException;
+import com.salgaderia.app.exception.ProdutoIndisponivelException;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.PersonalizacaoItem.Restricao;
@@ -54,7 +54,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     @FXML private Label saudacao, mensagemProdutos, mensagemPedidos, endereco, total, contador;
     @FXML private TextField busca, cupom;
     @FXML private Label mensagemDesconto;
-    @FXML private Label mensagemFrete,cupomUrgente;
+    @FXML private Label mensagemFrete,cupomUrgente,statusLoja,orientacaoLoja;
     @FXML private VBox dadosPagadorPix;
     @FXML private TextField emailPix,documentoPix;
     @FXML private ComboBox<FiltroCategoria> categorias;
@@ -77,6 +77,13 @@ public class ClienteVitrineController implements TelaAutenticada {
     private final ClubeService clube;
     private final GamificacaoService gamificacao;
     private final PixPagamentoService pagamentosPix;
+    private final OperacaoLojaService operacao = new OperacaoLojaService();
+    private final java.util.function.Supplier<ConfiguracaoLoja> consultarOperacao;
+    private final Timeline atualizacaoLoja = new Timeline(new KeyFrame(Duration.seconds(5), e -> atualizarLoja()));
+    private ConfiguracaoLoja configuracao;
+    private boolean consultandoLoja;
+    private long geracaoLoja;
+    private record OperacaoAtual(ConfiguracaoLoja config, Set<Long> produtosLiberados) { }
     private final Map<ChaveCarrinho,List<PedidoItem>> carrinho = new LinkedHashMap<>();
     private final PersonalizacaoService personalizacoes = new PersonalizacaoService();
     private List<Produto> produtos = List.of();
@@ -107,6 +114,12 @@ public class ClienteVitrineController implements TelaAutenticada {
     }
     public ClienteVitrineController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AvaliacaoService avaliacoes,
                                     ClubeService clube,GamificacaoService gamificacao,PixPagamentoService pagamentosPix) {
+        this(produtos,pedidos,avaliacoes,clube,gamificacao,pagamentosPix,new OperacaoLojaService()::consultar);
+    }
+    ClienteVitrineController(ProdutoEstoqueService produtos,PedidoVendaService pedidos,AvaliacaoService avaliacoes,
+                             ClubeService clube,GamificacaoService gamificacao,PixPagamentoService pagamentosPix,
+                             java.util.function.Supplier<ConfiguracaoLoja> consultarOperacao) {
+        this.consultarOperacao=Objects.requireNonNull(consultarOperacao);
         this.produtosService=Objects.requireNonNull(produtos);this.pedidosService=Objects.requireNonNull(pedidos);this.avaliacoesService=Objects.requireNonNull(avaliacoes);
         this.clube=Objects.requireNonNull(clube);this.gamificacao=Objects.requireNonNull(gamificacao);
         this.pagamentosPix=Objects.requireNonNull(pagamentosPix);
@@ -124,21 +137,23 @@ public class ClienteVitrineController implements TelaAutenticada {
 
     @FXML private void initialize() {
         atualizacaoPedidos.setCycleCount(Timeline.INDEFINITE);
+        atualizacaoLoja.setCycleCount(Timeline.INDEFINITE);
         contagemCupons.setCycleCount(Timeline.INDEFINITE);
         formaPagamento.getItems().setAll(FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO);
         formaPagamento.setConverter(new StringConverter<>() {
             public String toString(FormaPagamento forma){return forma==null?"":forma.descricao();}
             public FormaPagamento fromString(String valor){return null;}
         });
-        formaPagamento.valueProperty().addListener((o,a,n)->{finalizar.setDisable(descontoAtual==null||n==null);atualizarPix();});
+        formaPagamento.valueProperty().addListener((o,a,n)->{atualizarCheckout();atualizarPix();});
         raiz.sceneProperty().addListener((obs, anterior, cena)->{
-            if(cena==null){atualizacaoPedidos.stop();contagemCupons.stop();geracaoPedidos++;return;}
+            if(cena==null){atualizacaoPedidos.stop();contagemCupons.stop();atualizacaoLoja.stop();geracaoLoja++;geracaoPedidos++;return;}
             cena.windowProperty().addListener((o, velha, janela)->{
-                if(janela==null){atualizacaoPedidos.stop();contagemCupons.stop();geracaoPedidos++;}
-                else janela.showingProperty().addListener((x,era,visivel)->{if(!visivel){atualizacaoPedidos.stop();contagemCupons.stop();geracaoPedidos++;}});
+                if(janela==null){atualizacaoPedidos.stop();contagemCupons.stop();atualizacaoLoja.stop();geracaoLoja++;geracaoPedidos++;}
+                else janela.showingProperty().addListener((x,era,visivel)->{if(!visivel){atualizacaoPedidos.stop();contagemCupons.stop();atualizacaoLoja.stop();geracaoLoja++;geracaoPedidos++;}});
             });
         });
         ToggleGroup grupo=new ToggleGroup();retirada.setToggleGroup(grupo);entrega.setToggleGroup(grupo);local.setToggleGroup(grupo);retirada.setSelected(true);
+        agendar.selectedProperty().addListener((o,a,n)->atualizarCheckout());
         dataAgendamento.disableProperty().bind(agendar.selectedProperty().not());
         horaAgendamento.disableProperty().bind(agendar.selectedProperty().not());
         grupo.selectedToggleProperty().addListener((o,a,n)->{if(n==null)grupo.selectToggle(a);atualizarEndereco();simularDesconto();});
@@ -155,7 +170,48 @@ public class ClienteVitrineController implements TelaAutenticada {
     @Override public void definirUsuario(Usuario usuario) {
         if (!(usuario instanceof UsuarioCliente cliente) || !cliente.isAtivo()) throw new SecurityException("Acesso restrito a clientes ativos");
         this.usuario=cliente;saudacao.setText("Olá, "+usuario.getNome()+"!");atualizarEndereco();atualizarCarrinho();carregarProdutos();
-        carregarCupons();contagemCupons.playFromStart();
+        carregarCupons();contagemCupons.playFromStart();atualizarLoja();atualizacaoLoja.playFromStart();
+    }
+    private void atualizarLoja(){
+        if(usuario==null||consultandoLoja)return;
+        consultandoLoja=true;
+        long geracao=geracaoLoja;
+        long catalogo=geracaoProdutos;
+        Task<OperacaoAtual> tarefa=new Task<>(){
+            @Override protected OperacaoAtual call(){
+                return new OperacaoAtual(consultarOperacao.get(),produtosService.listar().stream()
+                        .filter(Produto::isDisponivelVenda).map(Produto::getId).collect(java.util.stream.Collectors.toSet()));
+            }
+        };
+        tarefa.setOnSucceeded(e->{
+            consultandoLoja=false;if(geracao!=geracaoLoja)return;
+            configuracao=tarefa.getValue().config();
+            if(carregouProdutos&&catalogo==geracaoProdutos){
+                Set<Long> liberados=tarefa.getValue().produtosLiberados();
+                boolean mudou=false;
+                for(Produto p:produtos){
+                    boolean disponivel=liberados.contains(p.getId());
+                    mudou|=p.isDisponivelVenda()!=disponivel;
+                    p.setDisponivelVenda(disponivel);
+                }
+                for(PedidoItem i:itensDoCarrinho()){
+                    Produto p=i.getProduto();boolean disponivel=liberados.contains(p.getId());
+                    mudou|=p.isDisponivelVenda()!=disponivel;p.setDisponivelVenda(disponivel);
+                }
+                if(mudou){filtrar();atualizarCarrinho();}
+            }
+            statusLoja.setText(operacao.rotulo(configuracao));atualizarCheckout();
+        });
+        tarefa.setOnFailed(e->{consultandoLoja=false;if(geracao==geracaoLoja){
+            configuracao=null;statusLoja.setText("Não foi possível consultar o horário da loja.");atualizarCheckout();
+        }});
+        iniciar(tarefa);
+    }
+    private void atualizarCheckout(){
+        boolean fechada=configuracao!=null&&!operacao.estaAberta(configuracao);
+        if(fechada&&!agendar.isSelected())exibir(orientacaoLoja,"Pedidos imediatos pausados. Agende para um horário dentro do expediente.");
+        else ocultar(orientacaoLoja);
+        finalizar.setDisable(descontoAtual==null||formaPagamento.getValue()==null||configuracao==null||(fechada&&!agendar.isSelected()));
     }
     @FXML private void mostrarVitrine(){atualizacaoPedidos.stop();geracaoPedidos++;mostrarPainel(painelVitrine);simularDesconto();}
     @FXML private void mostrarPedidos(){mostrarPainel(painelPedidos);carregarPedidos();atualizacaoPedidos.playFromStart();}
@@ -313,8 +369,9 @@ public class ClienteVitrineController implements TelaAutenticada {
         Label descricao=new Label(produto.getDescricao()==null||produto.getDescricao().isBlank()?"Sem descrição":produto.getDescricao());descricao.setWrapText(true);descricao.setMaxHeight(48);descricao.getStyleClass().add("produto-descricao");
         Label preco=new Label(moeda(produto.getPrecoVenda()));preco.getStyleClass().add("produto-preco");
         BigDecimal media=medias.get(produto.getId());Label estrelas=new Label(media==null?"Sem avaliações":"★ "+String.format(BR,"%.1f",media));estrelas.getStyleClass().add("produto-estrelas");
-        boolean disponivel=produto.getEstoqueAtual().compareTo(BigDecimal.ONE)>=0;
-        Label estoque=new Label(disponivel?"Disponível":"Esgotado");estoque.getStyleClass().add(disponivel?"estoque-disponivel":"estoque-esgotado");
+        boolean disponivel=produto.isDisponivelVenda();
+        Label estoque=new Label(disponivel?"Disponível":"Indisponível no momento");estoque.setWrapText(true);
+        estoque.getStyleClass().add(disponivel?"estoque-disponivel":"estoque-esgotado");
         Button adicionar=new Button("Adicionar +");adicionar.setId("adicionar-"+produto.getId());adicionar.getStyleClass().add("button-primary");adicionar.setMaxWidth(Double.MAX_VALUE);adicionar.setDisable(!disponivel);adicionar.setOnAction(e->adicionar(produto));
         HBox info=new HBox(8,estrelas,estoque);info.setAlignment(Pos.CENTER_LEFT);
         card.getChildren().addAll(imagem,nome,descricao,preco,info,adicionar);return card;
@@ -326,17 +383,18 @@ public class ClienteVitrineController implements TelaAutenticada {
         ChaveCarrinho chave=new ChaveCarrinho(produto.getId(),null);
         var existente=carrinho.get(chave);
         BigDecimal nova=(existente==null?BigDecimal.ZERO:existente.get(0).getQuantidade()).add(BigDecimal.valueOf(delta));
+        if(delta>0){
+            try{produto.exigirDisponivelParaVenda();}
+            catch(ProdutoIndisponivelException e){avisar(Alert.AlertType.WARNING,"Produto indisponível",e.getMessage());return;}
+        }
         if(nova.signum()<=0)carrinho.remove(chave);
-        else if(delta>0&&PersonalizacaoService.disponivel(produto,PersonalizacaoService.quantidades(itensDoCarrinho())).compareTo(BigDecimal.ONE)<0){
-            estoqueInsuficiente(produto.getNome());return;
-        }else carrinho.put(chave,List.of(new PedidoItem(null,produto,nova,produto.getPrecoVenda())));
+        else carrinho.put(chave,List.of(new PedidoItem(null,produto,nova,produto.getPrecoVenda())));
         atualizarCarrinho();
     }
     private List<PedidoItem> itensDoCarrinho(){return carrinho.values().stream().flatMap(List::stream).toList();}
 
     @FXML private void montarCombo(){
-        Map<Long,BigDecimal> quantidades=PersonalizacaoService.quantidades(itensDoCarrinho());
-        List<Produto> disponiveis=produtosDisponiveis(quantidades);
+        List<Produto> disponiveis=produtosDisponiveis();
         List<Produto> variantes=disponiveis.stream().filter(p->p.getFichaVitrine().recheio()!=null).toList();
         if(variantes.isEmpty()){
             avisar(Alert.AlertType.INFORMATION,"Monte seu Combo","Não há massas e recheios disponíveis para combo no momento.");return;
@@ -379,7 +437,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     }
 
     @FXML private void caixaMisteriosa(){
-        if(produtosDisponiveis(PersonalizacaoService.quantidades(itensDoCarrinho())).isEmpty()){
+        if(produtosDisponiveis().isEmpty()){
             avisar(Alert.AlertType.INFORMATION,"Caixa Misteriosa","Não há produtos disponíveis para o sorteio no momento.");return;
         }
         ButtonType sortear=new ButtonType("Sortear e ver preço",ButtonBar.ButtonData.OK_DONE);
@@ -399,8 +457,7 @@ public class ClienteVitrineController implements TelaAutenticada {
             Set<Restricao> restricoes=EnumSet.noneOf(Restricao.class);
             filtros.forEach((r,caixa)->{if(caixa.isSelected())restricoes.add(r);});
             try {
-                sorteados.addAll(personalizacoes.sortearCaixa(tamanho.getValue(),restricoes,produtos,
-                        PersonalizacaoService.quantidades(itensDoCarrinho())));
+                sorteados.addAll(personalizacoes.sortearCaixa(tamanho.getValue(),restricoes,produtos));
             }catch(IllegalArgumentException falha){erro.setText(falha.getMessage());evento.consume();}
         });
         if(dialog.showAndWait().orElse(ButtonType.CANCEL)!=sortear)return;
@@ -412,13 +469,12 @@ public class ClienteVitrineController implements TelaAutenticada {
         confirmar.getDialogPane().setContent(previa);
         if(confirmar.showAndWait().orElse(ButtonType.CANCEL)==adicionar)adicionarPersonalizado(sorteados);
     }
-    private List<Produto> produtosDisponiveis(Map<Long,BigDecimal> quantidades){
-        return produtos.stream().filter(p->PersonalizacaoService.disponivel(p,quantidades).compareTo(BigDecimal.ONE)>=0).toList();
+    private List<Produto> produtosDisponiveis(){
+        return produtos.stream().filter(Produto::isDisponivelVenda).toList();
     }
     private void adicionarPersonalizado(List<PedidoItem> itens){
-        List<PedidoItem> todos=new ArrayList<>(itensDoCarrinho());todos.addAll(itens);
-        try{PersonalizacaoService.validarEstoque(todos);}
-        catch(EstoqueInsuficienteException e){estoqueInsuficiente(e.getNomeProduto());return;}
+        try{itens.forEach(i->i.getProduto().exigirDisponivelParaVenda());}
+        catch(ProdutoIndisponivelException e){avisar(Alert.AlertType.WARNING,"Produto indisponível",e.getMessage());return;}
         carrinho.put(ChaveCarrinho.de(itens.get(0)),List.copyOf(itens));atualizarCarrinho();
     }
     private Dialog<ButtonType> personalizar(String titulo,ButtonType confirmar){
@@ -481,7 +537,7 @@ public class ClienteVitrineController implements TelaAutenticada {
             mensagemDesconto.setText(descontoAtual.brinde()!=null?"Brinde: "+descontoAtual.brinde():
                     "PONTOS_DOBRO".equals(descontoAtual.estrategia())?"Prêmio aplicado: pontos em dobro":
                     "Desconto: "+moeda(descontoAtual.desconto())+" ("+descontoAtual.estrategia()+")");
-            finalizar.setDisable(formaPagamento.getValue()==null);atualizarPix();});
+            atualizarCheckout();atualizarPix();});
         tarefa.setOnFailed(e->{if(geracao!=geracaoDesconto)return;Throwable erro=tarefa.getException();mensagemDesconto.setText(erro instanceof IllegalArgumentException?erro.getMessage():"Não foi possível calcular o desconto. Tente novamente.");});
         iniciar(tarefa);
     }
@@ -514,10 +570,13 @@ public class ClienteVitrineController implements TelaAutenticada {
         if(agendar.isSelected()){
             try {
                 LocalDateTime data=LocalDateTime.of(Objects.requireNonNull(dataAgendamento.getValue()),LocalTime.parse(horaAgendamento.getText().trim()));
-                if(!data.isAfter(LocalDateTime.now()))throw new IllegalArgumentException("Data deve estar no futuro");
                 pedido.setAgendadoPara(data);
             }catch(RuntimeException erro){avisar(Alert.AlertType.WARNING,"Agendamento inválido","Informe uma data e horário futuro no formato HH:mm.");return;}
         }
+        try {
+            if(configuracao==null)throw new IllegalArgumentException("Não foi possível verificar se a loja está aberta. Tente novamente.");
+            operacao.validarPedido(configuracao,pedido.getAgendadoPara());
+        }catch(IllegalArgumentException erro){avisar(Alert.AlertType.WARNING,"Pedido não finalizado",erro.getMessage());return;}
         raiz.setDisable(true);
         ResultadoDesconto esperado=descontoAtual;String codigo=cupom.getText();
         Task<Long> tarefa=new Task<>() { @Override protected Long call(){return pedidosService.finalizar(pedido,codigo,esperado);} };
@@ -534,8 +593,7 @@ public class ClienteVitrineController implements TelaAutenticada {
             if(acao==acompanhar)abrirWhatsApp(pedido);
             carregarCupons();carregarProdutos();mostrarPedidos();});
         tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();
-            if(erro instanceof EstoqueInsuficienteException estoque)estoqueInsuficiente(estoque.getNomeProduto());
-            else if(erro instanceof IllegalArgumentException)avisar(Alert.AlertType.WARNING,"Pedido não finalizado",erro.getMessage());
+            if(erro instanceof IllegalArgumentException)avisar(Alert.AlertType.WARNING,"Pedido não finalizado",erro.getMessage());
             else avisar(Alert.AlertType.ERROR,"Não foi possível finalizar","Verifique sua conexão e tente novamente. Seu carrinho foi preservado.");carregarProdutos();});iniciar(tarefa);
     }
     @FXML private void carregarPedidos(){atualizarPedidos(true);}
@@ -561,6 +619,11 @@ public class ClienteVitrineController implements TelaAutenticada {
         if(pedido.getStatus()!=StatusPedido.CANCELADO&&pedido.getStatusPagamento()==StatusPagamento.AGUARDANDO_PIX)
             card.getChildren().add(textoClube("Aguardando PIX · a cozinha ainda não recebeu este pedido."));
         else card.getChildren().addAll(new Label("🌡 Termômetro da Cozinha — "+etapa.mensagem(pedido.getTipoEntrega())+estimativa),termometro);
+        if(pedido.getStatus()==StatusPedido.SAIU_ENTREGA && pedido.getTipoEntrega()==TipoEntrega.ENTREGA){
+            Label banner=textoClube("🛵 Seu pedido saiu para entrega!"+(pedido.getNomeEntregador()==null?"":" Entregador: "+pedido.getNomeEntregador()));
+            banner.setId("entrega-em-rota-"+pedido.getId());banner.getStyleClass().add("entrega-em-rota");
+            banner.setMaxWidth(Double.MAX_VALUE);card.getChildren().add(banner);
+        }
         if(pedido.getAgendadoPara()!=null)card.getChildren().add(new Label("Agendado: "+pedido.getAgendadoPara().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
         Set<UUID> gruposExibidos=new HashSet<>();
         for(PedidoItem item:pedido.getItens()){
@@ -607,8 +670,7 @@ public class ClienteVitrineController implements TelaAutenticada {
         if(usuario==null)return;raiz.setDisable(true);
         Task<List<PedidoItem>> tarefa=new Task<>(){@Override protected List<PedidoItem> call(){return pedidosService.repetirUltimoPedido(usuario);}};
         tarefa.setOnSucceeded(e->{raiz.setDisable(false);carrinho.clear();for(PedidoItem i:tarefa.getValue())carrinho.computeIfAbsent(ChaveCarrinho.de(i),chave->new ArrayList<>()).add(i);atualizarCarrinho();mostrarVitrine();});
-        tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();if(erro instanceof EstoqueInsuficienteException estoque)estoqueInsuficiente(estoque.getNomeProduto());
-            else avisar(Alert.AlertType.WARNING,"Não foi possível repetir",erro instanceof IllegalArgumentException?erro.getMessage():"Verifique a disponibilidade e a conexão.");});
+        tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();avisar(Alert.AlertType.WARNING,"Não foi possível repetir",erro instanceof IllegalArgumentException?erro.getMessage():"Verifique a disponibilidade e a conexão.");});
         iniciar(tarefa);
     }
     private void abrirWhatsApp(Pedido pedido){WhatsAppUi.abrir(raiz.getScene().getWindow(),whatsapp,whatsapp.acompanhar(pedido));}
@@ -646,7 +708,7 @@ public class ClienteVitrineController implements TelaAutenticada {
             else avisar(Alert.AlertType.ERROR,"Não foi possível avaliar","Verifique sua conexão e tente novamente.");});iniciar(tarefa);
     }
     @FXML private void sair(){
-        atualizacaoPedidos.stop();contagemCupons.stop();geracaoProdutos++;geracaoPedidos++;
+        atualizacaoPedidos.stop();contagemCupons.stop();atualizacaoLoja.stop();geracaoLoja++;geracaoProdutos++;geracaoPedidos++;
         try {Navegacao.abrirLogin((Stage)raiz.getScene().getWindow());}
         catch(IOException e){avisar(Alert.AlertType.ERROR,"Não foi possível sair","Tente novamente.");}
     }
@@ -655,8 +717,5 @@ public class ClienteVitrineController implements TelaAutenticada {
     private static void exibir(Label label,String texto){label.setText(texto);label.setVisible(true);label.setManaged(true);}
     private static void ocultar(Label label){label.setVisible(false);label.setManaged(false);}
     private static void iniciar(Task<?> tarefa){Thread thread=new Thread(tarefa,"vitrine-banco");thread.setDaemon(true);thread.start();}
-    private void estoqueInsuficiente(String produto){
-        avisar(Alert.AlertType.WARNING,"Estoque insuficiente",produto+": não há disponibilidade para a quantidade escolhida. Revise seu carrinho.");
-    }
     private void avisar(Alert.AlertType tipo,String titulo,String mensagem){Alert alerta=new Alert(tipo);alerta.initOwner(raiz.getScene().getWindow());alerta.setTitle(titulo);alerta.setHeaderText(null);alerta.setContentText(mensagem);alerta.showAndWait();}
 }

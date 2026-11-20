@@ -101,7 +101,7 @@ class ClubeGamificacaoIntegracaoTest {
             UsuarioCliente cliente=fixture.cliente(),outro=fixture.cliente();
             var gateway=new PixControlado();
             var pix=new PixPagamentoService(gateway);
-            var vendas=new PedidoVendaServiceImpl(pix);
+            var vendas=VendaTeste.vendas(pix);
             var pedido=fixture.pedido(cliente,7);
             pedido.setFormaPagamento(FormaPagamento.PIX);pedido.setPagadorPix("comprador@example.invalid","19119119100");
             long id=vendas.finalizar(pedido);
@@ -144,7 +144,7 @@ class ClubeGamificacaoIntegracaoTest {
             var usuario=fixture.cliente();
             var gateway=new PixControlado();
             var pix=new PixPagamentoService(gateway);
-            var vendaReal=new PedidoVendaServiceImpl(pix);
+            var vendaReal=VendaTeste.vendas(pix);
             var pedido=fixture.pedido(usuario,2);
             pedido.setFormaPagamento(FormaPagamento.PIX);pedido.setPagadorPix("comprador@example.invalid","19119119100");
             long id=vendaReal.finalizar(pedido);
@@ -156,7 +156,7 @@ class ClubeGamificacaoIntegracaoTest {
             assertFalse(vendaReal.listarDoCliente(usuario).stream().filter(p->p.getId()==id).findFirst().orElseThrow().isRoletaLiberada());
 
             var demo=PixPagamentoService.demonstracao();
-            var vendaDemo=new PedidoVendaServiceImpl(demo);
+            var vendaDemo=VendaTeste.vendas(demo);
             var simulacao=fixture.pedido(usuario,2);simulacao.setFormaPagamento(FormaPagamento.PIX);
             var financeiro=new RelatorioFinanceiroServiceImpl();
             LocalDateTime ini=LocalDateTime.now().minusDays(1),fim=LocalDateTime.now().plusDays(1);
@@ -253,7 +253,7 @@ class ClubeGamificacaoIntegracaoTest {
 
     private static final class Cenario implements AutoCloseable {
         final String token=UUID.randomUUID().toString().replace("-","");
-        final PedidoVendaService vendas=new PedidoVendaServiceImpl();
+        final PedidoVendaService vendas=VendaTeste.vendas();
         final List<UsuarioCliente> usuarios=new ArrayList<>();
         Long plano;
         final Produto produto;

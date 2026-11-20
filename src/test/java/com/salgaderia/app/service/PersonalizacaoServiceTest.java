@@ -1,6 +1,6 @@
 package com.salgaderia.app.service;
 
-import com.salgaderia.app.exception.EstoqueInsuficienteException;
+import com.salgaderia.app.exception.ProdutoIndisponivelException;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.PersonalizacaoItem.Restricao;
@@ -32,12 +32,14 @@ class PersonalizacaoServiceTest {
         PersonalizacaoService.validarComposicao(itens);
         assertThrows(IllegalArgumentException.class, () -> new ComboBuilder().massa(TipoCombo.COXINHA).recheio(base).montar());
         assertThrows(IllegalArgumentException.class, () -> new ComboBuilder().massa(TipoCombo.EMPADA).recheio(base).acompanhamento(base).montar());
-        assertThrows(EstoqueInsuficienteException.class, () -> PersonalizacaoService.validarEstoque(
-                List.of(itens.get(0), itens.get(1), new PedidoItem(null, molho, BigDecimal.ONE, molho.getPrecoVenda()))));
+        base.setEstoqueAtual(BigDecimal.ZERO);
+        assertDoesNotThrow(base::exigirDisponivelParaVenda);
+        base.setDisponivelVenda(false);
+        assertThrows(ProdutoIndisponivelException.class,base::exigirDisponivelParaVenda);
     }
 
-    @Test void sorteioRespeitaRestricoesConfirmadasEstoqueEQuantidadeExata() {
-        Produto primeiro = produto(1, "Empada", "3.50", "8.500", SALGADOS,
+    @Test void sorteioRespeitaRestricoesBloqueioEQuantidadeExata() {
+        Produto primeiro = produto(1, "Empada", "3.50", "0", SALGADOS,
                 new FichaVitrine(TipoCombo.EMPADA, "Frango", false, false, true));
         Produto segundo = produto(2, "Esfiha", "3.50", "4", SALGADOS,
                 new FichaVitrine(TipoCombo.ESFIHA, "Carne", false, false, true));
@@ -51,22 +53,24 @@ class PersonalizacaoServiceTest {
                 new FichaVitrine(null, null, false, false, false));
         Produto bebida = produto(7, "Bebida", "3.50", "100", new Categoria(2L, "Bebidas", null),
                 new FichaVitrine(null, null, false, false, true));
+        segundo.setDisponivelVenda(false);
         List<Produto> catalogo = List.of(primeiro, segundo, desconhecido, queijo, calabresa, frito, bebida);
         Set<Restricao> restricoes = Set.of(Restricao.SEM_QUEIJO, Restricao.SEM_CALABRESA, Restricao.SO_ASSADOS);
         var servico = new PersonalizacaoService(new Random(25));
-        List<PedidoItem> itens = servico.sortearCaixa(Tipo.FOME_LEVE, restricoes, catalogo, Map.of(1L, new BigDecimal("2")));
-        assertEquals(Map.of(1L, new BigDecimal("6"), 2L, new BigDecimal("4")), PersonalizacaoService.quantidades(itens));
+        List<PedidoItem> itens = servico.sortearCaixa(Tipo.FOME_LEVE, restricoes, catalogo);
+        assertEquals(Map.of(1L, BigDecimal.TEN), PersonalizacaoService.quantidades(itens));
         assertTrue(itens.get(0).getObservacaoPersonalizada().contains("Sem calabresa"));
         PersonalizacaoService.validarComposicao(itens);
-        assertThrows(IllegalArgumentException.class, () -> servico.sortearCaixa(Tipo.FOME_DE_LEAO, restricoes, catalogo, Map.of()));
-        assertThrows(IllegalArgumentException.class, () -> PersonalizacaoService.validarComposicao(itens.subList(0, 1)));
+        assertEquals(Map.of(1L,BigDecimal.valueOf(25)),PersonalizacaoService.quantidades(servico.sortearCaixa(Tipo.FOME_DE_LEAO,restricoes,catalogo)));
+        primeiro.setDisponivelVenda(false);
+        assertThrows(IllegalArgumentException.class, () -> servico.sortearCaixa(Tipo.FOME_DE_LEAO, restricoes, catalogo));
         primeiro.setFichaVitrine(new FichaVitrine(TipoCombo.EMPADA, "Frango com queijo", true, false, true));
         assertThrows(IllegalArgumentException.class, () -> PersonalizacaoService.validarComposicao(itens));
     }
 
     @Test void maiorDescontoUnicoIncluiOPrecoFechadoDaCaixa() {
         Produto produto = produto(1, "Empada", "3.33", "25", SALGADOS, FichaVitrine.VAZIA);
-        List<PedidoItem> caixa = new PersonalizacaoService(new Random(2)).sortearCaixa(Tipo.FOME_DE_LEAO, Set.of(), List.of(produto), Map.of());
+        List<PedidoItem> caixa = new PersonalizacaoService(new Random(2)).sortearCaixa(Tipo.FOME_DE_LEAO, Set.of(), List.of(produto));
         assertEquals(BigDecimal.valueOf(25), caixa.get(0).getQuantidade());
         var calculadora = new CalculadoraDescontos();
         ResultadoDesconto desconto = calculadora.calcular(new ContextoDesconto(caixa, 4, new Cupom("UIKFOMI10", BigDecimal.TEN, BigDecimal.ZERO)));

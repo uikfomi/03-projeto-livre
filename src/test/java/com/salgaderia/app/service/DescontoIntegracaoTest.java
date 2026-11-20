@@ -33,7 +33,7 @@ class DescontoIntegracaoTest {
             Categoria categoria=new Categoria(categoriaId,"Fritos teste "+token,null);
             Produto produto=new Produto(produtoId,categoria,"Produto teste",null,new BigDecimal("2.00"),BigDecimal.ONE,new BigDecimal("1000"),BigDecimal.ZERO,null);
             var pix=com.salgaderia.app.service.pix.PixPagamentoService.demonstracao();
-            PedidoVendaServiceImpl servico=new PedidoVendaServiceImpl(pix);
+            PedidoVendaServiceImpl servico=VendaTeste.vendas(pix);
             for(int i=0;i<3;i++){
                 Pedido anterior=pedido(usuario,usuario.getCliente(),produto,1);
                 anterior.setFormaPagamento(new FormaPagamento[]{FormaPagamento.PIX,FormaPagamento.DINHEIRO,FormaPagamento.CARTAO}[i]);

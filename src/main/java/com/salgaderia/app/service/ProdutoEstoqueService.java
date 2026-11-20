@@ -6,6 +6,8 @@ public interface ProdutoEstoqueService {
     java.util.List<com.salgaderia.app.model.Categoria> listarCategorias();
     long cadastrar(Produto produto);
     boolean atualizar(Produto produto);
+    boolean atualizar(Produto produto, BigDecimal ajustePara);
+    boolean alternarDisponibilidade(long id);
     boolean excluir(long id);
     Optional<Produto> buscarPorId(long id);
     List<Produto> listar();

@@ -84,7 +84,15 @@ public final class WhatsAppLinkService {
         return builder.construir();
     }
     public URI status(String telefone, long pedido, StatusPedido status) {
-        return new Builder(telefone).linha("Olá! Seu pedido #" + pedido + " está com status: " + status.name() + ".").linha("Equipe Ui K'fomi").construir();
+        return status(telefone,pedido,status,null);
+    }
+    public URI status(String telefone, long pedido, StatusPedido status, String entregador) {
+        Builder mensagem = new Builder(telefone);
+        if (status == StatusPedido.SAIU_ENTREGA) {
+            mensagem.linha("Olá! Seu pedido #" + pedido + " saiu para entrega!");
+            if (entregador != null && !entregador.isBlank()) mensagem.linha("Entregador: " + entregador);
+        } else mensagem.linha("Olá! Seu pedido #" + pedido + " está com status: " + status.name() + ".");
+        return mensagem.linha("Equipe Ui K'fomi").construir();
     }
     public URI contato(String telefone, String nome) {
         return new Builder(telefone).linha("Olá, " + nome + "! Aqui é da Ui K'fomi.").construir();

@@ -44,6 +44,7 @@ public final class ComandaServiceImpl implements ComandaService {
         validarUnidades(quantidade);
         return ConnectionFactory.executarEmTransacao(c->{Mesa mesa=comandas.bloquearMesa(c,mesaId);validarAdmin(c,usuario);Comanda comanda=atendimentoEsperado(c,mesa,atendimentoId);
             Produto produto=produtos.buscarPorId(c,produtoId,true).orElseThrow(()->new IllegalArgumentException("Produto não encontrado"));
+            produto.exigirDisponivelParaVenda();
             produto.removerEstoque(quantidade);
             if(!produtos.atualizarEstoque(c,produtoId,produto.getEstoqueAtual()))throw new IllegalStateException("Estoque não atualizado");
             comandas.inserirItem(c,comanda.atendimentoId(),produtoId,quantidade,produto.getPrecoVenda(),produto.getCustoProducao());

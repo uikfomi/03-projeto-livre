@@ -1,6 +1,6 @@
 # Ui K'Fomi — Salgaderia Pro
 
-![Versão](https://img.shields.io/badge/vers%C3%A3o-v1.6.1-8b4513)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-v1.6.2-8b4513)
 ![Java](https://img.shields.io/badge/Java-17%2B-orange)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21-blue)
 ![MySQL](https://img.shields.io/badge/MySQL-8-4479A1)
@@ -13,6 +13,7 @@ Sistema desktop para uma salgaderia, com login único, vitrine de pedidos, agend
 ## Índice
 
 - [Funcionalidades](#funcionalidades)
+- [Operação da loja](#operação-da-loja)
 - [Combos, caixas e fotos](#combos-caixas-e-fotos)
 - [Clube da Fome, conquistas e roleta](#clube-da-fome-conquistas-e-roleta)
 - [Pagamento PIX](#pagamento-pix)
@@ -29,9 +30,9 @@ Sistema desktop para uma salgaderia, com login único, vitrine de pedidos, agend
 
 - **Autenticação e cadastro público:** perfil `CLIENTE` ou `ADMIN`; o cadastro público cria um cliente na agenda. A tela inicial é escolhida polimorficamente conforme o perfil.
 - **Agenda:** clientes e fornecedores, busca, filtros, cadastro, edição e exclusão. Contatos vinculados a outros registros podem ter a exclusão impedida pelo banco.
-- **Vitrine do cliente:** catálogo com status **Disponível** ou **Esgotado**, carrinho, combos, caixas misteriosas e galeria de fotos de avaliações. O checkout aceita entrega, retirada ou consumo no local, pagamento e agendamento opcional. Também é possível repetir o último pedido concluído mediante validação de estoque.
+- **Vitrine do cliente:** catálogo com status **Disponível** ou **Indisponível no momento**, carrinho, combos, caixas misteriosas e galeria de fotos de avaliações. O checkout aceita entrega, retirada ou consumo no local, pagamento e agendamento opcional. Também é possível repetir o último pedido concluído mediante revalidação da disponibilidade de venda.
 - **Termômetro da cozinha:** estados visuais de preparo e estimativa informativa baseada na quantidade de pedidos ativos; pedidos futuros indicam que aguardam o horário agendado.
-- **Administração:** PDV com formas de pagamento e troco, fila de pedidos da vitrine, produtos e estoque, entrada por fornecedor, perdas, indicadores financeiros, gráficos e moderação de avaliações.
+- **Administração:** PDV com formas de pagamento e troco, fila de pedidos da vitrine, status e horário da loja, bloqueio rápido de produtos, estoque interno, entrada por fornecedor, perdas, indicadores financeiros, gráficos e moderação de avaliações.
 - **Mesas e comandas:** dez mesas, lançamento de itens sem cliente, divisão igual do saldo e pagamentos parciais por valor ou item; a mesa é liberada quando a conta é quitada.
 - **Clube da Fome:** planos mensais administráveis, vigência por mensalidade confirmada e desconto automático no checkout da vitrine.
 - **Gamificação:** selos persistentes, roleta animada com giro extra e modo VIP, prêmios de uso único e aviso de expiração.
@@ -43,23 +44,30 @@ Sistema desktop para uma salgaderia, com login único, vitrine de pedidos, agend
 
 ### Regras importantes
 
-- Pedidos da vitrine avançam de `PENDENTE` para `PREPARANDO`, `PRONTO` e `ENTREGUE`. O cancelamento é permitido antes da entrega e devolve estoque. A venda de PDV é registrada como `ENTREGUE` na própria transação de finalização.
-- Agendamentos são opcionais e devem estar no futuro ao finalizar. O horário é local ao servidor/aplicação; não há despacho automático. O termômetro usa uma estimativa simples de cinco minutos por pedido ativo, não uma previsão garantida.
-- Itens de comanda usam quantidades inteiras e baixam estoque no lançamento. A divisão igual distribui os centavos restantes entre as primeiras pessoas; os pagamentos são registrados individualmente por valor ou item. A venda entra no financeiro ao quitar o saldo, sem nova baixa de estoque. Comanda vazia pode ser fechada sem gerar venda.
+- Pedidos da vitrine avançam de `PENDENTE` para `PREPARANDO` e `PRONTO`. Em **Entrega**, passam por `SAIU_ENTREGA` antes de `ENTREGUE`; **Retirada** e **Local** vão direto de `PRONTO` para `ENTREGUE`. O PDV registra `ENTREGUE` na própria transação de venda.
+- Agendamentos são opcionais e devem estar no futuro e dentro do expediente de Maranguape (`America/Fortaleza`); não há despacho automático. O termômetro usa uma estimativa simples de cinco minutos por pedido ativo, não uma previsão garantida.
+- Itens de comanda usam quantidades inteiras, respeitam o bloqueio de venda e continuam baixando estoque no lançamento. A divisão igual distribui os centavos restantes entre as primeiras pessoas; os pagamentos são registrados individualmente por valor ou item. A venda entra no financeiro ao quitar o saldo, sem nova baixa de estoque. Comanda vazia pode ser fechada sem gerar venda.
 - **Descontos não cumulativos:** aplica-se a maior vantagem entre caixa misteriosa (15% sobre os itens da caixa), cupom ativo (`UIKFOMI10`: 10%; `FESTA15`: 15% a partir de R$ 80), fidelidade (5% para cliente com pelo menos três pedidos reais entregues), cento (12% sobre os itens elegíveis quando houver pelo menos 100 unidades de salgados), assinatura ativa na vitrine e prêmio resgatável da roleta. Para o cento, categorias com “salgad”, “frit” ou “assad” no nome são elegíveis, exceto nomes contendo “bebid” ou “doc”, sem distinção de caixa ou acentos. Produtos sem categoria não entram. Pedidos de PDV identificados por cliente também contam para a fidelidade.
 - Cupons inválidos, inativos ou abaixo do mínimo bloqueiam a finalização até sua correção ou remoção. O sistema mostra a melhor vantagem no carrinho e revalida preços, elegibilidade e desconto ao finalizar; se o resultado mudar, é necessário conferir novamente.
-- Finalização, itens, baixa de estoque e movimentações compartilham uma transação JDBC; o estoque é bloqueado durante a venda. Produtos avulsos, combos e caixas compartilham o mesmo saldo. A falta de estoque aborta a operação, sem expor a quantidade interna na vitrine.
-- Produtos são criados com estoque zero; use **Entrada de lote** para registrar o estoque com um fornecedor. Alterar o cadastro do produto não altera o estoque.
+- Finalização, itens, baixa física e movimentações compartilham uma transação JDBC. Na vitrine e no PDV, produtos liberados podem ser vendidos mesmo com saldo zero. Se houver saldo, a venda baixa apenas a quantidade física disponível; o cancelamento repõe somente a baixa registrada. Lotes, perdas e comandas continuam controlando o estoque físico.
+- Produtos são criados com estoque zero. Use **Entrada de lote** para registrar unidades recebidas de um fornecedor ou altere explicitamente o estoque físico em **Editar produto** para gerar um ajuste. O saldo numérico permanece restrito à administração.
 - Uma avaliação só é aceita quando há pedido `ENTREGUE` do cliente contendo o produto. O acesso aos controles administrativos é restrito ao perfil de administrador na interface.
 - O financeiro considera pedidos entregues pela **data de criação**, incluindo a taxa de entrega e excluindo PIX de demonstração; perdas entram pela data da movimentação. O lucro é faturamento após descontos menos custo dos itens vendidos e perdas; **não inclui impostos, custo de entrega, custo de brindes ou outras despesas**. As categorias mostram receita de produtos, sem a taxa de entrega ou seu abatimento, e rateiam os demais descontos. O painel mostra o mês atual. Custos históricos desconhecidos não são estimados.
 - O número padrão de WhatsApp da loja é `5585989095223` e pode ser substituído por `whatsapp.loja` em `database.local.properties`. A mensagem inclui a forma de pagamento escolhida; pedidos históricos sem essa informação permanecem como “não informado”. Em ambientes sem navegador, tenta-se copiar o link; caso a área de transferência também esteja indisponível, o link é mostrado para cópia manual.
 
+### Operação da loja
+
+- Em **Status da Loja**, o Admin pode editar abertura e fechamento (padrão `08:00–23:00`), ativar/desativar o horário automático e usar **Fechar Loja Agora / Abrir Loja Agora**. Com o automático ativo, a chave manual aberta permite pedidos imediatos somente dentro do expediente. Para abrir fora do horário, desative o automático. A abertura é inclusiva, o fechamento é exclusivo; `18:00–01:00` atravessa a meia-noite.
+- O selo da vitrine consulta o estado a cada cinco segundos. Quando fechada, a loja aceita na vitrine somente encomendas futuras dentro do expediente configurado, mesmo em pausa manual ou com o automático desligado. O serviço revalida a regra no banco ao finalizar; a pausa não desativa o PDV interno.
+- Em **Produtos e estoque**, selecione um produto e use **Bloquear / Liberar Venda**. Estoque zero não esgota o cardápio: produtos liberados são feitos sob demanda. Uma mudança é revalidada antes de finalizar, inclusive para itens que já estejam no carrinho. Para a foto, prefira **Selecionar imagem do computador**.
+- Na **Fila de pedidos**, **Despachar entrega** solicita o nome do entregador. A lista **Meus Pedidos** passa a mostrar o banner de entrega em rota. Se a notificação em WhatsApp estiver ativada e houver telefone, o sistema abre uma mensagem preenchida com o nome do entregador; o operador confirma o envio no WhatsApp.
+
 ### Combos, caixas e fotos
 
-1. **Configurar o catálogo:** no Painel Administrativo, abra **Produtos e estoque → Novo produto/Editar → Ficha de personalização da vitrine**. Cadastre cada combinação que realmente existe na cozinha como um produto (por exemplo, uma empada de frango com tipo **Empada** e recheio **Frango**). Cadastre molhos como **Molho / acompanhamento**. Lance os lotes normalmente; o combo usa a variante e o acompanhamento do estoque existente, sem criar itens fictícios.
+1. **Configurar o catálogo:** no Painel Administrativo, abra **Produtos e estoque → Novo produto/Editar → Ficha de personalização da vitrine**. Cadastre cada combinação que realmente existe na cozinha como um produto (por exemplo, uma empada de frango com tipo **Empada** e recheio **Frango**). Cadastre molhos como **Molho / acompanhamento**. O combo usa variantes e acompanhamentos liberados no catálogo, sem criar itens fictícios.
 2. **Montar um combo:** escolha a massa, um recheio disponível para ela e, se desejar, um acompanhamento. A descrição e a soma dos preços mudam conforme a seleção. A fila da cozinha recebe a personalização e os produtos reais.
-3. **Sortear uma caixa:** escolha **Fome Leve** (10 unidades) ou **Fome de Leão** (25) e combine as restrições desejadas. O sorteio usa as unidades restantes dos salgados elegíveis e mantém a composição em segredo no carrinho. O preço da caixa é calculado sobre o sorteio, com 15% de desconto; na finalização, um desconto de pedido ainda melhor pode substituí-lo, mas não acumula com ele. Repetir um pedido entregue preserva os produtos já sorteados e revalida disponibilidade, preço e restrições.
-4. **Conferir as restrições:** só marque **Não contém** ou **Confirmado como assado** na ficha se a cozinha confirmar. Ficha com ingrediente não conferido não atende às exigências de exclusão. Se não houver unidades elegíveis suficientes, o sistema não oferece substituições fora dos filtros. A ficha não garante ausência de contato cruzado.
+3. **Sortear uma caixa:** escolha **Fome Leve** (10 unidades) ou **Fome de Leão** (25) e combine as restrições desejadas. O sorteio usa os salgados elegíveis liberados para venda, inclusive para produção sob demanda e mantém a composição em segredo no carrinho. O preço da caixa é calculado sobre o sorteio, com 15% de desconto; na finalização, um desconto de pedido ainda melhor pode substituí-lo, mas não acumula com ele. Repetir um pedido entregue preserva os produtos já sorteados e revalida disponibilidade, preço e restrições.
+4. **Conferir as restrições:** só marque **Não contém** ou **Confirmado como assado** na ficha se a cozinha confirmar. Ficha com ingrediente não conferido não atende às exigências de exclusão. Se não houver nenhum produto elegível liberado, o sistema não oferece substituições fora dos filtros. A ficha não garante ausência de contato cruzado.
 5. **Avaliar com foto:** em **Meus Pedidos**, abra um pedido entregue e avalie um produto. A imagem opcional (JPEG ou PNG, até 8 MB e 12 megapixels) passa por validação e é armazenada como PNG sem os metadados do arquivo original. Até 12 fotos recentes aparecem na galeria sem o nome do cliente; o Admin vê a miniatura na moderação e, ao excluir a avaliação, remove a foto da galeria e a cópia local. Veja [como guardar os arquivos](uploads/README.md).
 
 ### Clube da Fome, conquistas e roleta
@@ -73,7 +81,7 @@ Sistema desktop para uma salgaderia, com login único, vitrine de pedidos, agend
 
 ### Pagamento PIX
 
-**Na vitrine:** configure `mercadopago.access.token` somente em `database.local.properties` e reinicie o app. Ao selecionar PIX, informe o e-mail e o CPF/CNPJ do pagador. Finalize para gerar a cobrança com o valor final. O app mostra o código oficial retornado pela API e consulta o status a cada **três segundos** enquanto o diálogo estiver aberto. Em **Meus Pedidos**, use **Ver PIX do pedido** para reabrir a mesma cobrança. O painel administrativo aberto também concilia transações conhecidas. O estoque fica reservado e a cozinha só recebe o pedido após a aprovação. O fluxo segue a [documentação oficial de PIX da API de Pagamentos do Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs/checkout-api-payments/integration-configuration/integrate-pix).
+**Na vitrine:** configure `mercadopago.access.token` somente em `database.local.properties` e reinicie o app. Ao selecionar PIX, informe o e-mail e o CPF/CNPJ do pagador. Finalize para gerar a cobrança com o valor final. O app mostra o código oficial retornado pela API e consulta o status a cada **três segundos** enquanto o diálogo estiver aberto. Em **Meus Pedidos**, use **Ver PIX do pedido** para reabrir a mesma cobrança. O painel administrativo aberto também concilia transações conhecidas. O saldo físico baixado fica reservado e a cozinha só recebe o pedido após a aprovação. O fluxo segue a [documentação oficial de PIX da API de Pagamentos do Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs/checkout-api-payments/integration-configuration/integrate-pix).
 
 **Segurança e retomada:** o pedido usa a mesma referência e chave de idempotência em toda repetição da criação. Após vincular o ID remoto, o app só consulta essa transação, validando titularidade local, referência, valor, moeda e método antes de marcar `PAGO`. Os dados do pagador são removidos do pedido ao vincular o ID ou cancelar. Uma transação rejeitada ou cancelada pelo provedor devolve a reserva. Se o envio ficar sem resposta por 20 minutos e não houver ID conhecido, confira a referência no painel Mercado Pago antes de nova cobrança. O app não estorna PIX nem usa um webhook; se ambos os painéis estiverem fechados, a confirmação aguarda a retomada da consulta.
 
@@ -113,6 +121,7 @@ mysql -u root -p < database/scripts/etapa11_salao_agendamento.sql
 mysql -u root -p < database/scripts/etapa12_combo_avaliacoes.sql
 mysql -u root -p < database/scripts/etapa13_clube_gamificacao.sql
 mysql -u root -p < database/scripts/etapa14_pix_roleta_vip.sql
+mysql -u root -p < database/scripts/etapa15_operacao_loja.sql
 ```
 
 **Execute as migrações na ordem e somente uma vez.** Embora o schema inicial use `IF NOT EXISTS`, os scripts de migração usam `ALTER TABLE` não idempotente. Antes de atualizar um banco existente, faça backup, confira quais migrações já foram aplicadas e revise dados legados; DDL no MySQL pode causar commit implícito. Usuários clientes antigos sem contato vinculado e fornecedores sem os campos adicionais precisam de saneamento manual. Consulte [as notas de persistência](docs/etapa4-persistencia.md).
@@ -199,7 +208,7 @@ A tabela apresenta pontos concretos da implementação; métodos herdados e regr
 
 | Conceito | Classes e métodos exatos | Aplicação |
 |---|---|---|
-| Builder | `service.ComboBuilder.massa()`, `recheio()`, `acompanhamento()` e `montar()` | Monta a receita em etapas com variantes existentes, mantendo estoque e preços do catálogo. |
+| Builder | `service.ComboBuilder.massa()`, `recheio()`, `acompanhamento()` e `montar()` | Monta a receita em etapas com variantes existentes, mantendo disponibilidade e preços do catálogo. |
 | Observer | `service.BarramentoPedido.publicar()` e `service.PedidoConcluidoObserver.aoAlterarPedido()` | Propaga eventos transacionais do pedido; `ConquistasObserver` registra selos, liberação da roleta e revogação de cupons. |
 | Adapter | `service.pix.PixGatewayService`, `MercadoPagoPixGateway` e `LocalDemoPixGateway` | A vitrine consulta um serviço de pagamento comum; o adapter traduz sua solicitação para HTTP e JSON ou gera uma demonstração sem cobrança. |
 | Abstração | `model.Usuario.getTelaInicialFxml()` e `model.Usuario.podeAcessarPainelGerencial()`; `model.Contato.getResumoContato()` | Métodos abstratos definem comportamentos comuns sem implementar as variações dos subtipos. |
@@ -211,7 +220,7 @@ A tabela apresenta pontos concretos da implementação; métodos herdados e regr
 | Polimorfismo | `model.Cliente.getResumoContato()` e `model.Fornecedor.getResumoContato()`; `model.enums.FormaPagamento.isPermiteTroco()` | Os subtipos formatam resumos diferentes; cada constante de pagamento implementa o método, permitindo troco apenas em `DINHEIRO`. |
 | Interfaces | `service.PedidoVendaService.finalizar()` e `finalizarPdv()` implementados por `service.impl.PedidoVendaServiceImpl`; `service.AgendaService.buscar()` implementado por `service.impl.AgendaServiceImpl` | As interfaces definem contratos de aplicação independentes das implementações. |
 | Interfaces | `dao.ContatoDAO.buscar()` implementado por `dao.impl.ContatoDAOImpl`; `dao.PedidoDAO.inserir()` implementado por `dao.impl.PedidoDAOImpl`; `util.ConnectionFactory.OperacaoTransacional.executar()` | Contratos DAO separam persistência da orquestração; a interface funcional recebe operações executadas em transação. |
-| Exceções personalizadas | `model.Produto.removerEstoque()` lança `exception.EstoqueInsuficienteException`; `controller.ClienteVitrineController.finalizar()` e `controller.AdminDashboardController.executar()` tratam a falha | A exceção mantém produto, estoque disponível e quantidade solicitada; a interface informa o usuário. |
+| Exceções personalizadas | `model.Produto.exigirDisponivelParaVenda()` lança `exception.ProdutoIndisponivelException`; `removerEstoque()` lança `exception.EstoqueInsuficienteException` | Distingue o bloqueio de venda da falta de saldo para movimentações físicas. |
 | Exceções personalizadas | `service.impl.AutenticacaoServiceImpl.login()` lança `exception.AutenticacaoInvalidaException`; `controller.LoginController.executar()` a trata | Credenciais inválidas ou conta inativa resultam em mensagem amigável. |
 | Exceções personalizadas | `service.impl.AvaliacaoServiceImpl.salvar()` lança `exception.AvaliacaoNaoPermitidaException`; `controller.ClienteVitrineController.avaliar()` a trata | Uma avaliação é negada sem pedido entregue elegível. |
 | Exceções personalizadas | `util.ConnectionFactory.executarEmTransacao()` encapsula `SQLException` em `exception.PersistenciaException` | Erros SQL transacionais são propagados com a causa original após tentativa de rollback. |
@@ -283,6 +292,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   ├── etapa12_combo_avaliacoes.sql  # Acrescenta a ficha do catálogo, personalização dos itens e caminhos das fotos de avaliações.
 │   │   ├── etapa13_clube_gamificacao.sql  # Cria planos, assinaturas, mensalidades, conquistas e histórico da roleta; habilita cupons exclusivos.
 │   │   ├── etapa14_pix_roleta_vip.sql  # Migra estados de pagamento, referências PIX, cupons com validade e prêmios VIP.
+│   │   ├── etapa15_operacao_loja.sql  # Adiciona expediente da loja, bloqueio de venda, baixa física e saída para entrega.
 │   │   ├── etapa4_migracao.sql  # Migração de contatos, usuários e custos históricos.
 │   │   ├── etapa8_pdv.sql  # Colunas de origem e pagamento do PDV.
 │   │   ├── etapa9_descontos.sql  # Cupons e registro de descontos por pedido.
@@ -318,9 +328,9 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   ├── app/  # Componentes da aplicação e suas camadas.
 │   │   │   │   │   │   ├── controller/  # Controllers das telas e testes de interface, conforme a localização.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   │   │   │   │   │   │   ├── AdminDashboardController.java  # Apresenta vendas, estoque, comandas, clube, moderação e conciliação e notificações PIX.
+│   │   │   │   │   │   │   ├── AdminDashboardController.java  # Coordena PDV, fila e despacho, expediente, catálogo e demais operações gerenciais.
 │   │   │   │   │   │   │   ├── AgendaController.java  # Interface da agenda de clientes e fornecedores.
-│   │   │   │   │   │   │   ├── ClienteVitrineController.java  # Coordena catálogo, checkout PIX, urgência de cupons, pedidos, clube e roleta VIP.
+│   │   │   │   │   │   │   ├── ClienteVitrineController.java  # Coordena catálogo, carrinho, expediente e acompanhamento do pedido em rota.
 │   │   │   │   │   │   │   ├── LoginController.java  # Tela de login e cadastro público.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   └── SelecaoModulosController.java  # Seleção de módulos administrativos.
@@ -331,13 +341,14 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   │   ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
 │   │   │   │   │   │   │   │   ├── ClubeDAOImpl.java  # Executa consultas e atualizações JDBC para adesões, vigência e mensalidades.
 │   │   │   │   │   │   │   │   ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
+│   │   │   │   │   │   │   │   ├── ConfiguracaoLojaDAOImpl.java  # Persiste expediente e estado manual separadamente com JDBC.
 │   │   │   │   │   │   │   │   ├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
 │   │   │   │   │   │   │   │   ├── CupomDAOImpl.java  # Consulta elegibilidade, reserva cupons exclusivos e os devolve no cancelamento.
 │   │   │   │   │   │   │   │   ├── GamificacaoDAOImpl.java  # Persiste selos, giros, resgates e trava de 24 horas usando o relógio do banco.
 │   │   │   │   │   │   │   │   ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-│   │   │   │   │   │   │   │   ├── PedidoDAOImpl.java  # Persiste pedidos, frete e brindes e só inclui PIX aprovado na fila.
+│   │   │   │   │   │   │   │   ├── PedidoDAOImpl.java  # Persiste pedidos, baixa física e despacho; consulta fila, histórico e relatórios.
 │   │   │   │   │   │   │   │   ├── PixPagamentoDAOImpl.java  # Consulta pagamentos e vincula tentativas, IDs remotos e aprovação ao pedido em JDBC.
-│   │   │   │   │   │   │   │   ├── ProdutoDAOImpl.java  # Persiste produtos, estoque e fichas de personalização com JDBC.
+│   │   │   │   │   │   │   │   ├── ProdutoDAOImpl.java  # Persiste catálogo, disponibilidade de venda, estoque e fichas de personalização.
 │   │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   │   └── UsuarioDAOImpl.java  # Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
@@ -345,21 +356,23 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── CategoriaDAO.java  # Contrato para cadastrar, atualizar, buscar, listar e excluir categorias.
 │   │   │   │   │   │   │   ├── ClubeDAO.java  # Contrato de persistência de planos, assinaturas e mensalidades.
 │   │   │   │   │   │   │   ├── ComandaDAO.java  # Contrato JDBC para mesas, itens, pagamentos e fechamento transacional.
+│   │   │   │   │   │   │   ├── ConfiguracaoLojaDAO.java  # Define leitura e gravação da configuração operacional única da loja.
 │   │   │   │   │   │   │   ├── ContatoDAO.java  # Contrato para cadastro, edição, exclusão e busca filtrada de contatos.
 │   │   │   │   │   │   │   ├── CupomDAO.java  # Contrato de consulta, reserva e devolução de cupons com uso limitado.
 │   │   │   │   │   │   │   ├── GamificacaoDAO.java  # Contrato para selos, elegibilidade por pagamento, prêmios, prazos e pontos.
 │   │   │   │   │   │   │   ├── MovimentacaoEstoqueDAO.java  # Contrato para registrar movimentações e calcular perdas por período.
-│   │   │   │   │   │   │   ├── PedidoDAO.java  # Contrato JDBC para pedidos, estados de pagamento, histórico, fila e balanço.
+│   │   │   │   │   │   │   ├── PedidoDAO.java  # Define operações transacionais de pedidos, despacho, relatórios e baixa física.
 │   │   │   │   │   │   │   ├── PixPagamentoDAO.java  # Contrato de persistência de cobranças, conciliação e status de pagamento.
-│   │   │   │   │   │   │   ├── ProdutoDAO.java  # Contrato para cadastro de produtos, consultas e atualização de estoque.
+│   │   │   │   │   │   │   ├── ProdutoDAO.java  # Define cadastro, consulta, bloqueio de venda e atualização de estoque físico.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   └── UsuarioDAO.java  # Contrato de acesso a usuários, credenciais e bloqueio transacional da conta do cliente.
 │   │   │   │   │   │   ├── exception/  # Exceções personalizadas de domínio e persistência.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   ├── AutenticacaoInvalidaException.java  # Falha de autenticação.
 │   │   │   │   │   │   │   ├── AvaliacaoNaoPermitidaException.java  # Avaliação sem compra elegível.
-│   │   │   │   │   │   │   ├── EstoqueInsuficienteException.java  # Erro de quantidade indisponível.
+│   │   │   │   │   │   │   ├── EstoqueInsuficienteException.java  # Indica saldo físico insuficiente para uma movimentação de estoque.
 │   │   │   │   │   │   │   ├── PersistenciaException.java  # Encapsula erro de persistência.
+│   │   │   │   │   │   │   ├── ProdutoIndisponivelException.java  # Indica que um produto foi bloqueado para venda, independentemente do estoque.
 │   │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
 │   │   │   │   │   │   │   ├── comanda/  # Entidades de mesa, comanda, itens e pagamentos parciais.
@@ -376,7 +389,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   │   ├── PerfilUsuario.java  # Perfis de acesso do usuário.
 │   │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   │   ├── StatusPagamento.java  # Distingue PIX pendente, pagamento confirmado e cobrança na entrega.
-│   │   │   │   │   │   │   │   ├── StatusPedido.java  # Estados e transições permitidas do pedido.
+│   │   │   │   │   │   │   │   ├── StatusPedido.java  # Define as transições por modalidade, incluindo saída exclusiva para entrega.
 │   │   │   │   │   │   │   │   ├── TipoEntrega.java  # Modalidades de entrega.
 │   │   │   │   │   │   │   │   └── TipoMovimentacaoEstoque.java  # Tipos de movimentação de estoque.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
@@ -386,6 +399,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── AvaliacaoResumo.java  # Projeção de avaliação com comentário, resposta oficial e foto para moderação.
 │   │   │   │   │   │   │   ├── Categoria.java  # Categoria de produtos.
 │   │   │   │   │   │   │   ├── Cliente.java  # Contato especializado em cliente.
+│   │   │   │   │   │   │   ├── ConfiguracaoLoja.java  # Representa o expediente, o modo automático e a chave manual da loja.
 │   │   │   │   │   │   │   ├── ConquistaCliente.java  # Representa um selo e a data em que foi desbloqueado.
 │   │   │   │   │   │   │   ├── Contato.java  # Abstração comum de contatos.
 │   │   │   │   │   │   │   ├── CupomRoleta.java  # Projeção de código de resgate com benefício, mínimo e data de expiração.
@@ -399,7 +413,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── PersonalizacaoItem.java  # Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes.
 │   │   │   │   │   │   │   ├── PlanoAssinatura.java  # Valida nome, descrição, preço mensal e percentual do plano.
 │   │   │   │   │   │   │   ├── PremioRoleta.java  # Define fatias comuns/VIP e registra resultado, prazo e giro extra.
-│   │   │   │   │   │   │   ├── Produto.java  # Representa custos, preços, estoque e ficha de personalização do catálogo.
+│   │   │   │   │   │   │   ├── Produto.java  # Representa preço, custos, saldo físico, disponibilidade de venda e ficha do catálogo.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── Usuario.java  # Abstração de usuário e permissões.
 │   │   │   │   │   │   │   ├── UsuarioAdmin.java  # Usuário administrativo.
@@ -408,7 +422,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   ├── service/  # Contratos, regras de negócio e testes de serviços.
 │   │   │   │   │   │   │   ├── cozinha/  # Estados do termômetro visual de preparo dos pedidos.
 │   │   │   │   │   │   │   │   ├── EstadoCozinha.java  # Contrato State de mensagem, progresso e espera.
-│   │   │   │   │   │   │   │   ├── EtapaCozinha.java  # Mapeia os status persistidos aos estados visuais da cozinha.
+│   │   │   │   │   │   │   │   ├── EtapaCozinha.java  # Mapeia os status aos estados visuais de preparo, saída em rota e conclusão.
 │   │   │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   │   │   │   │   │   │   │   ├── CalculadoraDescontos.java  # Escolhe uma única vantagem entre estratégias de desconto, frete, brindes e pontos.
@@ -430,8 +444,8 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   │   ├── ClubeServiceImpl.java  # Valida adesão, vigência, renovação e confirmação manual no Clube da Fome.
 │   │   │   │   │   │   │   │   ├── ComandaServiceImpl.java  # Orquestra estoque, validação do operador, cotação de pagamentos e fechamento atômico.
 │   │   │   │   │   │   │   │   ├── GamificacaoServiceImpl.java  # Controla cooldown, separa sorteios de demonstração e aplica validade e giro extra.
-│   │   │   │   │   │   │   │   ├── PedidoVendaServiceImpl.java  # Finaliza pedidos com proteção de estoque, promoções e fila dependente do PIX.
-│   │   │   │   │   │   │   │   ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
+│   │   │   │   │   │   │   │   ├── PedidoVendaServiceImpl.java  # Valida expediente e disponibilidade e coordena baixa física, PIX e despacho.
+│   │   │   │   │   │   │   │   ├── ProdutoEstoqueServiceImpl.java  # Gerencia disponibilidade, ajustes, lotes e perdas do estoque físico.
 │   │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   │   └── RelatorioFinanceiroServiceImpl.java  # Calcula indicadores financeiros e gera o balanço CSV.
 │   │   │   │   │   │   │   ├── pix/  # Porta, adapters e conciliação da cobrança PIX na vitrine.
@@ -452,15 +466,16 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── ConquistasObserver.java  # Avalia selos, libera a roleta após pagamento ou entrega e revoga prêmios cancelados.
 │   │   │   │   │   │   │   ├── FotoAvaliacaoStorage.java  # Valida, redimensiona, salva e remove imagens locais de avaliações.
 │   │   │   │   │   │   │   ├── GamificacaoService.java  # Contrato de selos, pontos, cupons, giro regular e giro extra.
-│   │   │   │   │   │   │   ├── PedidoCancelamentoService.java  # Libera estoque e cupom ao cancelar a reserva de um pedido.
+│   │   │   │   │   │   │   ├── OperacaoLojaService.java  # Avalia a abertura e valida agendamentos pelo expediente local, inclusive após a meia-noite.
+│   │   │   │   │   │   │   ├── PedidoCancelamentoService.java  # Devolve somente o saldo físico baixado e libera o cupom ao cancelar.
 │   │   │   │   │   │   │   ├── PedidoConcluidoObserver.java  # Contrato Observer para finalização, confirmação PIX, entrega e cancelamento.
 │   │   │   │   │   │   │   ├── PedidoVendaService.java  # Contrato para simular descontos, finalizar pedidos e alterar status de vendas.
-│   │   │   │   │   │   │   ├── PersonalizacaoService.java  # Sorteia caixas, agrega estoque reservado no carrinho e valida composições e restrições.
+│   │   │   │   │   │   │   ├── PersonalizacaoService.java  # Sorteia caixas com produtos liberados e valida composições e restrições.
 │   │   │   │   │   │   │   ├── PixPayloadService.java  # Monta BR Code com CRC16 e gera a imagem Pix em memória com ZXing.
-│   │   │   │   │   │   │   ├── ProdutoEstoqueService.java  # Contrato para produtos, consultas de estoque, entradas e perdas.
+│   │   │   │   │   │   │   ├── ProdutoEstoqueService.java  # Define operações do catálogo, bloqueio de venda e movimentações do estoque físico.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── RelatorioFinanceiroService.java  # Contrato de cálculos de balanço, gráficos e exportação CSV.
-│   │   │   │   │   │   │   └── WhatsAppLinkService.java  # Constrói e abre links de mensagens WhatsApp.
+│   │   │   │   │   │   │   └── WhatsAppLinkService.java  # Gera e abre links do WhatsApp com o acompanhamento, status e nome do entregador.
 │   │   │   │   │   │   ├── util/  # Conexão, autenticação auxiliar e navegação.
 │   │   │   │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   │   │   │   ├── ConnectionFactory.java  # Pool HikariCP e transações JDBC.
@@ -483,14 +498,14 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   │   │   │   ├── admin.css  # Estilos do painel administrativo.
 │   │   │   │   ├── agenda.css  # Estilos da agenda.
-│   │   │   │   ├── cliente-vitrine.css  # Estilos da vitrine.
+│   │   │   │   ├── cliente-vitrine.css  # Estiliza catálogo, checkout, disponibilidade e banner de entrega em rota.
 │   │   │   │   ├── global.css  # Estilos compartilhados da aplicação.
 │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   ├── fxml/  # Descrições de interface JavaFX.
 │   │   │   │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   │   │   │   ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo, com navegação para o Clube da Fome.
+│   │   │   │   ├── admin-dashboard.fxml  # Estrutura a navegação administrativa, incluindo o painel de status da loja.
 │   │   │   │   ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-│   │   │   │   ├── cliente-vitrine.fxml  # Estrutura do catálogo com checkout PIX, dados do pagador, urgência de cupons e clube.
+│   │   │   │   ├── cliente-vitrine.fxml  # Estrutura a vitrine, o selo de funcionamento, o carrinho e o histórico de pedidos.
 │   │   │   │   ├── login.fxml  # Estrutura visual de login e cadastro.
 │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.
@@ -511,7 +526,7 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
-│   │   │   │   │   │   │   └── VitrineJavaFXTest.java  # Valida catálogo, checkout, edição de pedidos, clube, roleta e consulta PIX automática.
+│   │   │   │   │   │   │   └── VitrineJavaFXTest.java  # Verifica catálogo, checkout, expediente e atualização da entrega na vitrine.
 │   │   │   │   │   │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   │   │   │   │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
 │   │   │   │   │   │   ├── model/  # Entidades de domínio ou testes dessas entidades.
@@ -530,12 +545,15 @@ Os comentários descrevem a responsabilidade de cada item.
 │   │   │   │   │   │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
 │   │   │   │   │   │   │   ├── Etapa4IntegracaoTest.java  # Verifica transações de estoque, pedidos, PDV, avaliações com foto e financeiro no MySQL.
 │   │   │   │   │   │   │   ├── FotoAvaliacaoStorageTest.java  # Testa a cópia validada, limites, caminhos locais e remoção de anexos.
+│   │   │   │   │   │   │   ├── OperacaoLojaServiceTest.java  # Testa os limites do expediente e a combinação dos modos manual e automático.
+│   │   │   │   │   │   │   ├── OperacaoV162IntegracaoTest.java  # Valida configuração persistida, agendamento, venda sob demanda, bloqueio e despacho no MySQL.
 │   │   │   │   │   │   │   ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
 │   │   │   │   │   │   │   ├── PersonalizacaoServiceTest.java  # Testa a composição do combo, sorteio com restrições e desconto não cumulativo.
 │   │   │   │   │   │   │   ├── PixPayloadServiceTest.java  # Valida valor, referência e CRC16 e decodifica a imagem QR que foi gerada.
 │   │   │   │   │   │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   │   │   ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
-│   │   │   │   │   │   │   ├── VitrineV150IntegracaoTest.java  # Valida baixa e devolução de estoque, restrições e histórico de combos e caixas no MySQL.
+│   │   │   │   │   │   │   ├── VendaTeste.java  # Fornece relógio fixo e configuração isolada aos testes do fluxo de venda.
+│   │   │   │   │   │   │   ├── VitrineV150IntegracaoTest.java  # Verifica combos e caixas, restrições e cancelamento com devolução da baixa real.
 │   │   │   │   │   │   │   └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.
 │   │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.
 │   │   │   │   │   └── README.md  # Guia de navegação e explicações desta pasta.

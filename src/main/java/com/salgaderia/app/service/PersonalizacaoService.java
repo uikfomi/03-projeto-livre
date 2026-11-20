@@ -1,6 +1,5 @@
 package com.salgaderia.app.service;
 
-import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.PersonalizacaoItem.Restricao;
@@ -23,45 +22,16 @@ public final class PersonalizacaoService {
         return quantidades;
     }
 
-    public static BigDecimal disponivel(Produto produto, Map<Long, BigDecimal> noCarrinho) {
-        return produto.getEstoqueAtual().subtract(noCarrinho.getOrDefault(produto.getId(), BigDecimal.ZERO));
-    }
-
-    public static void validarEstoque(List<PedidoItem> itens) {
-        Map<Long, BigDecimal> quantidades = quantidades(itens);
-        for (PedidoItem i : itens) {
-            Produto p = i.getProduto();
-            BigDecimal quantidade = quantidades.get(p.getId());
-            if (p.getEstoqueAtual().compareTo(quantidade) < 0)
-                throw new EstoqueInsuficienteException(p.getNome(), p.getEstoqueAtual(), quantidade);
-        }
-    }
-
-    public List<PedidoItem> sortearCaixa(Tipo tipo, Set<Restricao> restricoes, List<Produto> catalogo,
-                                         Map<Long, BigDecimal> noCarrinho) {
+    public List<PedidoItem> sortearCaixa(Tipo tipo, Set<Restricao> restricoes, List<Produto> catalogo) {
         if (tipo == null || !tipo.caixa()) throw new IllegalArgumentException("Selecione um tamanho de caixa.");
         PersonalizacaoItem personalizacao = new PersonalizacaoItem(UUID.randomUUID(), tipo, restricoes);
-        Map<Produto, Integer> candidatos = new LinkedHashMap<>();
-        catalogo.stream().filter(p -> p.getId() != null && elegivel(p, personalizacao.restricoes())).forEach(p -> {
-            int unidades = disponivel(p, noCarrinho).max(BigDecimal.ZERO)
-                    .min(BigDecimal.valueOf(tipo.unidades())).intValue();
-            if (unidades > 0) candidatos.put(p, unidades);
-        });
-        long total = candidatos.values().stream().mapToLong(Integer::longValue).sum();
-        if (total < tipo.unidades())
-            throw new IllegalArgumentException("Não há salgados suficientes para esta caixa com as restrições selecionadas.");
+        List<Produto> candidatos = catalogo.stream().filter(p -> p.getId() != null && p.isDisponivelVenda()
+                && elegivel(p, personalizacao.restricoes())).toList();
+        if (candidatos.isEmpty())
+            throw new IllegalArgumentException("Não há salgados disponíveis para esta caixa com as restrições selecionadas.");
         Map<Produto, Integer> selecionados = new LinkedHashMap<>();
-        for (int i = 0; i < tipo.unidades(); i++) {
-            long posicao = sorteio.nextLong(total--);
-            for (var candidato : candidatos.entrySet()) {
-                if (posicao < candidato.getValue()) {
-                    selecionados.merge(candidato.getKey(), 1, Integer::sum);
-                    candidato.setValue(candidato.getValue() - 1);
-                    break;
-                }
-                posicao -= candidato.getValue();
-            }
-        }
+        for (int i = 0; i < tipo.unidades(); i++)
+            selecionados.merge(candidatos.get(sorteio.nextInt(candidatos.size())), 1, Integer::sum);
         return descrever(selecionados.entrySet().stream()
                 .map(e -> new PedidoItem(null, e.getKey(), BigDecimal.valueOf(e.getValue()),
                         e.getKey().getPrecoVenda(), null, personalizacao)).toList());

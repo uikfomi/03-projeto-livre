@@ -1,18 +1,20 @@
 package com.salgaderia.app.model.enums;
 
 public enum StatusPedido {
-    PENDENTE, PREPARANDO, PRONTO, ENTREGUE, CANCELADO;
+    PENDENTE, PREPARANDO, PRONTO, ENTREGUE, CANCELADO, SAIU_ENTREGA;
 
-    /** Pedidos podem avançar sequencialmente ou ser cancelados antes da entrega. */
-    public boolean podeTransicionarPara(StatusPedido destino) {
-        if (destino == null) {
-            return false;
-        }
+    public StatusPedido proximo(TipoEntrega modalidade) {
         return switch (this) {
-            case PENDENTE -> destino == PREPARANDO || destino == CANCELADO;
-            case PREPARANDO -> destino == PRONTO || destino == CANCELADO;
-            case PRONTO -> destino == ENTREGUE || destino == CANCELADO;
-            case ENTREGUE, CANCELADO -> false;
+            case PENDENTE -> PREPARANDO;
+            case PREPARANDO -> PRONTO;
+            case PRONTO -> modalidade == TipoEntrega.ENTREGA ? SAIU_ENTREGA : ENTREGUE;
+            case SAIU_ENTREGA -> modalidade == TipoEntrega.ENTREGA ? ENTREGUE : null;
+            case ENTREGUE, CANCELADO -> null;
         };
+    }
+
+    public boolean podeTransicionarPara(StatusPedido destino, TipoEntrega modalidade) {
+        return destino != null && (destino == proximo(modalidade) ||
+                (destino == CANCELADO && proximo(modalidade) != null));
     }
 }

@@ -28,3 +28,11 @@
 .status-pronto { -fx-background-color: #e5f6f0; -fx-text-fill: #16734d; }
 .status-entregue { -fx-background-color: #e5f4e7; -fx-text-fill: #28703a; }
 .status-cancelado { -fx-background-color: #f8e5e5; -fx-text-fill: #a33e3e; }
+
+.entrega-em-rota, .status-saiu_entrega {
+    -fx-background-color: #e3f4ec;
+    -fx-text-fill: #14563a;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12 8 12;
+    -fx-font-weight: bold;
+}

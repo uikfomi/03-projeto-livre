@@ -10,6 +10,7 @@
             <Button fx:id="menuPdv" text="PDV rápido" maxWidth="Infinity" onAction="#pdv" styleClass="admin-menu" />
             <Button fx:id="menuMesas" text="Mesas &amp; Comanda Coletiva" maxWidth="Infinity" onAction="#mesas" styleClass="admin-menu" />
             <Button fx:id="menuFila" text="Fila de pedidos" maxWidth="Infinity" onAction="#fila" styleClass="admin-menu" />
+            <Button fx:id="menuLoja" text="Status da Loja" maxWidth="Infinity" onAction="#statusLoja" styleClass="admin-menu" />
             <Button fx:id="menuEstoque" text="Produtos e estoque" maxWidth="Infinity" onAction="#estoque" styleClass="admin-menu" />
             <Button fx:id="menuFinanceiro" text="Financeiro e lucro" maxWidth="Infinity" onAction="#financeiro" styleClass="admin-menu" />
             <Button fx:id="menuModeracao" text="Moderação" maxWidth="Infinity" onAction="#moderacao" styleClass="admin-menu" />

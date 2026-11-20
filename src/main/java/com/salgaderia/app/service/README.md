@@ -25,15 +25,16 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [ConquistasObserver.java](ConquistasObserver.java) | Avalia selos, libera a roleta após pagamento ou entrega e revoga prêmios cancelados. |
 | [FotoAvaliacaoStorage.java](FotoAvaliacaoStorage.java) | Valida, redimensiona, salva e remove imagens locais de avaliações. |
 | [GamificacaoService.java](GamificacaoService.java) | Contrato de selos, pontos, cupons, giro regular e giro extra. |
-| [PedidoCancelamentoService.java](PedidoCancelamentoService.java) | Libera estoque e cupom ao cancelar a reserva de um pedido. |
+| [OperacaoLojaService.java](OperacaoLojaService.java) | Avalia a abertura e valida agendamentos pelo expediente local, inclusive após a meia-noite. |
+| [PedidoCancelamentoService.java](PedidoCancelamentoService.java) | Devolve somente o saldo físico baixado e libera o cupom ao cancelar. |
 | [PedidoConcluidoObserver.java](PedidoConcluidoObserver.java) | Contrato Observer para finalização, confirmação PIX, entrega e cancelamento. |
 | [PedidoVendaService.java](PedidoVendaService.java) | Contrato para simular descontos, finalizar pedidos e alterar status de vendas. |
-| [PersonalizacaoService.java](PersonalizacaoService.java) | Sorteia caixas, agrega estoque reservado no carrinho e valida composições e restrições. |
+| [PersonalizacaoService.java](PersonalizacaoService.java) | Sorteia caixas com produtos liberados e valida composições e restrições. |
 | [PixPayloadService.java](PixPayloadService.java) | Monta BR Code com CRC16 e gera a imagem Pix em memória com ZXing. |
-| [ProdutoEstoqueService.java](ProdutoEstoqueService.java) | Contrato para produtos, consultas de estoque, entradas e perdas. |
+| [ProdutoEstoqueService.java](ProdutoEstoqueService.java) | Define operações do catálogo, bloqueio de venda e movimentações do estoque físico. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [RelatorioFinanceiroService.java](RelatorioFinanceiroService.java) | Contrato de cálculos de balanço, gráficos e exportação CSV. |
-| [WhatsAppLinkService.java](WhatsAppLinkService.java) | Constrói e abre links de mensagens WhatsApp. |
+| [WhatsAppLinkService.java](WhatsAppLinkService.java) | Gera e abre links do WhatsApp com o acompanhamento, status e nome do entregador. |
 
 ## Árvore estrutural comentada
 
@@ -43,7 +44,7 @@ O ponto inicial é `src/main/java/com/salgaderia/app/service/`.
 src/main/java/com/salgaderia/app/service/  # Define contratos e serviços de aplicação responsáveis por regras e orquestração.
 ├── cozinha/  # Estados do termômetro visual de preparo dos pedidos.
 │   ├── EstadoCozinha.java  # Contrato State de mensagem, progresso e espera.
-│   ├── EtapaCozinha.java  # Mapeia os status persistidos aos estados visuais da cozinha.
+│   ├── EtapaCozinha.java  # Mapeia os status aos estados visuais de preparo, saída em rota e conclusão.
 │   └── README.md  # Guia de navegação e explicações desta pasta.
 ├── desconto/  # Estratégias de desconto e testes correspondentes.
 │   ├── CalculadoraDescontos.java  # Escolhe uma única vantagem entre estratégias de desconto, frete, brindes e pontos.
@@ -65,8 +66,8 @@ src/main/java/com/salgaderia/app/service/  # Define contratos e serviços de apl
 │   ├── ClubeServiceImpl.java  # Valida adesão, vigência, renovação e confirmação manual no Clube da Fome.
 │   ├── ComandaServiceImpl.java  # Orquestra estoque, validação do operador, cotação de pagamentos e fechamento atômico.
 │   ├── GamificacaoServiceImpl.java  # Controla cooldown, separa sorteios de demonstração e aplica validade e giro extra.
-│   ├── PedidoVendaServiceImpl.java  # Finaliza pedidos com proteção de estoque, promoções e fila dependente do PIX.
-│   ├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
+│   ├── PedidoVendaServiceImpl.java  # Valida expediente e disponibilidade e coordena baixa física, PIX e despacho.
+│   ├── ProdutoEstoqueServiceImpl.java  # Gerencia disponibilidade, ajustes, lotes e perdas do estoque físico.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── RelatorioFinanceiroServiceImpl.java  # Calcula indicadores financeiros e gera o balanço CSV.
 ├── pix/  # Porta, adapters e conciliação da cobrança PIX na vitrine.
@@ -87,15 +88,16 @@ src/main/java/com/salgaderia/app/service/  # Define contratos e serviços de apl
 ├── ConquistasObserver.java  # Avalia selos, libera a roleta após pagamento ou entrega e revoga prêmios cancelados.
 ├── FotoAvaliacaoStorage.java  # Valida, redimensiona, salva e remove imagens locais de avaliações.
 ├── GamificacaoService.java  # Contrato de selos, pontos, cupons, giro regular e giro extra.
-├── PedidoCancelamentoService.java  # Libera estoque e cupom ao cancelar a reserva de um pedido.
+├── OperacaoLojaService.java  # Avalia a abertura e valida agendamentos pelo expediente local, inclusive após a meia-noite.
+├── PedidoCancelamentoService.java  # Devolve somente o saldo físico baixado e libera o cupom ao cancelar.
 ├── PedidoConcluidoObserver.java  # Contrato Observer para finalização, confirmação PIX, entrega e cancelamento.
 ├── PedidoVendaService.java  # Contrato para simular descontos, finalizar pedidos e alterar status de vendas.
-├── PersonalizacaoService.java  # Sorteia caixas, agrega estoque reservado no carrinho e valida composições e restrições.
+├── PersonalizacaoService.java  # Sorteia caixas com produtos liberados e valida composições e restrições.
 ├── PixPayloadService.java  # Monta BR Code com CRC16 e gera a imagem Pix em memória com ZXing.
-├── ProdutoEstoqueService.java  # Contrato para produtos, consultas de estoque, entradas e perdas.
+├── ProdutoEstoqueService.java  # Define operações do catálogo, bloqueio de venda e movimentações do estoque físico.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 ├── RelatorioFinanceiroService.java  # Contrato de cálculos de balanço, gráficos e exportação CSV.
-└── WhatsAppLinkService.java  # Constrói e abre links de mensagens WhatsApp.
+└── WhatsAppLinkService.java  # Gera e abre links do WhatsApp com o acompanhamento, status e nome do entregador.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../README.md)

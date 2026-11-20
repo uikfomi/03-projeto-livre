@@ -24,3 +24,7 @@ erDiagram
 - Cada movimentação referencia um produto e pode referenciar um contato fornecedor. O banco não valida o tipo do contato; o serviço valida o fornecedor nas entradas de lote.
 - Uma avaliação referencia um usuário e um produto; a elegibilidade de pedido entregue é verificada pelo serviço, não por uma chave estrangeira para o pedido. Não há restrição de unicidade de avaliação por produto/usuário no schema.
 - As especializações `CLIENTE` e `FORNECEDOR` são representadas por `contatos.tipo` e colunas opcionais na mesma tabela; os perfis de usuário usam `usuarios.perfil`.
+
+## Extensão operacional da v1.6.2
+
+A configuração do expediente é única para toda a loja e não possui chave estrangeira. A disponibilidade pertence ao produto; o nome do entregador, ao pedido de entrega. O item de pedido registra a própria baixa física para permitir a devolução correta em caso de cancelamento. Veja o [modelo lógico](../DL/modelo-logico.md#extensão-operacional-da-v162).

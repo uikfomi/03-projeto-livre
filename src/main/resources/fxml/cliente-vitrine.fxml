@@ -9,6 +9,7 @@
                 <VBox spacing="3" HBox.hgrow="ALWAYS">
                     <Label text="Vitrine de pedidos" styleClass="vitrine-titulo" />
                     <Label fx:id="saudacao" styleClass="subtitle" />
+                    <Label fx:id="statusLoja" text="Consultando horário da loja…" wrapText="true" styleClass="estado-vitrine" />
                 </VBox>
                 <Button fx:id="botaoCatalogo" text="Cardápio" onAction="#mostrarVitrine" styleClass="button-outline" />
                 <Button fx:id="botaoPedidos" text="Meus Pedidos" onAction="#mostrarPedidos" styleClass="button-secondary" />
@@ -102,6 +103,7 @@
             <Label fx:id="mensagemDesconto" wrapText="true" styleClass="subtitle" />
             <Label fx:id="mensagemFrete" wrapText="true" styleClass="subtitle" managed="false" visible="false" />
             <HBox alignment="CENTER_LEFT"><Label text="Total" HBox.hgrow="ALWAYS" styleClass="field-label" /><Label fx:id="total" styleClass="produto-preco" /></HBox>
+            <Label fx:id="orientacaoLoja" wrapText="true" managed="false" visible="false" styleClass="subtitle" />
             <Button fx:id="finalizar" text="Finalizar Pedido" maxWidth="Infinity" onAction="#finalizar" styleClass="button-primary" />
             <PixPainel fx:id="pixCheckout" />
             </VBox></content>

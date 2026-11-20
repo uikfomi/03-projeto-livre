@@ -27,14 +27,14 @@ src/main/resources/  # Agrupa telas FXML, estilos e configuração padrão consu
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 │   ├── admin.css  # Estilos do painel administrativo.
 │   ├── agenda.css  # Estilos da agenda.
-│   ├── cliente-vitrine.css  # Estilos da vitrine.
+│   ├── cliente-vitrine.css  # Estiliza catálogo, checkout, disponibilidade e banner de entrega em rota.
 │   ├── global.css  # Estilos compartilhados da aplicação.
 │   └── README.md  # Guia de navegação e explicações desta pasta.
 ├── fxml/  # Descrições de interface JavaFX.
 │   ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
-│   ├── admin-dashboard.fxml  # Estrutura visual do painel administrativo, com navegação para o Clube da Fome.
+│   ├── admin-dashboard.fxml  # Estrutura a navegação administrativa, incluindo o painel de status da loja.
 │   ├── agenda-contatos.fxml  # Estrutura visual da agenda.
-│   ├── cliente-vitrine.fxml  # Estrutura do catálogo com checkout PIX, dados do pagador, urgência de cupons e clube.
+│   ├── cliente-vitrine.fxml  # Estrutura a vitrine, o selo de funcionamento, o carrinho e o histórico de pedidos.
 │   ├── login.fxml  # Estrutura visual de login e cadastro.
 │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   └── selecao-modulos.fxml  # Estrutura visual da seleção de módulos.

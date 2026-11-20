@@ -3,6 +3,8 @@ package com.salgaderia.app.controller;
 import com.salgaderia.app.dao.ContatoDAO.FiltroContato;
 import com.salgaderia.app.dao.impl.ContatoDAOImpl;
 import com.salgaderia.app.exception.EstoqueInsuficienteException;
+import com.salgaderia.app.exception.ProdutoIndisponivelException;
+import java.time.LocalTime;
 import com.salgaderia.app.model.*;
 import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.enums.*;
@@ -48,6 +50,7 @@ public class AdminDashboardController implements TelaAutenticada {
     @FXML private BorderPane raiz;
     @FXML private Label titulo, usuarioNome, badgePendentes, avisoPedido;
     @FXML private VBox conteudo, alertasRecentes;
+    private final OperacaoLojaService operacaoLoja = new OperacaoLojaService();
     private final ProdutoEstoqueService produtos;
     private final PedidoVendaService pedidos;
     private final AgendaService agenda;
@@ -157,6 +160,8 @@ public class AdminDashboardController implements TelaAutenticada {
     }
     private void montarPdv(DadosPdv dados){
         conteudo.getChildren().clear();
+        Map<Long,Produto> catalogo=new HashMap<>();dados.produtos().forEach(p->catalogo.put(p.getId(),p));
+        carrinho.replaceAll((id,item)->new ItemVenda(catalogo.getOrDefault(id,item.produto()),item.quantidade()));
         Label subtitulo=texto("Selecione os produtos e conclua a venda no balcão.","subtitle");
         FlowPane grade=new FlowPane(10,10);grade.setPrefWrapLength(520);
         VBox listaCarrinho=new VBox(8);Label total=new Label();total.getStyleClass().add("admin-valor");
@@ -208,8 +213,8 @@ public class AdminDashboardController implements TelaAutenticada {
         recebido.textProperty().addListener((o,a,n)->atualizarTroco.run());forma.valueProperty().addListener((o,a,n)->atualizarTroco.run());
         cliente.valueProperty().addListener((o,a,n)->atualizar.run());cupom.textProperty().addListener((o,a,n)->atualizar.run());
         for(Produto produto:dados.produtos()){
-            Button card=botao(produto.getNome()+"\n"+moeda(produto.getPrecoVenda())+"\nEstoque: "+produto.getEstoqueAtual().stripTrailingZeros().toPlainString(),()->{alterar(produto,1);atualizar.run();},"admin-produto");
-            card.setId("pdv-produto-"+produto.getId());card.setPrefWidth(160);card.setWrapText(true);card.setDisable(produto.getEstoqueAtual().compareTo(BigDecimal.ONE)<0);grade.getChildren().add(card);
+            Button card=botao(produto.getNome()+"\n"+moeda(produto.getPrecoVenda())+"\n"+(produto.isDisponivelVenda()?"Disponível":"Indisponível no momento"),()->{alterar(produto,1);atualizar.run();},"admin-produto");
+            card.setId("pdv-produto-"+produto.getId());card.setPrefWidth(160);card.setWrapText(true);card.setDisable(!produto.isDisponivelVenda());grade.getChildren().add(card);
         }
         VBox produtosBox=new VBox(12,texto("Produtos disponíveis","admin-subtitulo"),grade.getChildren().isEmpty()?estado("Nenhum produto cadastrado."):grade);HBox.setHgrow(produtosBox,Priority.ALWAYS);
         Button concluir=botao("Finalizar venda",()->{
@@ -223,7 +228,7 @@ public class AdminDashboardController implements TelaAutenticada {
             List<PedidoItem> itens=carrinho.values().stream().map(i->new PedidoItem(null,i.produto(),BigDecimal.valueOf(i.quantidade()),i.produto().getPrecoVenda())).toList();
             Pedido pedido=new Pedido(null,usuario,contato,StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,LocalDateTime.now(),itens);
             String codigo=cupom.getText();ResultadoDesconto esperado=desconto[0];
-            executar(()->pedidos.finalizarPdv(pedido,selecionada,valor,codigo,esperado),id->{carrinho.clear();avisar(Alert.AlertType.INFORMATION,"Venda concluída","Venda #"+id+" registrada com baixa de estoque.");pdv();},atualizar);
+            executar(()->pedidos.finalizarPdv(pedido,selecionada,valor,codigo,esperado),id->{carrinho.clear();avisar(Alert.AlertType.INFORMATION,"Venda concluída","Venda #"+id+" registrada.");pdv();},atualizar);
         },"button-primary");concluir.setId("pdv-concluir");concluir.setMaxWidth(Double.MAX_VALUE);
         botaoConcluir[0]=concluir;
         VBox resumo=new VBox(10,texto("Venda atual","admin-subtitulo"),listaCarrinho,new Separator(),new Label("Cliente"),cliente,limparCliente,new Label("Cupom"),cupom,mensagemDesconto,new Label("Pagamento"),forma,recebido,troco,new Label("Total"),total,pix,concluir);resumo.getStyleClass().add("admin-card");resumo.setPrefWidth(290);
@@ -231,8 +236,12 @@ public class AdminDashboardController implements TelaAutenticada {
     }
     private BigDecimal totalCarrinho(){return carrinho.values().stream().map(i->i.produto().getPrecoVenda().multiply(BigDecimal.valueOf(i.quantidade()))).reduce(BigDecimal.ZERO,BigDecimal::add);}
     private void alterar(Produto produto,int delta){ItemVenda item=carrinho.get(produto.getId());int qtd=(item==null?0:item.quantidade())+delta;
-        if(qtd<=0)carrinho.remove(produto.getId());else if(produto.getEstoqueAtual().compareTo(BigDecimal.valueOf(qtd))>=0)carrinho.put(produto.getId(),new ItemVenda(produto,qtd));
-        else avisar(Alert.AlertType.WARNING,"Estoque insuficiente","Não há mais unidades disponíveis.");}
+        if(delta>0){
+            try{produto.exigirDisponivelParaVenda();}
+            catch(ProdutoIndisponivelException e){avisar(Alert.AlertType.WARNING,"Produto indisponível",e.getMessage());return;}
+        }
+        if(qtd<=0)carrinho.remove(produto.getId());else carrinho.put(produto.getId(),new ItemVenda(produto,qtd));
+    }
 
     @FXML private void mesas(){
         long versao=iniciarTela("Mesas & Comanda Coletiva");
@@ -254,7 +263,9 @@ public class AdminDashboardController implements TelaAutenticada {
         Comanda comanda=dados.comanda();long mesaId=comanda.mesa().id(),atendimentoId=comanda.atendimentoId();conteudo.getChildren().clear();
         VBox linhas=new VBox(8);for(ItemComanda item:comanda.itens())linhas.getChildren().add(texto(item.produto()+" · "+item.quantidade().stripTrailingZeros().toPlainString()+" × "+moeda(item.precoUnitario())+" = "+moeda(item.subtotal())+" · quantidade paga "+item.quantidadePaga().stripTrailingZeros().toPlainString(),"subtitle"));
         if(comanda.itens().isEmpty())linhas.getChildren().add(estado("Nenhum item lançado nesta comanda."));
-        ComboBox<Produto> produto=new ComboBox<>();produto.setId("comanda-produto");produto.getItems().setAll(dados.produtos());produto.setPromptText("Selecione um produto");
+        ComboBox<Produto> produto=new ComboBox<>();produto.setId("comanda-produto");
+        produto.getItems().setAll(dados.produtos().stream().filter(Produto::isDisponivelVenda).toList());
+        produto.setPromptText(produto.getItems().isEmpty()?"Nenhum produto liberado":"Selecione um produto");
         produto.setConverter(new StringConverter<>(){public String toString(Produto p){return p==null?"":p.getNome()+" · "+moeda(p.getPrecoVenda());}public Produto fromString(String s){return null;}});
         TextField quantidade=campo("1","Quantidade");quantidade.setId("comanda-quantidade");
         Button adicionar=botao("Lançar item",()->{
@@ -316,24 +327,66 @@ public class AdminDashboardController implements TelaAutenticada {
             for(PedidoFila p:lista){
                 String pagamento=p.pixDemonstracao()?" · SIMULAÇÃO (nenhum pagamento real)":p.pixReal()?" · PIX confirmado":" · Pagamento na entrega";
                 Label info=new Label("#"+p.id()+"  ·  "+p.cliente()+"  ·  "+p.status()+"  ·  "+p.entrega()+"  ·  "+moeda(p.total())+pagamento+"\n"+p.itens()+(p.enderecoEntrega()==null||p.enderecoEntrega().isBlank()?"":"\nEndereço: "+p.enderecoEntrega())+(p.agendadoPara()==null?"":"\nAgendado: "+p.agendadoPara().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));info.setWrapText(true);HBox.setHgrow(info,Priority.ALWAYS);
-                StatusPedido proximo=switch(p.status()){case PENDENTE->StatusPedido.PREPARANDO;case PREPARANDO->StatusPedido.PRONTO;case PRONTO->StatusPedido.ENTREGUE;default->null;};
-                Button avancar=botao("Avançar para "+proximo,()->mudarStatus(p,proximo),"button-primary");
-                Button cancelar=botao("Cancelar",()->{if(confirmar("Cancelar pedido #"+p.id()+"? O estoque será devolvido."))mudarStatus(p,StatusPedido.CANCELADO);},"button-outline");
+                if(p.nomeEntregador()!=null)info.setText(info.getText()+"\nEntregador: "+p.nomeEntregador());
+                StatusPedido proximo=p.status().proximo(p.entrega());
+                Button avancar=botao(proximo==StatusPedido.SAIU_ENTREGA?"Despachar entrega":"Avançar para "+proximo,()->mudarStatus(p,proximo),"button-primary");
+                avancar.setDisable(proximo==null);
+                Button cancelar=botao("Cancelar",()->{if(confirmar("Cancelar pedido #"+p.id()+"? O saldo físico baixado será devolvido."))mudarStatus(p,StatusPedido.CANCELADO);},"button-outline");
                 cancelar.setDisable(p.pixReal());
                 if(p.pixReal())cancelar.setTooltip(new Tooltip("Estornos de PIX real devem ser tratados no Mercado Pago."));
-                Button chamar=botao("Chamar no WhatsApp",()->chamarCliente(p,p.status()),"button-secondary");
+                Button chamar=botao("Chamar no WhatsApp",()->chamarCliente(p,p.status(),p.nomeEntregador()),"button-secondary");
                 chamar.setDisable(p.telefone()==null||p.telefone().isBlank());
                 HBox linha=new HBox(10,info,avancar,cancelar,chamar);linha.setAlignment(Pos.CENTER_LEFT);linha.getStyleClass().add("admin-card");conteudo.getChildren().add(linha);
             }
         });
     }
     private void mudarStatus(PedidoFila pedido,StatusPedido status){
+        String entregador=null;
+        if(status==StatusPedido.SAIU_ENTREGA){
+            TextInputDialog dialog=new TextInputDialog();dialog.initOwner(raiz.getScene().getWindow());
+            dialog.setTitle("Despachar entrega");dialog.setHeaderText("Pedido #"+pedido.id());dialog.setContentText("Nome do entregador:");
+            var nome=dialog.showAndWait();if(nome.isEmpty())return;
+            try{entregador=Pedido.validarNomeEntregador(nome.get());}
+            catch(IllegalArgumentException e){avisar(Alert.AlertType.WARNING,"Entregador obrigatório",e.getMessage());return;}
+        }
+        String nomeConfirmado=entregador;
         boolean notificar=notificarStatus.isSelected();
-        executar(()->{pedidos.transicionar(pedido.id(),status);return null;},x->{if(notificar&&pedido.telefone()!=null&&!pedido.telefone().isBlank())chamarCliente(pedido,status);atualizarNotificacoes();fila();});
+        executar(()->{pedidos.transicionar(pedido.id(),status,nomeConfirmado);return null;},x->{
+            if(notificar&&pedido.telefone()!=null&&!pedido.telefone().isBlank())chamarCliente(pedido,status,nomeConfirmado);
+            atualizarNotificacoes();fila();
+        });
     }
-    private void chamarCliente(PedidoFila pedido,StatusPedido status){
-        try{WhatsAppUi.abrir(raiz.getScene().getWindow(),whatsapp,whatsapp.status(pedido.telefone(),pedido.id(),status));}
+    private void chamarCliente(PedidoFila pedido,StatusPedido status,String entregador){
+        try{WhatsAppUi.abrir(raiz.getScene().getWindow(),whatsapp,whatsapp.status(pedido.telefone(),pedido.id(),status,entregador));}
         catch(IllegalArgumentException e){avisar(Alert.AlertType.WARNING,"Telefone indisponível",e.getMessage());}
+    }
+
+    @FXML private void statusLoja(){
+        long versao=iniciarTela("Status da Loja");
+        carregar(versao,operacaoLoja::consultar,this::montarStatusLoja);
+    }
+    private void montarStatusLoja(ConfiguracaoLoja config){
+        Label status=texto(operacaoLoja.rotulo(config),"admin-subtitulo");
+        var formato=DateTimeFormatter.ofPattern("HH:mm");
+        TextField abertura=campo(config.abertura().format(formato),"HH:mm");abertura.setId("loja-abertura");
+        TextField fechamento=campo(config.fechamento().format(formato),"HH:mm");fechamento.setId("loja-fechamento");
+        CheckBox automatico=new CheckBox("Respeitar horário automático");automatico.setSelected(config.respeitarHorarioAutomatico());
+        automatico.setId("loja-automatico");
+        Button salvar=botao("Salvar horário",()->{
+            try{
+                LocalTime inicio=LocalTime.parse(abertura.getText().strip());
+                LocalTime fim=LocalTime.parse(fechamento.getText().strip());
+                boolean ativo=automatico.isSelected();
+                executar(()->{operacaoLoja.salvarExpediente(inicio,fim,ativo);return null;},x->statusLoja());
+            }catch(java.time.format.DateTimeParseException e){avisar(Alert.AlertType.WARNING,"Horário inválido","Informe os horários no formato HH:mm.");}
+        },"button-secondary");
+        Button alternar=botao(config.abertaManualmente()?"Fechar Loja Agora":"Abrir Loja Agora",()->{
+            executar(()->{operacaoLoja.definirAberturaManual(!config.abertaManualmente());return null;},x->statusLoja());
+        },"button-primary");alternar.setId("loja-alternar");
+        Label regra=texto("O fechamento manual pausa pedidos imediatos. Para abrir fora do expediente, desative o horário automático. Encomendas futuras continuam sujeitas ao expediente.","subtitle");
+        regra.setWrapText(true);
+        VBox painel=new VBox(10,status,regra,new HBox(12,new VBox(4,new Label("Abertura"),abertura),new VBox(4,new Label("Fechamento"),fechamento)),automatico,new HBox(10,salvar,alternar));
+        painel.getStyleClass().add("admin-card");conteudo.getChildren().setAll(painel);
     }
 
     @FXML private void estoque(){
@@ -344,6 +397,7 @@ public class AdminDashboardController implements TelaAutenticada {
         conteudo.getChildren().clear();TableView<Produto> tabela=new TableView<>();tabela.setId("tabela-produtos");tabela.setPlaceholder(estado("Nenhum produto cadastrado."));
         coluna(tabela,"Produto",p->p.getNome(),180);coluna(tabela,"Preço",p->moeda(p.getPrecoVenda()),100);coluna(tabela,"Custo",p->moeda(p.getCustoProducao()),100);
         coluna(tabela,"Estoque",p->p.getEstoqueAtual().stripTrailingZeros().toPlainString(),90);coluna(tabela,"Mínimo",p->p.getEstoqueMinimo().stripTrailingZeros().toPlainString(),90);
+        coluna(tabela,"Venda",p->p.isDisponivelVenda()?"Liberada":"Bloqueada",115);
         tabela.setRowFactory(t->new TableRow<>(){@Override protected void updateItem(Produto p,boolean vazio){super.updateItem(p,vazio);getStyleClass().remove("estoque-baixo");if(!vazio&&p!=null&&p.isEstoqueBaixo())getStyleClass().add("estoque-baixo");}});
         tabela.getItems().setAll(dados.produtos());tabela.setPrefHeight(380);
         Button novo=botao("Novo produto",()->formularioProduto(null,dados.categorias()),"button-primary");
@@ -351,15 +405,23 @@ public class AdminDashboardController implements TelaAutenticada {
         Button excluir=botao("Excluir",()->{Produto p=tabela.getSelectionModel().getSelectedItem();if(p!=null&&confirmar("Excluir "+p.getNome()+"?"))executar(()->produtos.excluir(p.getId()),ok->{if(!ok)avisar(Alert.AlertType.WARNING,"Produto não encontrado","O produto pode ter sido removido.");estoque();});},"button-outline");
         Button lote=botao("Entrada de lote",()->entradaLote(tabela.getSelectionModel().getSelectedItem(),dados.fornecedores()),"button-secondary");
         Button perda=botao("Registrar perda",()->perda(tabela.getSelectionModel().getSelectedItem()),"button-outline");
-        for(Button b:List.of(editar,excluir,lote,perda))b.disableProperty().bind(tabela.getSelectionModel().selectedItemProperty().isNull());
-        conteudo.getChildren().addAll(texto("Estoque atual é alterado por entradas, perdas e vendas.","subtitle"),tabela,new HBox(8,novo,editar,excluir,lote,perda));
+        Button alternar=botao("Bloquear / Liberar Venda",()->{
+            Produto p=tabela.getSelectionModel().getSelectedItem();
+            executar(()->produtos.alternarDisponibilidade(p.getId()),ok->{
+                if(!ok)avisar(Alert.AlertType.WARNING,"Produto não encontrado","O produto pode ter sido removido.");
+                estoque();
+            });
+        },"button-secondary");alternar.setId("alternar-venda");
+        for(Button b:List.of(editar,excluir,lote,perda,alternar))b.disableProperty().bind(tabela.getSelectionModel().selectedItemProperty().isNull());
+        conteudo.getChildren().addAll(texto("O estoque físico é um controle interno; bloquear a venda impede novos pedidos.","subtitle"),tabela,new FlowPane(8,8,novo,editar,alternar,excluir,lote,perda));
     }
     private void formularioProduto(Produto atual,List<Categoria> categorias){
         Dialog<ButtonType> dialog=dialog(atual==null?"Novo produto":"Editar produto");
         TextField nome=campo(atual==null?"":atual.getNome(),"Nome");TextField descricao=campo(atual==null?"":atual.getDescricao(),"Descrição");
         TextField preco=campo(atual==null?"":atual.getPrecoVenda().toPlainString(),"Preço de venda");TextField custo=campo(atual==null?"":atual.getCustoProducao().toPlainString(),"Custo de produção");
         TextField minimo=campo(atual==null?"0":atual.getEstoqueMinimo().toPlainString(),"Estoque mínimo");TextField imagem=campo(atual==null?"":atual.getUrlImagem(),"URL ou arquivo da imagem");
-        Button escolher=botao("Selecionar imagem",()->{FileChooser fc=new FileChooser();fc.setTitle("Selecionar imagem");fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagens","*.png","*.jpg","*.jpeg","*.gif"));File arquivo=fc.showOpenDialog(raiz.getScene().getWindow());if(arquivo!=null)imagem.setText(arquivo.toURI().toString());},"button-outline");
+        TextField estoqueInterno=campo(atual==null?"0":atual.getEstoqueAtual().stripTrailingZeros().toPlainString(),"Estoque físico");estoqueInterno.setDisable(atual==null);
+        Button escolher=botao("Selecionar imagem do computador",()->{FileChooser fc=new FileChooser();fc.setTitle("Selecionar imagem");fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagens","*.png","*.jpg","*.jpeg","*.gif"));File arquivo=fc.showOpenDialog(raiz.getScene().getWindow());if(arquivo!=null)imagem.setText(arquivo.toURI().toString());},"button-secondary");
         ComboBox<Categoria> categoria=new ComboBox<>();categoria.getItems().setAll(categorias);categoria.setPromptText("Categoria (opcional)");categoria.setConverter(new StringConverter<>(){public String toString(Categoria c){return c==null?"Sem categoria":c.getNome();}public Categoria fromString(String s){return null;}});
         if(atual!=null&&atual.getCategoria()!=null)categorias.stream().filter(c->Objects.equals(c.getId(),atual.getCategoria().getId())).findFirst().ifPresent(categoria::setValue);
         FichaVitrine ficha=atual==null?FichaVitrine.VAZIA:atual.getFichaVitrine();
@@ -374,7 +436,7 @@ public class AdminDashboardController implements TelaAutenticada {
         tipoCombo.valueProperty().addListener((o,a,n)->recheio.setDisable(n==null||!temRecheio(n.orElse(null))));
         ComboBox<PresencaIngrediente> queijo=presenca(ficha.contemQueijo()), calabresa=presenca(ficha.contemCalabresa());
         CheckBox assado=new CheckBox("Confirmado como assado");assado.setSelected(ficha.assado());
-        VBox campos=new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,new Label("Categoria"),categoria,new Label("Preço de venda"),preco,new Label("Custo de produção"),custo,new Label("Estoque atual: "+(atual==null?"0 (entrada por lote)":atual.getEstoqueAtual())),new Label("Estoque mínimo"),minimo,new Label("Imagem"),imagem,escolher,
+        VBox campos=new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,new Label("Categoria"),categoria,new Label("Preço de venda"),preco,new Label("Custo de produção"),custo,new Label("Estoque físico (controle interno)"),estoqueInterno,new Label("Estoque mínimo"),minimo,new Label("Imagem"),escolher,new Label("URL ou caminho (opcional)"),imagem,
                 new Separator(),new Label("Ficha de personalização da vitrine"),new Label("Massa ou acompanhamento do combo"),tipoCombo,new Label("Recheio do produto"),recheio,
                 new Label("Contém queijo?"),queijo,new Label("Contém calabresa?"),calabresa,assado);campos.setPadding(new Insets(10));
         ScrollPane scroll=new ScrollPane(campos);scroll.setFitToWidth(true);scroll.setPrefViewportHeight(470);dialog.getDialogPane().setContent(scroll);
@@ -382,7 +444,9 @@ public class AdminDashboardController implements TelaAutenticada {
         try{
             Produto p=new Produto(atual==null?null:atual.getId(),categoria.getValue(),nome.getText(),descricao.getText(),decimal(preco.getText()),decimal(custo.getText()),atual==null?BigDecimal.ZERO:atual.getEstoqueAtual(),decimal(minimo.getText()),imagem.getText().isBlank()?null:imagem.getText());
             p.setFichaVitrine(new FichaVitrine(tipoCombo.getValue().orElse(null),recheio.getText(),queijo.getValue().contem,calabresa.getValue().contem,assado.isSelected()));
-            executar(()->{if(atual==null)produtos.cadastrar(p);else if(!produtos.atualizar(p))throw new IllegalStateException("Produto não encontrado");return null;},x->estoque());
+            BigDecimal digitado=decimal(estoqueInterno.getText());
+            BigDecimal ajuste=atual==null||digitado.compareTo(atual.getEstoqueAtual())==0?null:digitado;
+            executar(()->{if(atual==null)produtos.cadastrar(p);else if(!produtos.atualizar(p,ajuste))throw new IllegalStateException("Produto não encontrado");return null;},x->estoque());
         }catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Dados inválidos",e instanceof IllegalArgumentException&&e.getMessage()!=null?e.getMessage():"Confira nome, valores, estoque mínimo e a ficha de personalização.");}
     }
     private static boolean temRecheio(TipoCombo tipo){return tipo!=null&&tipo!=TipoCombo.ACOMPANHAMENTO;}

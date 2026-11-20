@@ -8,11 +8,8 @@ public enum EtapaCozinha implements EstadoCozinha {
     MASSA("Massa na bancada",0.15,true),
     PREPARO("Fritando na hora / No forno",0.50,true),
     EMBALAGEM("Embalando quentinho",0.80,false),
-    CONCLUIDO("Pronto",1.0,false) {
-        @Override public String mensagem(TipoEntrega modalidade) {
-            return modalidade==TipoEntrega.ENTREGA?"Saiu para entrega / Entregue":"Pronto no balcão / Entregue";
-        }
-    },
+    EM_ROTA("Saiu para entrega",0.95,false),
+    CONCLUIDO("Pedido concluído",1.0,false),
     CANCELADO("Pedido cancelado",0,false);
     private final String mensagem;private final double progresso;private final boolean aguarda;
     EtapaCozinha(String mensagem,double progresso,boolean aguarda){this.mensagem=mensagem;this.progresso=progresso;this.aguarda=aguarda;}
@@ -20,6 +17,6 @@ public enum EtapaCozinha implements EstadoCozinha {
     @Override public double progresso(){return progresso;}
     @Override public boolean aguardaCozinha(){return aguarda;}
     public static EstadoCozinha de(StatusPedido status){
-        return switch(status){case PENDENTE->MASSA;case PREPARANDO->PREPARO;case PRONTO->EMBALAGEM;case ENTREGUE->CONCLUIDO;case CANCELADO->CANCELADO;};
+        return switch(status){case PENDENTE->MASSA;case PREPARANDO->PREPARO;case PRONTO->EMBALAGEM;case SAIU_ENTREGA->EM_ROTA;case ENTREGUE->CONCLUIDO;case CANCELADO->CANCELADO;};
     }
 }

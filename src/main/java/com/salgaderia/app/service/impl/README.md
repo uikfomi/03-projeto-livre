@@ -17,8 +17,8 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [ClubeServiceImpl.java](ClubeServiceImpl.java) | Valida adesão, vigência, renovação e confirmação manual no Clube da Fome. |
 | [ComandaServiceImpl.java](ComandaServiceImpl.java) | Orquestra estoque, validação do operador, cotação de pagamentos e fechamento atômico. |
 | [GamificacaoServiceImpl.java](GamificacaoServiceImpl.java) | Controla cooldown, separa sorteios de demonstração e aplica validade e giro extra. |
-| [PedidoVendaServiceImpl.java](PedidoVendaServiceImpl.java) | Finaliza pedidos com proteção de estoque, promoções e fila dependente do PIX. |
-| [ProdutoEstoqueServiceImpl.java](ProdutoEstoqueServiceImpl.java) | Valida produtos e coordena entradas, perdas e consultas de estoque. |
+| [PedidoVendaServiceImpl.java](PedidoVendaServiceImpl.java) | Valida expediente e disponibilidade e coordena baixa física, PIX e despacho. |
+| [ProdutoEstoqueServiceImpl.java](ProdutoEstoqueServiceImpl.java) | Gerencia disponibilidade, ajustes, lotes e perdas do estoque físico. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [RelatorioFinanceiroServiceImpl.java](RelatorioFinanceiroServiceImpl.java) | Calcula indicadores financeiros e gera o balanço CSV. |
 
@@ -35,8 +35,8 @@ src/main/java/com/salgaderia/app/service/impl/  # Reúne implementações dos co
 ├── ClubeServiceImpl.java  # Valida adesão, vigência, renovação e confirmação manual no Clube da Fome.
 ├── ComandaServiceImpl.java  # Orquestra estoque, validação do operador, cotação de pagamentos e fechamento atômico.
 ├── GamificacaoServiceImpl.java  # Controla cooldown, separa sorteios de demonstração e aplica validade e giro extra.
-├── PedidoVendaServiceImpl.java  # Finaliza pedidos com proteção de estoque, promoções e fila dependente do PIX.
-├── ProdutoEstoqueServiceImpl.java  # Valida produtos e coordena entradas, perdas e consultas de estoque.
+├── PedidoVendaServiceImpl.java  # Valida expediente e disponibilidade e coordena baixa física, PIX e despacho.
+├── ProdutoEstoqueServiceImpl.java  # Gerencia disponibilidade, ajustes, lotes e perdas do estoque físico.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 └── RelatorioFinanceiroServiceImpl.java  # Calcula indicadores financeiros e gera o balanço CSV.
 ```

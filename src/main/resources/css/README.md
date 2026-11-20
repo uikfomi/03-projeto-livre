@@ -13,7 +13,7 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [admin.css](admin.css) | Estilos do painel administrativo. |
 | [agenda.css](agenda.css) | Estilos da agenda. |
-| [cliente-vitrine.css](cliente-vitrine.css) | Estilos da vitrine. |
+| [cliente-vitrine.css](cliente-vitrine.css) | Estiliza catálogo, checkout, disponibilidade e banner de entrega em rota. |
 | [global.css](global.css) | Estilos compartilhados da aplicação. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 
@@ -26,7 +26,7 @@ src/main/resources/css/  # Folhas de estilo que definem a apresentação visual 
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── admin.css  # Estilos do painel administrativo.
 ├── agenda.css  # Estilos da agenda.
-├── cliente-vitrine.css  # Estilos da vitrine.
+├── cliente-vitrine.css  # Estiliza catálogo, checkout, disponibilidade e banner de entrega em rota.
 ├── global.css  # Estilos compartilhados da aplicação.
 └── README.md  # Guia de navegação e explicações desta pasta.
 ```

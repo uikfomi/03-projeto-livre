@@ -7,14 +7,19 @@ import java.util.*;
 public class ProdutoDAOImpl implements ProdutoDAO {
     private static final String SELECT = "SELECT p.*,c.nome AS categoria_nome,c.descricao AS categoria_descricao FROM produtos p LEFT JOIN categorias c ON c.id=p.categoria_id";
     @Override public long inserir(Connection c, Produto p) throws SQLException {
-        try (PreparedStatement ps = c.prepareStatement("INSERT INTO produtos(categoria_id,nome,descricao,preco_venda,custo_producao,estoque_atual,estoque_minimo,url_imagem,tipo_combo,recheio_combo,contem_queijo,contem_calabresa,assado_caixa) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
-            preencher(ps,p); preencherFicha(ps,9,p.getFichaVitrine()); ps.executeUpdate(); try (ResultSet rs=ps.getGeneratedKeys()) { if (!rs.next()) throw new SQLException("ID não retornado"); return rs.getLong(1); }
+        try (PreparedStatement ps = c.prepareStatement("INSERT INTO produtos(categoria_id,nome,descricao,preco_venda,custo_producao,estoque_atual,estoque_minimo,url_imagem,tipo_combo,recheio_combo,contem_queijo,contem_calabresa,assado_caixa,disponivel_venda) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
+            preencher(ps,p); preencherFicha(ps,9,p.getFichaVitrine()); ps.setBoolean(14,p.isDisponivelVenda()); ps.executeUpdate(); try (ResultSet rs=ps.getGeneratedKeys()) { if (!rs.next()) throw new SQLException("ID não retornado"); return rs.getLong(1); }
         }
     }
     @Override public boolean atualizar(Connection c, Produto p) throws SQLException {
         if (p.getId() == null) throw new IllegalArgumentException("ID obrigatório");
         try (PreparedStatement ps=c.prepareStatement("UPDATE produtos SET categoria_id=?,nome=?,descricao=?,preco_venda=?,custo_producao=?,estoque_minimo=?,url_imagem=?,tipo_combo=?,recheio_combo=?,contem_queijo=?,contem_calabresa=?,assado_caixa=? WHERE id=?")) {
             preencherAtualizacao(ps,p); preencherFicha(ps,8,p.getFichaVitrine()); ps.setLong(13,p.getId()); return ps.executeUpdate()==1;
+        }
+    }
+    @Override public boolean alternarDisponibilidade(Connection c, long id) throws SQLException {
+        try (var ps = c.prepareStatement("UPDATE produtos SET disponivel_venda=NOT disponivel_venda WHERE id=?")) {
+            ps.setLong(1,id); return ps.executeUpdate()==1;
         }
     }
     @Override public boolean excluir(Connection c, long id) throws SQLException {
@@ -56,6 +61,7 @@ public class ProdutoDAOImpl implements ProdutoDAO {
         produto.setFichaVitrine(new FichaVitrine(tipo==null?null:FichaVitrine.TipoCombo.valueOf(tipo),
                 rs.getString("recheio_combo"),booleanoOpcional(rs,"contem_queijo"),
                 booleanoOpcional(rs,"contem_calabresa"),rs.getBoolean("assado_caixa")));
+        produto.setDisponivelVenda(rs.getBoolean("disponivel_venda"));
         return produto;
     }
     private static Boolean booleanoOpcional(ResultSet rs,String coluna) throws SQLException {

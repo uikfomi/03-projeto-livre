@@ -1,6 +1,6 @@
 # Modelo lógico do banco
 
-Este modelo representa o estado **após** o schema inicial e as migrações das etapas 4 e 8. `PK` indica chave primária, `FK` chave estrangeira e `UK` unicidade. Os comentários indicam tamanhos, nulidade e valores padrão; todos os IDs são `BIGINT UNSIGNED AUTO_INCREMENT`.
+O diagrama principal representa a base após o schema inicial e as migrações das etapas 4 e 8. A extensão de operação da v1.6.2 está descrita abaixo. `PK` indica chave primária, `FK` chave estrangeira e `UK` unicidade. Os comentários indicam tamanhos, nulidade e valores padrão; todos os IDs são `BIGINT UNSIGNED AUTO_INCREMENT`.
 
 ```mermaid
 erDiagram
@@ -108,3 +108,12 @@ erDiagram
 - Os checks SQL cobrem preços e estoque não negativos, quantidades positivas e notas de 1 a 5. Outras regras, como o tipo de contato vinculado, endereço de entrega e elegibilidade da avaliação, são aplicadas pelo código.
 - A chave `usuarios.cliente_id` é única quando preenchida. Não há `ON DELETE CASCADE` declarado nos scripts.
 - Os custos unitários opcionais preservam o desconhecimento de dados históricos anteriores à migração; não devem ser interpretados automaticamente como zero.
+
+## Extensão operacional da v1.6.2
+
+| Tabela | Campos adicionados ou alterados |
+|---|---|
+| `pedidos` | `status` passa a incluir `SAIU_ENTREGA`; `nome_entregador` é `VARCHAR(100)` opcional. A aplicação permite despachar somente `ENTREGA`, a partir de `PRONTO`. |
+| `produtos` | `disponivel_venda BOOLEAN NOT NULL DEFAULT TRUE`, independente do estoque interno. |
+| `pedido_itens` | `quantidade_baixada DECIMAL(12,3)` indica a baixa física efetiva. `NULL` identifica itens antigos que baixavam a quantidade integral. |
+| `configuracao_loja` | Chave primária `TINYINT` restrita a `1`; `aberta_manualmente` e `respeitar_horario_automatico` padrão `TRUE`; `horario_abertura` e `horario_fechamento` são `TIME` distintos, com padrão `08:00:00` e `23:00:00`. |

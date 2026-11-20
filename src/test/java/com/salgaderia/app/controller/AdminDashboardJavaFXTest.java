@@ -31,7 +31,7 @@ class AdminDashboardJavaFXTest {
         assertTrue(l.await(15,TimeUnit.SECONDS));
     }
     @Test void secoesETrocoPdv() throws Exception {
-        Produto p=new Produto(1L,null,"Coxinha",null,new BigDecimal("8.00"),new BigDecimal("3.00"),new BigDecimal("4"),BigDecimal.ONE,null);
+        Produto p=new Produto(1L,null,"Coxinha",null,new BigDecimal("8.00"),new BigDecimal("3.00"),BigDecimal.ZERO,BigDecimal.ONE,null);
         Produtos produtos=new Produtos(p);Vendas vendas=new Vendas();
         AtomicReference<FXMLLoader> l=new AtomicReference<>();AtomicReference<Stage> janela=new AtomicReference<>();
         fx(()->{FXMLLoader loader=new FXMLLoader(getClass().getResource("/fxml/admin-dashboard.fxml"));loader.setControllerFactory(c->painel(produtos,vendas,new ComandasTeste()));Parent raiz=loader.load();Stage stage=new Stage();stage.setScene(new Scene(raiz,1100,700));stage.show();((AdminDashboardController)loader.getController()).definirUsuario(new UsuarioAdmin(2L,"Admin","admin","senha",true));l.set(loader);janela.set(stage);return null;});
@@ -108,7 +108,7 @@ class AdminDashboardJavaFXTest {
     private static <T>T fx(Callable<T> c)throws Exception{FutureTask<T> t=new FutureTask<>(c);Platform.runLater(t);return t.get(15,TimeUnit.SECONDS);}
     private static void aguardar(Callable<Boolean> c)throws Exception{long fim=System.nanoTime()+TimeUnit.SECONDS.toNanos(8);while(System.nanoTime()<fim){if(c.call())return;Thread.sleep(25);}fail("Operação assíncrona não concluiu");}
     private record Produtos(Produto produto) implements ProdutoEstoqueService {
-        public List<Categoria> listarCategorias(){return List.of();}public long cadastrar(Produto p){return 1;}public boolean atualizar(Produto p){return true;}public boolean excluir(long id){return true;}
+        public List<Categoria> listarCategorias(){return List.of();}public long cadastrar(Produto p){return 1;}public boolean atualizar(Produto p){return true;}public boolean atualizar(Produto p,BigDecimal q){throw new UnsupportedOperationException();} public boolean alternarDisponibilidade(long id){throw new UnsupportedOperationException();} public boolean excluir(long id){return true;}
         public Optional<Produto> buscarPorId(long id){return Optional.of(produto);}public List<Produto> listar(){return List.of(produto);}public List<Produto> listarEstoqueBaixo(){return List.of();}
         public void entradaLote(long p,long f,BigDecimal q,String o){}public void registrarPerda(long p,BigDecimal q,String o){}
     }
@@ -118,7 +118,7 @@ class AdminDashboardJavaFXTest {
         final List<PedidoFila> fila=new java.util.concurrent.CopyOnWriteArrayList<>();
         final AtomicReference<Pedido> enviado=new AtomicReference<>();final AtomicReference<FormaPagamento> forma=new AtomicReference<>();final AtomicReference<BigDecimal> recebido=new AtomicReference<>();final AtomicReference<String> codigo=new AtomicReference<>();
         public List<PedidoFila> listarFila(){return List.copyOf(fila);}public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r){enviado.set(p);forma.set(f);recebido.set(r);return 1;}
-        public List<Pedido> listarDoCliente(UsuarioCliente u){return List.of();}public long finalizar(Pedido p){return 1;}public void transicionar(long id,StatusPedido status){}
+        public List<Pedido> listarDoCliente(UsuarioCliente u){return List.of();}public long finalizar(Pedido p){return 1;}public void transicionar(long id,StatusPedido status,String entregador){}
         public com.salgaderia.app.service.desconto.ResultadoDesconto simular(Pedido p,String c){var cupom="UIKFOMI10".equals(c)?new com.salgaderia.app.service.desconto.Cupom(c,BigDecimal.TEN,BigDecimal.ZERO):null;return new com.salgaderia.app.service.desconto.CalculadoraDescontos().calcular(new com.salgaderia.app.service.desconto.ContextoDesconto(p.getItens(),0,cupom));}
         public long finalizar(Pedido p,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){return finalizar(p);}
         public long finalizarPdv(Pedido p,FormaPagamento f,BigDecimal r,String c,com.salgaderia.app.service.desconto.ResultadoDesconto d){codigo.set(c);return finalizarPdv(p,f,r);}
@@ -138,7 +138,7 @@ class AdminDashboardJavaFXTest {
         public void fecharSemSaldo(long m,long a,Usuario u){}
     }
     private static class Agenda implements AgendaService {
-        public long cadastrar(Contato c){return 1;}public boolean atualizar(Contato c){return true;}public boolean excluir(long id){return true;}
+        public long cadastrar(Contato c){return 1;}public boolean atualizar(Contato c){return true;}public boolean atualizar(Produto p,BigDecimal q){throw new UnsupportedOperationException();} public boolean alternarDisponibilidade(long id){throw new UnsupportedOperationException();} public boolean excluir(long id){return true;}
         public Optional<Contato> buscarPorId(long id){return Optional.empty();}public List<Contato> buscar(FiltroContato f,String texto){return List.of();}
     }
     private static class Financeiro implements RelatorioFinanceiroService {

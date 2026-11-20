@@ -7,7 +7,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,9 +43,16 @@ class WhatsAppLinkServiceTest {
         String query=URLDecoder.decode(new WhatsAppLinkService().status("5585988887777",42,StatusPedido.CANCELADO).getRawQuery(),StandardCharsets.UTF_8);
         assertTrue(query.contains("#42"));assertTrue(query.contains("CANCELADO"));
     }
+    @Test void despachoIncluiNomeETelefoneDoCliente() {
+        var uri=new WhatsAppLinkService().status("(85) 98888-7777",42,StatusPedido.SAIU_ENTREGA,"José & Ana");
+        assertEquals("/5585988887777",uri.getPath());
+        String texto=URLDecoder.decode(uri.getRawQuery(),StandardCharsets.UTF_8);
+        assertTrue(texto.contains("Seu pedido #42 saiu para entrega!"));
+        assertTrue(texto.contains("Entregador: José & Ana"));
+    }
     @Test void acompanhamentoNaoRevelaOsItensDaCaixaAntesDaEntrega() {
         Produto produto=new Produto(1L,new Categoria(1L,"Assados",null),"Empada da casa",null,BigDecimal.TEN,BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
-        List<PedidoItem> itens=new PersonalizacaoService().sortearCaixa(PersonalizacaoItem.Tipo.FOME_LEVE,Set.of(),List.of(produto),Map.of());
+        List<PedidoItem> itens=new PersonalizacaoService().sortearCaixa(PersonalizacaoItem.Tipo.FOME_LEVE,Set.of(),List.of(produto));
         Pedido pedido=new Pedido(99L,null,null,StatusPedido.PRONTO,TipoEntrega.RETIRADA,null,LocalDateTime.now(),itens);
         var whatsapp=new WhatsAppLinkService();
         String mensagem=URLDecoder.decode(whatsapp.acompanhar(pedido).getRawQuery(),StandardCharsets.UTF_8);
