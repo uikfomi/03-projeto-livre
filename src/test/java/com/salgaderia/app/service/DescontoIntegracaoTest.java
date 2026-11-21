@@ -21,7 +21,7 @@ class DescontoIntegracaoTest {
         List<Long> pedidosCriados=new ArrayList<>();
         UsuarioCliente usuario=null;long categoriaId=0,produtoId=0;
         try {
-            usuario=new AutenticacaoServiceImpl().cadastrar("Cliente teste", "d"+token, "senha-teste",
+            usuario=VendaTeste.cadastrar("Cliente teste", "d"+token, "senha-teste",
                     new Cliente(null,"Cliente teste",null,null,null,null,null));
             try(Connection c=ConnectionFactory.getConnection()) {
                 categoriaId=inserir(c,"INSERT INTO categorias(nome) VALUES (?)","Fritos teste "+token);

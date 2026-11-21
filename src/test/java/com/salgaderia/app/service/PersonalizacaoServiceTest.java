@@ -2,90 +2,79 @@ package com.salgaderia.app.service;
 
 import com.salgaderia.app.exception.ProdutoIndisponivelException;
 import com.salgaderia.app.model.*;
-import com.salgaderia.app.model.FichaVitrine.TipoCombo;
-import com.salgaderia.app.model.PersonalizacaoItem.Restricao;
 import com.salgaderia.app.model.PersonalizacaoItem.Tipo;
 import com.salgaderia.app.service.desconto.*;
-
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class PersonalizacaoServiceTest {
-    private static final Categoria SALGADOS = new Categoria(1L, "Salgados Assados", null);
+    private static final Categoria BEBIDAS=new Categoria(7L,"Bebidas",null);
+    private static final Categoria FRITOS=new Categoria(8L,"Fritos",null);
 
-    @Test void comboUsaVarianteRealPrecoAtualEUmGrupoUnico() {
-        Produto base = produto(1, "Empada de frango", "8.00", "2", SALGADOS,
-                new FichaVitrine(TipoCombo.EMPADA, "Frango", false, false, true));
-        Produto molho = produto(2, "Molho da casa", "1.50", "1", null,
-                new FichaVitrine(TipoCombo.ACOMPANHAMENTO, null, null, null, false));
-        List<PedidoItem> itens = new ComboBuilder().massa(TipoCombo.EMPADA).recheio(base).acompanhamento(molho).montar();
-        assertEquals(List.of(base, molho), itens.stream().map(PedidoItem::getProduto).toList());
-        assertEquals(new BigDecimal("9.50"), new ContextoDesconto(itens, 0, null).subtotal());
-        assertEquals("Combo — Empada com Frango + Molho da casa", itens.get(0).getObservacaoPersonalizada());
-        assertEquals(itens.get(0).getPersonalizacao(), itens.get(1).getPersonalizacao());
+    @Test void comboSemFichaTecnicaUsaTresProdutosEDescontoUnico() {
+        Produto principal=produto(1,"Empada","8.00","2.00",null);
+        Produto acompanhamento=produto(2,"Molho","2.00","1.00",null);
+        Produto bebida=produto(3,"Suco","5.00","1.00",BEBIDAS);
+        var builder=new ComboBuilder().principal(principal).acompanhamento(acompanhamento).bebida(bebida);
+        List<PedidoItem> itens=builder.montar();
+        assertEquals(List.of(principal,acompanhamento,bebida),itens.stream().map(PedidoItem::getProduto).toList());
+        assertEquals(1,PersonalizacaoService.grupos(itens).size());
         PersonalizacaoService.validarComposicao(itens);
-        assertThrows(IllegalArgumentException.class, () -> new ComboBuilder().massa(TipoCombo.COXINHA).recheio(base).montar());
-        assertThrows(IllegalArgumentException.class, () -> new ComboBuilder().massa(TipoCombo.EMPADA).recheio(base).acompanhamento(base).montar());
-        base.setEstoqueAtual(BigDecimal.ZERO);
-        assertDoesNotThrow(base::exigirDisponivelParaVenda);
-        base.setDisponivelVenda(false);
-        assertThrows(ProdutoIndisponivelException.class,base::exigirDisponivelParaVenda);
+        var resultado=new CalculadoraDescontos().calcular(new ContextoDesconto(itens,3,null));
+        assertEquals("COMBO",resultado.estrategia());assertEquals(new BigDecimal("13.50"),resultado.total());
+        assertThrows(IllegalArgumentException.class,()->builder.acompanhamento(principal).montar());
+        assertThrows(IllegalArgumentException.class,()->builder.acompanhamento(acompanhamento).bebida(acompanhamento).montar());
+        acompanhamento.setDisponivelVenda(false);
+        assertThrows(ProdutoIndisponivelException.class,()->builder.bebida(bebida).montar());
     }
 
-    @Test void sorteioRespeitaRestricoesBloqueioEQuantidadeExata() {
-        Produto primeiro = produto(1, "Empada", "3.50", "0", SALGADOS,
-                new FichaVitrine(TipoCombo.EMPADA, "Frango", false, false, true));
-        Produto segundo = produto(2, "Esfiha", "3.50", "4", SALGADOS,
-                new FichaVitrine(TipoCombo.ESFIHA, "Carne", false, false, true));
-        Produto desconhecido = produto(3, "Ficha incompleta", "3.50", "100", SALGADOS,
-                new FichaVitrine(null, null, null, false, true));
-        Produto queijo = produto(4, "Com queijo", "3.50", "100", SALGADOS,
-                new FichaVitrine(null, null, true, false, true));
-        Produto calabresa = produto(5, "Com calabresa", "3.50", "100", SALGADOS,
-                new FichaVitrine(null, null, false, true, true));
-        Produto frito = produto(6, "Frito", "3.50", "100", SALGADOS,
-                new FichaVitrine(null, null, false, false, false));
-        Produto bebida = produto(7, "Bebida", "3.50", "100", new Categoria(2L, "Bebidas", null),
-                new FichaVitrine(null, null, false, false, true));
-        segundo.setDisponivelVenda(false);
-        List<Produto> catalogo = List.of(primeiro, segundo, desconhecido, queijo, calabresa, frito, bebida);
-        Set<Restricao> restricoes = Set.of(Restricao.SEM_QUEIJO, Restricao.SEM_CALABRESA, Restricao.SO_ASSADOS);
-        var servico = new PersonalizacaoService(new Random(25));
-        List<PedidoItem> itens = servico.sortearCaixa(Tipo.FOME_LEVE, restricoes, catalogo);
-        assertEquals(Map.of(1L, BigDecimal.TEN), PersonalizacaoService.quantidades(itens));
-        assertTrue(itens.get(0).getObservacaoPersonalizada().contains("Sem calabresa"));
-        PersonalizacaoService.validarComposicao(itens);
-        assertEquals(Map.of(1L,BigDecimal.valueOf(25)),PersonalizacaoService.quantidades(servico.sortearCaixa(Tipo.FOME_DE_LEAO,restricoes,catalogo)));
-        primeiro.setDisponivelVenda(false);
-        assertThrows(IllegalArgumentException.class, () -> servico.sortearCaixa(Tipo.FOME_DE_LEAO, restricoes, catalogo));
-        primeiro.setFichaVitrine(new FichaVitrine(TipoCombo.EMPADA, "Frango com queijo", true, false, true));
-        assertThrows(IllegalArgumentException.class, () -> PersonalizacaoService.validarComposicao(itens));
+    @Test void sorteioSeguroEmTodosOrcamentosComCategoriasEItensExcluidos() {
+        Produto barato=produto(1,"Coxinha","5.00","1.00",FRITOS);
+        Produto outro=produto(2,"Empada","6.00","2.00",null);
+        Produto excluir=produto(3,"Pastel","5.00","1.00",FRITOS);
+        Produto bebida=produto(4,"Suco","5.00","1.00",BEBIDAS);
+        Produto prejuizo=produto(5,"Item com custo superior ao orçamento","26.00","61.00",null);
+        Produto bloqueado=produto(6,"Produto bloqueado","5.00","1.00",null);bloqueado.setDisponivelVenda(false);
+        var catalogo=List.of(barato,outro,excluir,bebida,prejuizo,bloqueado);
+        for(Tipo tipo:List.of(Tipo.CAIXA_25,Tipo.CAIXA_40,Tipo.CAIXA_60))for(int seed=0;seed<20;seed++){
+            var itens=new PersonalizacaoService(new Random(seed)).sortearCaixa(tipo,catalogo,Set.of(7L),Set.of(3L));
+            assertTrue(itens.stream().allMatch(i->Set.of(barato,outro).contains(i.getProduto())));
+            assertTrue(PersonalizacaoService.subtotal(itens).compareTo(tipo.orcamento())>=0);
+            assertTrue(PersonalizacaoService.subtotal(itens).compareTo(tipo.orcamento().multiply(new BigDecimal("1.15")))<=0);
+            assertTrue(itens.stream().map(i->i.getProduto().getCustoProducao().multiply(i.getQuantidade())).reduce(BigDecimal.ZERO,BigDecimal::add)
+                    .compareTo(tipo.orcamento())<=0);
+            PersonalizacaoService.validarComposicao(itens);
+        }
     }
 
-    @Test void maiorDescontoUnicoIncluiOPrecoFechadoDaCaixa() {
-        Produto produto = produto(1, "Empada", "3.33", "25", SALGADOS, FichaVitrine.VAZIA);
-        List<PedidoItem> caixa = new PersonalizacaoService(new Random(2)).sortearCaixa(Tipo.FOME_DE_LEAO, Set.of(), List.of(produto));
-        assertEquals(BigDecimal.valueOf(25), caixa.get(0).getQuantidade());
-        var calculadora = new CalculadoraDescontos();
-        ResultadoDesconto desconto = calculadora.calcular(new ContextoDesconto(caixa, 4, new Cupom("UIKFOMI10", BigDecimal.TEN, BigDecimal.ZERO)));
-        assertEquals("CAIXA_MISTERIOSA", desconto.estrategia());
-        assertEquals(new BigDecimal("12.49"), desconto.desconto());
-        assertEquals(new BigDecimal("70.76"), desconto.total());
-        List<PedidoItem> misto = List.of(caixa.get(0), new PedidoItem(null, produto, new BigDecimal("20"), produto.getPrecoVenda()));
-        desconto = calculadora.calcular(new ContextoDesconto(misto, 4, new Cupom("UIKFOMI10", BigDecimal.TEN, BigDecimal.ZERO)));
-        assertEquals("CUPOM", desconto.estrategia());
-        assertEquals(new BigDecimal("14.99"), desconto.desconto());
+    @Test void custoSomadoInvalidaCaixaQueCaberiaPeloPrecoDeCatalogo() {
+        var produto=produto(1,"Empada","13.00","12.51",null);
+        assertThrows(IllegalArgumentException.class,()->new PersonalizacaoService().sortearCaixa(Tipo.CAIXA_25,List.of(produto),Set.of(),Set.of()));
+        produto.setCustoProducao(new BigDecimal("12.50"));
+        var itens=new PersonalizacaoService().sortearCaixa(Tipo.CAIXA_25,List.of(produto),Set.of(7L),Set.of());
+        assertEquals(BigDecimal.valueOf(2),itens.get(0).getQuantidade());
+        produto.setCategoria(BEBIDAS);
+        assertThrows(IllegalArgumentException.class,()->PersonalizacaoService.validarComposicao(itens));
     }
 
-    private Produto produto(long id, String nome, String preco, String estoque, Categoria categoria, FichaVitrine ficha) {
-        Produto produto = new Produto(id, categoria, nome, null, new BigDecimal(preco), BigDecimal.ONE, new BigDecimal(estoque), BigDecimal.ONE, null);
-        produto.setFichaVitrine(ficha);
-        return produto;
+    @Test void caixaCobraOrcamentoSemAcumularVipOuCupomNoPrecoFechado() {
+        var produto=produto(1,"Empada","13.00","2.00",null);
+        var caixa=new PersonalizacaoService().sortearCaixa(Tipo.CAIXA_25,List.of(produto),Set.of(),Set.of());
+        var cupom=new Cupom("TESTE20",new BigDecimal("20"),BigDecimal.ZERO);
+        var calc=new CalculadoraDescontos();
+        var apenasCaixa=calc.calcular(new ContextoDesconto(caixa,4,cupom,PlanoAssinatura.DESCONTO_VIP,new BigDecimal("5.00")));
+        assertEquals(new BigDecimal("25.00"),apenasCaixa.total());assertTrue(apenasCaixa.freteGratisVip());assertNull(apenasCaixa.cupom());
+        var misto=new ArrayList<>(caixa);
+        misto.add(new PedidoItem(null,produto,BigDecimal.ONE,produto.getPrecoVenda()));
+        var vip=calc.calcular(new ContextoDesconto(misto,4,null,PlanoAssinatura.DESCONTO_VIP,new BigDecimal("5.00")));
+        assertEquals(new BigDecimal("36.05"),vip.total());assertEquals("ASSINANTE",vip.estrategia());
+        var melhor=calc.calcular(new ContextoDesconto(misto,4,cupom,PlanoAssinatura.DESCONTO_VIP,new BigDecimal("5.00")));
+        assertEquals(new BigDecimal("35.40"),melhor.total());assertEquals("CUPOM",melhor.estrategia());assertTrue(melhor.freteGratisVip());
+    }
+
+    private static Produto produto(long id,String nome,String preco,String custo,Categoria categoria){
+        return new Produto(id,categoria,nome,null,new BigDecimal(preco),new BigDecimal(custo),BigDecimal.ZERO,BigDecimal.ZERO,null);
     }
 }

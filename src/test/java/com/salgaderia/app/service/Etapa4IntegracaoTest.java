@@ -24,15 +24,47 @@ import static org.junit.jupiter.api.Assertions.*;
 class Etapa4IntegracaoTest {
     @TempDir Path pastaTeste;
 
+    @Test void cadastroPorEmailEspelhaLoginEApelidoPodeSerPersonalizado() throws Exception {
+        var auth=new AutenticacaoServiceImpl();
+        String prefixo="ana."+UUID.randomUUID().toString().replace("-","");
+        String email=prefixo+"@example.test";
+        assertThrows(IllegalArgumentException.class,()->auth.cadastrar("sem-arroba","senha-teste"));
+        assertThrows(IllegalArgumentException.class,()->auth.cadastrar(email," "));
+        UsuarioCliente usuario=auth.cadastrar("  "+email.toUpperCase(Locale.ROOT)+"  ","senha-teste");
+        try{
+            assertEquals(prefixo,usuario.getNome());assertEquals(email,usuario.getLogin());assertEquals(email,usuario.getEmail());
+            assertNull(usuario.getCliente().getWhatsapp());assertNull(usuario.getCliente().getEndereco());
+            assertThrows(IllegalArgumentException.class,()->auth.cadastrar(email.toUpperCase(Locale.ROOT),"outra-senha"));
+            try(Connection c=ConnectionFactory.getConnection();var ps=c.prepareStatement("SELECT u.email,u.login,u.senha,(SELECT COUNT(*) FROM contatos WHERE nome=?) FROM usuarios u WHERE u.id=?")){
+                ps.setString(1,prefixo);ps.setLong(2,usuario.getId());
+                try(var rs=ps.executeQuery()){
+                    assertTrue(rs.next());assertEquals(email,rs.getString(1));assertEquals(email,rs.getString(2));
+                    assertTrue(rs.getString(3).startsWith("pbkdf2-sha256$"));assertEquals(1,rs.getInt(4));
+                }
+            }
+            auth.atualizarPerfil(usuario,"Ana do Centro","85999999999","Rua A, 1");
+            var perfil=(UsuarioCliente)auth.login(email.toUpperCase(Locale.ROOT),"senha-teste");
+            assertEquals("Ana do Centro",perfil.getNome());assertEquals("Ana do Centro",perfil.getCliente().getNome());
+            assertEquals("Rua A, 1",perfil.getCliente().getEndereco());
+            assertEquals("85999999999",perfil.getCliente().getWhatsapp());
+            assertEquals(prefixo,auth.atualizarPerfil(perfil," ",null,null).getNome());
+        }finally{
+            try(Connection c=ConnectionFactory.getConnection()){
+                excluir(c,"DELETE FROM usuarios WHERE id=?",usuario.getId());
+                excluir(c,"DELETE FROM contatos WHERE id=?",usuario.getCliente().getId());
+            }
+        }
+    }
+
     @Test void fluxosTransacionais() throws Exception {
         String token=UUID.randomUUID().toString().replace("-","");
         UsuarioCliente usuario=null; Fornecedor fornecedor=null; Produto produto=null; Long pedidoId=null; Long avaliacaoId=null; Long pdvId=null; Long pdvPixId=null;
         try {
             var auth=new AutenticacaoServiceImpl();
             Cliente cliente=new Cliente(null,"Teste "+token,null,null,null,null,null);
-            usuario=auth.cadastrar("Teste", "t"+token, "senha-teste", cliente);
-            assertEquals(usuario.getId(),auth.login("t"+token,"senha-teste").getId());
-            assertThrows(AutenticacaoInvalidaException.class,()->auth.login("t"+token,"invalida"));
+            usuario=VendaTeste.cadastrar("Teste", "t"+token, "senha-teste", cliente);
+            assertEquals(usuario.getId(),auth.login("t"+token+"@example.test","senha-teste").getId());
+            assertThrows(AutenticacaoInvalidaException.class,()->auth.login("t"+token+"@example.test","invalida"));
             fornecedor=new Fornecedor(null,"Contato "+token,null,null,"Empresa "+token,"12345678000199",CategoriaInsumo.FARINHA,1);
             var agenda=new AgendaServiceImpl(new ContatoDAOImpl());agenda.cadastrar(fornecedor);
             assertEquals(1,agenda.buscar(com.salgaderia.app.dao.ContatoDAO.FiltroContato.FORNECEDORES,token).size());

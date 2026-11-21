@@ -51,12 +51,12 @@ class WhatsAppLinkServiceTest {
         assertTrue(texto.contains("Entregador: José & Ana"));
     }
     @Test void acompanhamentoNaoRevelaOsItensDaCaixaAntesDaEntrega() {
-        Produto produto=new Produto(1L,new Categoria(1L,"Assados",null),"Empada da casa",null,BigDecimal.TEN,BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
-        List<PedidoItem> itens=new PersonalizacaoService().sortearCaixa(PersonalizacaoItem.Tipo.FOME_LEVE,Set.of(),List.of(produto));
+        Produto produto=new Produto(1L,new Categoria(1L,"Assados",null),"Empada da casa",null,new BigDecimal("5.00"),BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
+        List<PedidoItem> itens=new PersonalizacaoService().sortearCaixa(PersonalizacaoItem.Tipo.CAIXA_25,List.of(produto),Set.of(),Set.of());
         Pedido pedido=new Pedido(99L,null,null,StatusPedido.PRONTO,TipoEntrega.RETIRADA,null,LocalDateTime.now(),itens);
         var whatsapp=new WhatsAppLinkService();
         String mensagem=URLDecoder.decode(whatsapp.acompanhar(pedido).getRawQuery(),StandardCharsets.UTF_8);
-        assertTrue(mensagem.contains("Fome Leve"));
+        assertTrue(mensagem.contains("R$ 25,00"));
         assertFalse(mensagem.contains("Empada da casa"));
         pedido.transicionarPara(StatusPedido.ENTREGUE);
         assertTrue(URLDecoder.decode(whatsapp.acompanhar(pedido).getRawQuery(),StandardCharsets.UTF_8).contains("Empada da casa"));

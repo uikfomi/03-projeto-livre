@@ -31,16 +31,6 @@ public final class ClubeDAOImpl implements ClubeDAO {
         return new PlanoAssinatura(rs.getLong("id"),rs.getString("nome"),rs.getString("descricao"),
                 rs.getBigDecimal("mensalidade"),rs.getBigDecimal("desconto_percentual"),rs.getBoolean("ativo"));
     }
-    @Override public void salvarPlano(Connection c,PlanoAssinatura plano) throws SQLException {
-        boolean novo=plano.id()==null;
-        try(var ps=c.prepareStatement(novo?"INSERT INTO planos_assinatura(nome,descricao,mensalidade,desconto_percentual,ativo) VALUES (?,?,?,?,?)":
-                "UPDATE planos_assinatura SET nome=?,descricao=?,mensalidade=?,desconto_percentual=?,ativo=? WHERE id=?")){
-            ps.setString(1,plano.nome());ps.setString(2,plano.descricao());ps.setBigDecimal(3,plano.mensalidade());
-            ps.setBigDecimal(4,plano.descontoPercentual());ps.setBoolean(5,plano.ativo());
-            if(!novo)ps.setLong(6,plano.id());
-            if(ps.executeUpdate()!=1)throw new IllegalArgumentException("Plano não encontrado.");
-        }
-    }
     @Override public Optional<AssinaturaCliente> assinatura(Connection c,long usuarioId,boolean bloquear) throws SQLException {
         try(var ps=c.prepareStatement(ASSINATURAS+" WHERE a.usuario_id=?"+(bloquear?" FOR UPDATE OF a":""))){
             ps.setLong(1,usuarioId);try(var rs=ps.executeQuery()){return rs.next()?Optional.of(assinatura(rs)):Optional.empty();}
@@ -86,13 +76,13 @@ public final class ClubeDAOImpl implements ClubeDAO {
             ps.setLong(1,usuarioId);ps.setLong(2,plano.id());ps.setBigDecimal(3,plano.mensalidade());ps.setBigDecimal(4,plano.descontoPercentual());ps.executeUpdate();
         }
     }
-    @Override public void confirmarMensalidade(Connection c,MensalidadeClube m,LocalDate ate,long adminId) throws SQLException {
+    @Override public void confirmarMensalidade(Connection c,MensalidadeClube m,LocalDate ate,long adminId,PlanoAssinatura vip) throws SQLException {
         try(var ps=c.prepareStatement("UPDATE mensalidades_clube SET status='CONFIRMADA',confirmada_em=NOW(),confirmada_por=?,periodo_ate=? WHERE id=? AND status='PENDENTE'")){
             ps.setLong(1,adminId);ps.setObject(2,ate);ps.setLong(3,m.id());
             if(ps.executeUpdate()!=1)throw new IllegalArgumentException("A mensalidade não está mais pendente.");
         }
         try(var ps=c.prepareStatement("UPDATE assinaturas_clientes SET valida_ate=?,desconto_vigente=? WHERE usuario_id=? AND plano_id=? AND NOT cancelada")){
-            ps.setObject(1,ate);ps.setBigDecimal(2,m.descontoPercentual());ps.setLong(3,m.usuarioId());ps.setLong(4,m.planoId());
+            ps.setObject(1,ate);ps.setBigDecimal(2,vip.descontoPercentual());ps.setLong(3,m.usuarioId());ps.setLong(4,vip.id());
             if(ps.executeUpdate()!=1)throw new IllegalArgumentException("A assinatura não está disponível para ativação.");
         }
     }

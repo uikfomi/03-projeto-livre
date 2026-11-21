@@ -27,32 +27,42 @@ class ClubeGamificacaoIntegracaoTest {
             var admin=new UsuarioAdmin(2L,"Admin","toor","não usada",true);
             var clube=new ClubeServiceImpl();
             var cliente=fixture.cliente();
-            String nome="Clube teste "+fixture.token;
-            clube.salvarPlano(admin,new PlanoAssinatura(null,nome,"Plano de teste",new BigDecimal("19.99"),new BigDecimal("8.75"),true));
-            long planoId=clube.painel(admin).planos().stream().filter(p->p.nome().equals(nome)).findFirst().orElseThrow().id();
-            fixture.plano=planoId;
+            var planos=clube.vitrine(cliente).planos();
+            assertEquals(1,planos.size());assertEquals(PlanoAssinatura.NOME_VIP,planos.get(0).nome());
+            long planoId=planos.get(0).id();
             Pedido pedido=fixture.pedido(cliente,1);
             assertEquals("NENHUM",fixture.vendas.simular(pedido,null).estrategia());
             clube.solicitar(cliente,planoId);
             assertThrows(IllegalArgumentException.class,()->clube.solicitar(cliente,planoId));
             var pendencia=clube.vitrine(cliente).pendencia();
-            assertEquals(new BigDecimal("19.99"),pendencia.valor());
+            assertEquals(PlanoAssinatura.MENSALIDADE_VIP,pendencia.valor());
             assertEquals("NENHUM",fixture.vendas.simular(pedido,null).estrategia());
-            clube.salvarPlano(admin,new PlanoAssinatura(planoId,nome,"Alterado",new BigDecimal("23.99"),new BigDecimal("9.75"),true));
             clube.confirmar(admin,cliente.getId(),pendencia.id());
             assertThrows(IllegalArgumentException.class,()->clube.confirmar(admin,cliente.getId(),pendencia.id()));
             var ativa=clube.vitrine(cliente).assinatura();
-            assertTrue(ativa.ativa(LocalDate.now()));assertEquals(new BigDecimal("8.75"),ativa.descontoVigente());
+            assertTrue(ativa.ativa(LocalDate.now(ClubeServiceImpl.FUSO)));assertEquals(PlanoAssinatura.DESCONTO_VIP,ativa.descontoVigente());
             assertTrue(clube.painel(admin).ativos().stream().anyMatch(a->a.usuarioId()==cliente.getId()));
             assertThrows(IllegalArgumentException.class,()->clube.solicitar(cliente,planoId));
             var desconto=fixture.vendas.simular(pedido,null);
-            assertEquals("ASSINANTE",desconto.estrategia());assertEquals(new BigDecimal("0.88"),desconto.desconto());
-            assertEquals("CUPOM",fixture.vendas.simular(pedido,"UIKFOMI10").estrategia());
+            assertEquals("ASSINANTE",desconto.estrategia());assertEquals(new BigDecimal("1.50"),desconto.desconto());
+            assertEquals("ASSINANTE",fixture.vendas.simular(pedido,"UIKFOMI10").estrategia());
+            var entrega=new Pedido(null,cliente,cliente.getCliente(),StatusPedido.PENDENTE,TipoEntrega.ENTREGA,"Endereço teste",
+                    LocalDateTime.now(),pedido.getItens());
+            entrega.setFormaPagamento(FormaPagamento.DINHEIRO);
+            var comFrete=fixture.vendas.simular(entrega,null);
+            assertEquals(0,comFrete.taxaEntrega().signum());
+            assertEquals(new BigDecimal("8.50"),comFrete.total());
+            long idEntrega=fixture.vendas.finalizar(entrega,null,comFrete);
+            var gravado=fixture.vendas.listarDoCliente(cliente).stream().filter(p->p.getId()==idEntrega).findFirst().orElseThrow();
+            assertEquals(0,gravado.getTaxaEntrega().signum());assertEquals(0,new BigDecimal("8.50").compareTo(gravado.calcularTotal()));
+            var pdv=new Pedido(null,admin,cliente.getCliente(),StatusPedido.PENDENTE,TipoEntrega.RETIRADA,null,
+                    LocalDateTime.now(),pedido.getItens());
+            assertEquals(new BigDecimal("8.50"),fixture.vendas.simular(pdv,null).total());
 
-            Clock relogio=Clock.fixed(ativa.validaAte().minusDays(2).atStartOfDay(ZoneId.systemDefault()).toInstant(),ZoneId.systemDefault());
+            Clock relogio=Clock.fixed(ativa.validaAte().minusDays(2).atStartOfDay(ClubeServiceImpl.FUSO).toInstant(),ClubeServiceImpl.FUSO);
             var clubeFuturo=new ClubeServiceImpl(new ClubeDAOImpl(),new UsuarioDAOImpl(new ContatoDAOImpl()),relogio);
             clubeFuturo.solicitar(cliente,planoId);
-            var renovacao=clubeFuturo.vitrine(cliente).pendencia();assertEquals(new BigDecimal("23.99"),renovacao.valor());
+            var renovacao=clubeFuturo.vitrine(cliente).pendencia();assertEquals(PlanoAssinatura.MENSALIDADE_VIP,renovacao.valor());
             clubeFuturo.confirmar(admin,cliente.getId(),renovacao.id());
             assertEquals(ativa.validaAte().plusMonths(1),clubeFuturo.vitrine(cliente).assinatura().validaAte());
             clube.cancelar(cliente);
@@ -60,6 +70,37 @@ class ClubeGamificacaoIntegracaoTest {
             assertFalse(clube.painel(admin).ativos().stream().anyMatch(a->a.usuarioId()==cliente.getId()));
             assertEquals("NENHUM",fixture.vendas.simular(pedido,null).estrategia());
             assertThrows(IllegalArgumentException.class,()->fixture.vendas.finalizar(pedido,null,desconto));
+        }
+    }
+
+    @Test void mensalidadeLegadaMantemReferenciaEValorMasAtivaBeneficioVip(){
+        try(var fixture=new Cenario()){
+            var admin=new UsuarioAdmin(2L,"Admin","toor","não usada",true);
+            var servico=new ClubeServiceImpl();var cliente=fixture.cliente();
+            long idVip=servico.vitrine(cliente).planos().get(0).id();
+            long idLegado=ConnectionFactory.executarEmTransacao(c->{
+                var dao=new ClubeDAOImpl();
+                var legado=dao.listarPlanos(c,false).stream().filter(p->!p.ativo()).findFirst().orElseThrow();
+                dao.prepararAssinatura(c,cliente.getId(),idVip);
+                dao.abrirMensalidade(c,cliente.getId(),legado);
+                return legado.id();
+            });
+            var emitida=servico.vitrine(cliente).pendencia();
+            assertEquals(idLegado,emitida.planoId());assertNotEquals(PlanoAssinatura.MENSALIDADE_VIP,emitida.valor());
+            servico.confirmar(admin,cliente.getId(),emitida.id());
+            assertNull(servico.vitrine(cliente).pendencia());
+            var ativa=servico.vitrine(cliente).assinatura();
+            assertEquals(idVip,ativa.planoId());assertEquals(PlanoAssinatura.DESCONTO_VIP,ativa.descontoVigente());
+            ConnectionFactory.executarEmTransacao(c->{
+                try(var ps=c.prepareStatement("SELECT plano_id,valor,status FROM mensalidades_clube WHERE id=?")){
+                    ps.setLong(1,emitida.id());
+                    try(var rs=ps.executeQuery()){
+                        assertTrue(rs.next());assertEquals(idLegado,rs.getLong(1));
+                        assertEquals(emitida.valor(),rs.getBigDecimal(2));assertEquals("CONFIRMADA",rs.getString(3));
+                    }
+                }
+                return null;
+            });
         }
     }
 
@@ -255,7 +296,6 @@ class ClubeGamificacaoIntegracaoTest {
         final String token=UUID.randomUUID().toString().replace("-","");
         final PedidoVendaService vendas=VendaTeste.vendas();
         final List<UsuarioCliente> usuarios=new ArrayList<>();
-        Long plano;
         final Produto produto;
 
         Cenario(){
@@ -271,7 +311,7 @@ class ClubeGamificacaoIntegracaoTest {
             });
         }
         UsuarioCliente cliente(){
-            var u=new AutenticacaoServiceImpl().cadastrar("Cliente teste","g"+usuarios.size()+token,"senha-teste",
+            var u=VendaTeste.cadastrar("Cliente teste","g"+usuarios.size()+token,"senha-teste",
                     new Cliente(null,"Cliente teste "+token,null,null,null,null,null));
             usuarios.add(u);return u;
         }
@@ -291,7 +331,6 @@ class ClubeGamificacaoIntegracaoTest {
                     excluir(c,"DELETE FROM usuarios WHERE id=?",u.getId());
                     excluir(c,"DELETE FROM contatos WHERE id=?",u.getCliente().getId());
                 }
-                if(plano!=null)excluir(c,"DELETE FROM planos_assinatura WHERE id=?",plano);
                 excluir(c,"DELETE FROM movimentacoes_estoque WHERE produto_id=?",produto.getId());
                 excluir(c,"DELETE FROM produtos WHERE id=?",produto.getId());
                 excluir(c,"DELETE FROM categorias WHERE id=?",produto.getCategoria().getId());return null;

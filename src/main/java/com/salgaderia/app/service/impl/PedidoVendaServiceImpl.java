@@ -104,10 +104,10 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
                 if(p.getPrecoVenda().compareTo(item.getPrecoUnitario())!=0)throw new IllegalArgumentException("Preço do produto mudou");
                 atuais.put(id,p);
             }
-            return calcular(c,pedido,codigo,atuais);
+            return calcular(c,pedido,codigo,atuais,false,null);
         });
     }
-    private ResultadoDesconto calcular(Connection c,Pedido pedido,String codigo,Map<Long,Produto> atuais) throws SQLException {
+    private ResultadoDesconto calcular(Connection c,Pedido pedido,String codigo,Map<Long,Produto> atuais,boolean bloqueado,GamificacaoDAO.Conta conta) throws SQLException {
         List<PedidoItem> itens=new ArrayList<>();
         for(PedidoItem item:pedido.getItens())itens.add(item.comProdutoAtual(atuais.get(item.getProduto().getId())));
         PersonalizacaoService.validarComposicao(itens);
@@ -118,13 +118,17 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
         if(codigo!=null&&!codigo.isBlank()){
             String normalizado=codigo.trim().toUpperCase(Locale.ROOT);
             cupom=cupons.buscarAtivo(c,normalizado,contaVitrine).orElseThrow(()->new IllegalArgumentException("Cupom inválido, indisponível ou inativo"));
-            BigDecimal subtotal=itens.stream().map(PedidoItem::calcularSubtotal).reduce(BigDecimal.ZERO,BigDecimal::add);
+            BigDecimal subtotal=PersonalizacaoService.subtotal(ContextoDesconto.itensElegiveis(itens));
             if(subtotal.compareTo(cupom.minimo())<0)throw new IllegalArgumentException("Valor mínimo do cupom: R$ "+cupom.minimo());
             if(cupom.beneficio()==Cupom.Beneficio.FRETE&&taxa.signum()==0)
                 throw new IllegalArgumentException("O cupom de frete grátis só vale para pedidos com entrega e taxa.");
         }
-        BigDecimal percentual=contaVitrine==null?BigDecimal.ZERO:clube.assinatura(c,contaVitrine,false)
-                .filter(a->a.ativa(LocalDate.now())).map(AssinaturaCliente::descontoVigente).orElse(BigDecimal.ZERO);
+        Long contaVip=contaVitrine;
+        if(contaVip==null&&pedido.getUsuario() instanceof UsuarioAdmin&&pedido.getCliente()!=null&&pedido.getCliente().getId()!=null)
+            contaVip=bloqueado?(conta==null?null:conta.usuarioId()):
+                    jogo.contaPorContato(c,pedido.getCliente().getId()).map(GamificacaoDAO.Conta::usuarioId).orElse(null);
+        BigDecimal percentual=contaVip==null?BigDecimal.ZERO:clube.assinatura(c,contaVip,bloqueado)
+                .filter(a->a.ativa(LocalDate.now(ClubeServiceImpl.FUSO))&&PlanoAssinatura.NOME_VIP.equals(a.plano())).map(a->PlanoAssinatura.DESCONTO_VIP).orElse(BigDecimal.ZERO);
         return calculadora.calcular(new ContextoDesconto(itens,entregues,cupom,percentual,taxa));
     }
     private long finalizarInterno(Pedido pedido,FormaPagamento forma,BigDecimal recebido,String codigo,ResultadoDesconto esperado){
@@ -170,10 +174,10 @@ public class PedidoVendaServiceImpl implements PedidoVendaService {
                 bloqueados.put(entrada.getKey(),p);custos.put(entrada.getKey(),p.getCustoProducao());
             }
             for(PedidoItem item:pedido.getItens())if(item.getPrecoUnitario().compareTo(bloqueados.get(item.getProduto().getId()).getPrecoVenda())!=0)throw new IllegalArgumentException("Preço do pedido diverge do preço atual");
-            ResultadoDesconto desconto=calcular(c,pedido,codigo,bloqueados);
+            ResultadoDesconto desconto=calcular(c,pedido,codigo,bloqueados,true,conta);
             if(esperado!=null && (desconto.subtotal().compareTo(esperado.subtotal())!=0 || desconto.desconto().compareTo(esperado.desconto())!=0 ||
                     desconto.taxaEntrega().compareTo(esperado.taxaEntrega())!=0 || !desconto.estrategia().equals(esperado.estrategia()) ||
-                    !Objects.equals(desconto.cupom(),esperado.cupom())||!Objects.equals(desconto.brinde(),esperado.brinde())))
+                    desconto.freteGratisVip()!=esperado.freteGratisVip()||!Objects.equals(desconto.cupom(),esperado.cupom())||!Objects.equals(desconto.brinde(),esperado.brinde())))
                 throw new IllegalArgumentException("Desconto alterado; recalcule e confirme o pedido");
             if(forma!=null && forma.isPermiteTroco() && (recebido==null || recebido.scale()>2 || recebido.compareTo(desconto.total())<0 || recebido.compareTo(new BigDecimal("99999999.99"))>0))
                 throw new IllegalArgumentException("Valor recebido insuficiente ou inválido");

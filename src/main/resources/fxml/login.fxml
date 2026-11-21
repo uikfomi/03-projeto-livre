@@ -21,8 +21,8 @@
                                 <Tab text="Entrar">
                                     <content>
                                         <VBox spacing="10" style="-fx-padding: 20 0 0 0;">
-                                            <Label text="Login" styleClass="field-label" />
-                                            <TextField fx:id="login" promptText="Seu login" accessibleText="Login" />
+                                            <Label text="E-mail ou login" styleClass="field-label" />
+                                            <TextField fx:id="login" promptText="Seu e-mail ou login" accessibleText="E-mail ou login" />
                                             <Label text="Senha" styleClass="field-label" />
                                             <PasswordField fx:id="senha" promptText="Sua senha" accessibleText="Senha" onAction="#entrar" />
                                             <TextField fx:id="senhaVisivel" promptText="Sua senha" accessibleText="Senha visível" onAction="#entrar" />
@@ -34,16 +34,10 @@
                                 <Tab text="Criar conta">
                                     <content>
                                         <VBox spacing="8" style="-fx-padding: 20 0 0 0;">
-                                            <Label text="Nome completo" styleClass="field-label" />
-                                            <TextField fx:id="cadastroNome" promptText="Seu nome" accessibleText="Nome completo" />
-                                            <Label text="Login" styleClass="field-label" />
-                                            <TextField fx:id="cadastroLogin" promptText="Escolha um login" accessibleText="Login do cadastro" />
+                                            <Label text="E-mail" styleClass="field-label" />
+                                            <TextField fx:id="cadastroEmail" promptText="voce@exemplo.com" accessibleText="E-mail do cadastro" />
                                             <Label text="Senha" styleClass="field-label" />
-                                            <PasswordField fx:id="cadastroSenha" promptText="Crie sua senha" accessibleText="Senha do cadastro" />
-                                            <Label text="WhatsApp" styleClass="field-label" />
-                                            <TextField fx:id="cadastroWhatsapp" promptText="Seu WhatsApp" accessibleText="WhatsApp" />
-                                            <Label text="Endereço" styleClass="field-label" />
-                                            <TextField fx:id="cadastroEndereco" promptText="Seu endereço" accessibleText="Endereço" />
+                                            <PasswordField fx:id="cadastroSenha" promptText="Crie sua senha" accessibleText="Senha do cadastro" onAction="#cadastrar" />
                                             <Button text="Criar conta de cliente" maxWidth="Infinity" onAction="#cadastrar" styleClass="button-primary" />
                                         </VBox>
                                     </content>

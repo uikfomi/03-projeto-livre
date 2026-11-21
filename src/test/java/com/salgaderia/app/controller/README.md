@@ -13,8 +13,8 @@ Execute os testes compatíveis com o ambiente; os testes de integração podem e
 | [AdminDashboardJavaFXTest.java](AdminDashboardJavaFXTest.java) | Testa navegação administrativa, PDV, mesas, Pix e alertas de novos pedidos. |
 | [AgendaJavaFXTest.java](AgendaJavaFXTest.java) | Testes JavaFX da agenda. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
-| [TelasJavaFXTest.java](TelasJavaFXTest.java) | Testes JavaFX de autenticação e navegação. |
-| [VitrineJavaFXTest.java](VitrineJavaFXTest.java) | Verifica catálogo, checkout, expediente e atualização da entrega na vitrine. |
+| [TelasJavaFXTest.java](TelasJavaFXTest.java) | Verifica cadastro com dois campos e navegação pelo perfil de acesso. |
+| [VitrineJavaFXTest.java](VitrineJavaFXTest.java) | Verifica vitrine, combo simplificado, exclusões da caixa, Clube VIP e rastreio de entrega. |
 
 ## Árvore estrutural comentada
 
@@ -25,8 +25,8 @@ src/test/java/com/salgaderia/app/controller/  # Reúne testes automatizados dos 
 ├── AdminDashboardJavaFXTest.java  # Testa navegação administrativa, PDV, mesas, Pix e alertas de novos pedidos.
 ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 ├── README.md  # Guia de navegação e explicações desta pasta.
-├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
-└── VitrineJavaFXTest.java  # Verifica catálogo, checkout, expediente e atualização da entrega na vitrine.
+├── TelasJavaFXTest.java  # Verifica cadastro com dois campos e navegação pelo perfil de acesso.
+└── VitrineJavaFXTest.java  # Verifica vitrine, combo simplificado, exclusões da caixa, Clube VIP e rastreio de entrega.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../README.md)

@@ -13,18 +13,18 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [.gitkeep](.gitkeep) | Marcador que mantém a pasta no controle de versão; não contém dados de aplicação. |
 | [AvaliacaoDAOImpl.java](AvaliacaoDAOImpl.java) | Persiste avaliações e fotos e consulta a galeria e dados de moderação. |
 | [CategoriaDAOImpl.java](CategoriaDAOImpl.java) | Operações JDBC de cadastro e consulta de categorias. |
-| [ClubeDAOImpl.java](ClubeDAOImpl.java) | Executa consultas e atualizações JDBC para adesões, vigência e mensalidades. |
+| [ClubeDAOImpl.java](ClubeDAOImpl.java) | Persiste assinaturas VIP, vigências e referências das mensalidades atuais e antigas. |
 | [ComandaDAOImpl.java](ComandaDAOImpl.java) | Implementa operações JDBC de mesas e comandas com bloqueio de linha. |
 | [ConfiguracaoLojaDAOImpl.java](ConfiguracaoLojaDAOImpl.java) | Persiste expediente e estado manual separadamente com JDBC. |
-| [ContatoDAOImpl.java](ContatoDAOImpl.java) | Operações JDBC de contatos com filtros de clientes e fornecedores. |
+| [ContatoDAOImpl.java](ContatoDAOImpl.java) | Persiste contatos e atualiza dados do cliente sem sobrescrever os demais campos da agenda. |
 | [CupomDAOImpl.java](CupomDAOImpl.java) | Consulta elegibilidade, reserva cupons exclusivos e os devolve no cancelamento. |
 | [GamificacaoDAOImpl.java](GamificacaoDAOImpl.java) | Persiste selos, giros, resgates e trava de 24 horas usando o relógio do banco. |
 | [MovimentacaoEstoqueDAOImpl.java](MovimentacaoEstoqueDAOImpl.java) | Grava movimentações de estoque e consulta perdas por período via JDBC. |
-| [PedidoDAOImpl.java](PedidoDAOImpl.java) | Persiste pedidos, baixa física e despacho; consulta fila, histórico e relatórios. |
+| [PedidoDAOImpl.java](PedidoDAOImpl.java) | Persiste preços, exclusões da caixa, baixa física e despacho; consulta a fila e o histórico. |
 | [PixPagamentoDAOImpl.java](PixPagamentoDAOImpl.java) | Consulta pagamentos e vincula tentativas, IDs remotos e aprovação ao pedido em JDBC. |
 | [ProdutoDAOImpl.java](ProdutoDAOImpl.java) | Persiste catálogo, disponibilidade de venda, estoque e fichas de personalização. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
-| [UsuarioDAOImpl.java](UsuarioDAOImpl.java) | Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio. |
+| [UsuarioDAOImpl.java](UsuarioDAOImpl.java) | Persiste login, e-mail e apelido e bloqueia a conta ativa nas transações. |
 
 ## Árvore estrutural comentada
 
@@ -35,18 +35,18 @@ src/main/java/com/salgaderia/app/dao/impl/  # Reúne implementações dos contra
 ├── .gitkeep  # Marcador que mantém a pasta no controle de versão; não contém dados de aplicação.
 ├── AvaliacaoDAOImpl.java  # Persiste avaliações e fotos e consulta a galeria e dados de moderação.
 ├── CategoriaDAOImpl.java  # Operações JDBC de cadastro e consulta de categorias.
-├── ClubeDAOImpl.java  # Executa consultas e atualizações JDBC para adesões, vigência e mensalidades.
+├── ClubeDAOImpl.java  # Persiste assinaturas VIP, vigências e referências das mensalidades atuais e antigas.
 ├── ComandaDAOImpl.java  # Implementa operações JDBC de mesas e comandas com bloqueio de linha.
 ├── ConfiguracaoLojaDAOImpl.java  # Persiste expediente e estado manual separadamente com JDBC.
-├── ContatoDAOImpl.java  # Operações JDBC de contatos com filtros de clientes e fornecedores.
+├── ContatoDAOImpl.java  # Persiste contatos e atualiza dados do cliente sem sobrescrever os demais campos da agenda.
 ├── CupomDAOImpl.java  # Consulta elegibilidade, reserva cupons exclusivos e os devolve no cancelamento.
 ├── GamificacaoDAOImpl.java  # Persiste selos, giros, resgates e trava de 24 horas usando o relógio do banco.
 ├── MovimentacaoEstoqueDAOImpl.java  # Grava movimentações de estoque e consulta perdas por período via JDBC.
-├── PedidoDAOImpl.java  # Persiste pedidos, baixa física e despacho; consulta fila, histórico e relatórios.
+├── PedidoDAOImpl.java  # Persiste preços, exclusões da caixa, baixa física e despacho; consulta a fila e o histórico.
 ├── PixPagamentoDAOImpl.java  # Consulta pagamentos e vincula tentativas, IDs remotos e aprovação ao pedido em JDBC.
 ├── ProdutoDAOImpl.java  # Persiste catálogo, disponibilidade de venda, estoque e fichas de personalização.
 ├── README.md  # Guia de navegação e explicações desta pasta.
-└── UsuarioDAOImpl.java  # Executa consultas e alterações de usuário e valida a conta ativa sob bloqueio.
+└── UsuarioDAOImpl.java  # Persiste login, e-mail e apelido e bloqueia a conta ativa nas transações.
 ```
 
 [🏠 Voltar ao README principal](../../../../../../../../README.md)

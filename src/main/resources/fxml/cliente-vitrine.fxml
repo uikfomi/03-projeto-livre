@@ -13,13 +13,14 @@
                 </VBox>
                 <Button fx:id="botaoCatalogo" text="Cardápio" onAction="#mostrarVitrine" styleClass="button-outline" />
                 <Button fx:id="botaoPedidos" text="Meus Pedidos" onAction="#mostrarPedidos" styleClass="button-secondary" />
-                <Button fx:id="botaoClube" text="Clube da Fome" onAction="#mostrarClube" styleClass="button-secondary" />
+                <Button fx:id="botaoClube" text="Clube VIP" onAction="#mostrarClube" styleClass="button-secondary" />
                 <Button fx:id="pedirDeSempre" text="Pedir o de Sempre (2 Cliques)" onAction="#pedirDeSempre" styleClass="button-secondary" />
                 <Button text="Sair" onAction="#sair" styleClass="button-outline" />
             </HBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <TextField fx:id="busca" promptText="Busque pelo nome ou sabor" accessibleText="Buscar por nome ou sabor" HBox.hgrow="ALWAYS" />
                 <ComboBox fx:id="categorias" prefWidth="220" promptText="Todas as categorias" accessibleText="Filtro de categoria" />
+                <Button fx:id="botaoPerfil" text="Meu perfil" onAction="#meuPerfil" styleClass="button-outline" />
                 <Button text="Atualizar" onAction="#carregarProdutos" styleClass="button-outline" />
             </HBox>
             <Label fx:id="cupomUrgente" wrapText="true" managed="false" visible="false" styleClass="estado-vitrine" />
@@ -62,7 +63,7 @@
             </VBox>
             <VBox fx:id="painelClube" spacing="12">
                 <HBox alignment="CENTER_LEFT" spacing="12">
-                    <Label text="Clube da Fome Ui K'Fomi" styleClass="secao-titulo" HBox.hgrow="ALWAYS" />
+                    <Label text="Clube VIP Ui K'Fomi" styleClass="secao-titulo" HBox.hgrow="ALWAYS" />
                     <Button text="Atualizar clube" onAction="#mostrarClube" styleClass="button-outline" />
                 </HBox>
                 <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS" styleClass="rolagem-transparente">

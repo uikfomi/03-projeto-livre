@@ -1,7 +1,6 @@
 package com.salgaderia.app.controller;
 
 import com.salgaderia.app.exception.AutenticacaoInvalidaException;
-import com.salgaderia.app.model.Cliente;
 import com.salgaderia.app.model.Usuario;
 import com.salgaderia.app.service.AutenticacaoService;
 import com.salgaderia.app.service.impl.AutenticacaoServiceImpl;
@@ -18,11 +17,8 @@ public class LoginController {
     @FXML private PasswordField senha;
     @FXML private TextField senhaVisivel;
     @FXML private CheckBox mostrarSenha;
-    @FXML private TextField cadastroNome;
-    @FXML private TextField cadastroLogin;
+    @FXML private TextField cadastroEmail;
     @FXML private PasswordField cadastroSenha;
-    @FXML private TextField cadastroWhatsapp;
-    @FXML private TextField cadastroEndereco;
     private final AutenticacaoService autenticacao;
 
     public LoginController() { this(new AutenticacaoServiceImpl()); }
@@ -55,24 +51,14 @@ public class LoginController {
     }
 
     @FXML private void cadastrar() {
-        String nome = cadastroNome.getText().trim();
-        String novoLogin = cadastroLogin.getText().trim();
+        String email = cadastroEmail.getText();
         String novaSenha = cadastroSenha.getText();
-        String whatsapp = cadastroWhatsapp.getText().trim();
-        String endereco = cadastroEndereco.getText().trim();
-        if (nome.isEmpty() || novoLogin.isEmpty() || novaSenha == null || novaSenha.isBlank() || whatsapp.isEmpty() || endereco.isEmpty()) {
-            avisar(Alert.AlertType.WARNING, "Campos obrigatórios", "Preencha todos os campos para criar sua conta.");
-            return;
-        }
         executar(new Task<Usuario>() {
-            @Override protected Usuario call() {
-                Cliente cliente = new Cliente(null, nome, null, null, whatsapp, endereco, null);
-                return autenticacao.cadastrar(nome, novoLogin, novaSenha, cliente);
-            }
+            @Override protected Usuario call() { return autenticacao.cadastrar(email,novaSenha); }
         }, usuario -> {
-            cadastroNome.clear(); cadastroLogin.clear(); cadastroSenha.clear(); cadastroWhatsapp.clear(); cadastroEndereco.clear();
-            login.setText(novoLogin); senha.clear(); abas.getSelectionModel().select(0);
-            avisar(Alert.AlertType.INFORMATION, "Cadastro concluído", "Sua conta de cliente foi criada. Entre com seu login e senha.");
+            cadastroEmail.clear(); cadastroSenha.clear();
+            login.setText(usuario.getLogin()); senha.clear(); abas.getSelectionModel().select(0);
+            avisar(Alert.AlertType.INFORMATION, "Cadastro concluído", "Entre com seu e-mail e senha. Você pode preencher os dados de entrega em Meu perfil.");
         });
     }
 
@@ -85,7 +71,7 @@ public class LoginController {
             if (erro instanceof AutenticacaoInvalidaException) {
                 avisar(Alert.AlertType.WARNING, "Não foi possível entrar", "Login ou senha inválidos, ou conta inativa.");
             } else if (erro instanceof IllegalArgumentException) {
-                avisar(Alert.AlertType.WARNING, "Confira os dados", "Verifique os dados informados e tente novamente.");
+                avisar(Alert.AlertType.WARNING, "Confira os dados", erro.getMessage());
             } else {
                 avisar(Alert.AlertType.ERROR, "Não foi possível concluir", "Verifique sua conexão ou se o login já está em uso e tente novamente.");
             }

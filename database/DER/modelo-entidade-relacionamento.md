@@ -28,3 +28,7 @@ erDiagram
 ## Extensão operacional da v1.6.2
 
 A configuração do expediente é única para toda a loja e não possui chave estrangeira. A disponibilidade pertence ao produto; o nome do entregador, ao pedido de entrega. O item de pedido registra a própria baixa física para permitir a devolução correta em caso de cancelamento. Veja o [modelo lógico](../DL/modelo-logico.md#extensão-operacional-da-v162).
+
+## Extensão de cadastro, personalização e VIP da v1.6.3
+
+As contas de cliente cadastradas com e-mail guardam o mesmo valor no login e continuam vinculadas a um contato. Cada linha da caixa referencia um produto real e guarda as exclusões do grupo de compra. A assinatura aponta para o plano VIP; a mensalidade mantém a referência do plano que originou a cobrança. Veja o [modelo lógico](../DL/modelo-logico.md#extensão-de-cadastro-personalização-e-vip-da-v163).

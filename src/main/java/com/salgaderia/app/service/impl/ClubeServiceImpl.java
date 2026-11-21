@@ -10,16 +10,18 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Objects;
 
 /** Coordena a vigência e a confirmação manual, sem realizar cobrança bancária. */
 public final class ClubeServiceImpl implements ClubeService {
+    public static final ZoneId FUSO=ZoneId.of("America/Fortaleza");
     private final ClubeDAO clube;
     private final UsuarioDAO usuarios;
     private final Clock relogio;
 
     public ClubeServiceImpl() {
-        this(new ClubeDAOImpl(),new UsuarioDAOImpl(new ContatoDAOImpl()),Clock.systemDefaultZone());
+        this(new ClubeDAOImpl(),new UsuarioDAOImpl(new ContatoDAOImpl()),Clock.system(FUSO));
     }
 
     public ClubeServiceImpl(ClubeDAO clube,UsuarioDAO usuarios,Clock relogio) {
@@ -38,12 +40,8 @@ public final class ClubeServiceImpl implements ClubeService {
     @Override public Painel painel(UsuarioAdmin admin) {
         return ConnectionFactory.executarEmTransacao(c->{
             validarAdmin(c,admin);
-            return new Painel(clube.listarPlanos(c,false),clube.assinantesAtivos(c,LocalDate.now(relogio)),clube.pendencias(c,null,false));
+            return new Painel(clube.listarPlanos(c,true),clube.assinantesAtivos(c,LocalDate.now(relogio)),clube.pendencias(c,null,false));
         });
-    }
-
-    @Override public void salvarPlano(UsuarioAdmin admin,PlanoAssinatura plano) {
-        ConnectionFactory.executarEmTransacao(c->{validarAdmin(c,admin);clube.salvarPlano(c,plano);return null;});
     }
 
     @Override public void solicitar(UsuarioCliente cliente,long planoId) {
@@ -79,7 +77,10 @@ public final class ClubeServiceImpl implements ClubeService {
                     .findFirst().orElseThrow(()->new IllegalArgumentException("A mensalidade não está mais pendente."));
             LocalDate hoje=LocalDate.now(relogio);
             LocalDate base=assinatura.ativa(hoje)?assinatura.validaAte():hoje;
-            clube.confirmarMensalidade(c,mensalidade,base.plusMonths(1),admin.getId());return null;
+            // Mensalidades da migração mantêm a referência e o valor emitidos. A vigência é VIP.
+            PlanoAssinatura vip=clube.planoAtivo(c,assinatura.planoId()).filter(p->p.nome().equals(PlanoAssinatura.NOME_VIP))
+                    .orElseThrow(()->new IllegalArgumentException("Plano VIP indisponível."));
+            clube.confirmarMensalidade(c,mensalidade,base.plusMonths(1),admin.getId(),vip);return null;
         });
     }
 

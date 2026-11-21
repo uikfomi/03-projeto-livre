@@ -5,6 +5,7 @@ import com.salgaderia.app.model.enums.StatusPagamento;
 import com.salgaderia.app.model.enums.StatusPedido;
 import com.salgaderia.app.model.enums.TipoEntrega;
 import java.util.HashMap;
+import com.google.gson.Gson;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -14,10 +15,13 @@ import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.stream.Collectors;
 public class PedidoDAOImpl implements PedidoDAO {
+    private static final Gson JSON=new Gson();
+    private record FiltrosCaixa(java.util.Set<Long> categorias,java.util.Set<Long> produtos) { }
+
     @Override public java.util.List<Pedido> listarDoCliente(Connection c,UsuarioCliente usuario) throws SQLException {
         String sql="SELECT p.id pedido_id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.agendado_para,p.desconto,p.forma_pagamento,p.roleta_liberada,"
                 + "p.status_pagamento,p.pix_provedor,p.taxa_entrega,p.brinde_descricao,p.nome_entregador,"
-                + "i.id item_id,i.quantidade,i.preco_unitario,i.observacao_personalizada,i.grupo_personalizado,i.tipo_personalizacao,i.restricoes_personalizadas,pr.id produto_id,pr.nome produto_nome,pr.descricao produto_descricao,"
+                + "i.id item_id,i.quantidade,i.preco_unitario,i.observacao_personalizada,i.grupo_personalizado,i.tipo_personalizacao,i.restricoes_personalizadas,i.filtros_caixa,pr.id produto_id,pr.nome produto_nome,pr.descricao produto_descricao,"
                 + "pr.preco_venda,pr.custo_producao,pr.estoque_atual,pr.estoque_minimo,pr.url_imagem,pr.disponivel_venda,"
                 + "cat.id categoria_id,cat.nome categoria_nome,cat.descricao categoria_descricao "
                 + "FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id "
@@ -57,8 +61,10 @@ public class PedidoDAOImpl implements PedidoDAO {
         String armazenadas=rs.getString("restricoes_personalizadas");
         if(armazenadas!=null&&!armazenadas.isBlank())
             for(String nome:armazenadas.split(","))restricoes.add(PersonalizacaoItem.Restricao.valueOf(nome));
-        return new PersonalizacaoItem(UUID.fromString(grupo),
-                PersonalizacaoItem.Tipo.valueOf(rs.getString("tipo_personalizacao")),restricoes);
+        var tipo=PersonalizacaoItem.Tipo.valueOf(rs.getString("tipo_personalizacao"));
+        FiltrosCaixa filtros=JSON.fromJson(rs.getString("filtros_caixa"),FiltrosCaixa.class);
+        return filtros==null?new PersonalizacaoItem(UUID.fromString(grupo),tipo,restricoes):
+                new PersonalizacaoItem(UUID.fromString(grupo),tipo,restricoes,filtros.categorias(),filtros.produtos());
     }
     @Override public java.util.List<PedidoFila> listarFila(Connection c) throws SQLException {
         String sql="SELECT p.id,p.status,p.tipo_entrega,p.endereco_entrega,p.criado_em,p.agendado_para,p.desconto,p.status_pagamento,p.pix_provedor,p.taxa_entrega,p.brinde_descricao,p.nome_entregador,COALESCE(ct.nome,u.nome,'Cliente') cliente,COALESCE(NULLIF(TRIM(ct.whatsapp),''),NULLIF(TRIM(ct.telefone),'')) telefone,"
@@ -112,7 +118,7 @@ public class PedidoDAOImpl implements PedidoDAO {
         return agrupar(c,"SELECT CONCAT(pr.nome,' (#',pr.id,')') rotulo,SUM(i.quantidade) valor FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id WHERE p.status='ENTREGUE' AND (p.pix_provedor IS NULL OR p.pix_provedor<>'DEMO') AND p.criado_em>=? AND p.criado_em<? GROUP BY pr.id,pr.nome ORDER BY valor DESC,pr.id LIMIT 10",inicio,fim);
     }
     @Override public java.util.Map<String,BigDecimal> receitaPorCategoria(Connection c,LocalDateTime inicio,LocalDateTime fim) throws SQLException {
-        return agrupar(c,"SELECT COALESCE(cat.nome,'Sem categoria') rotulo,SUM(i.quantidade*i.preco_unitario*(1-COALESCE((CASE WHEN p.estrategia_desconto='FRETE' THEN 0 ELSE p.desconto END)/NULLIF(t.subtotal,0),0))) valor FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN (SELECT pedido_id,SUM(quantidade*preco_unitario) subtotal FROM pedido_itens GROUP BY pedido_id) t ON t.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id LEFT JOIN categorias cat ON cat.id=pr.categoria_id WHERE p.status='ENTREGUE' AND (p.pix_provedor IS NULL OR p.pix_provedor<>'DEMO') AND p.criado_em>=? AND p.criado_em<? GROUP BY cat.id,cat.nome ORDER BY valor DESC",inicio,fim);
+        return agrupar(c,"SELECT COALESCE(cat.nome,'Sem categoria') rotulo,SUM(i.quantidade*i.preco_unitario*(1-COALESCE((CASE WHEN p.estrategia_desconto='FRETE' THEN GREATEST(p.desconto-p.taxa_entrega,0) ELSE p.desconto END)/NULLIF(t.subtotal,0),0))) valor FROM pedidos p JOIN pedido_itens i ON i.pedido_id=p.id JOIN (SELECT pedido_id,SUM(quantidade*preco_unitario) subtotal FROM pedido_itens GROUP BY pedido_id) t ON t.pedido_id=p.id JOIN produtos pr ON pr.id=i.produto_id LEFT JOIN categorias cat ON cat.id=pr.categoria_id WHERE p.status='ENTREGUE' AND (p.pix_provedor IS NULL OR p.pix_provedor<>'DEMO') AND p.criado_em>=? AND p.criado_em<? GROUP BY cat.id,cat.nome ORDER BY valor DESC",inicio,fim);
     }
     private java.util.Map<String,BigDecimal> agrupar(Connection c,String sql,LocalDateTime inicio,LocalDateTime fim) throws SQLException {
         try(PreparedStatement ps=c.prepareStatement(sql)){ps.setTimestamp(1,Timestamp.valueOf(inicio));ps.setTimestamp(2,Timestamp.valueOf(fim));try(ResultSet rs=ps.executeQuery()){
@@ -128,7 +134,7 @@ public class PedidoDAOImpl implements PedidoDAO {
             try(ResultSet rs=ps.getGeneratedKeys()){if(!rs.next())throw new SQLException("ID de pedido não retornado");id=rs.getLong(1);}
         }
         Map<Long,BigDecimal> restante=new HashMap<>(baixas);
-        try(PreparedStatement ps=c.prepareStatement("INSERT INTO pedido_itens(pedido_id,produto_id,quantidade,preco_unitario,custo_unitario,observacao_personalizada,grupo_personalizado,tipo_personalizacao,restricoes_personalizadas,quantidade_baixada) VALUES (?,?,?,?,?,?,?,?,?,?)")){
+        try(PreparedStatement ps=c.prepareStatement("INSERT INTO pedido_itens(pedido_id,produto_id,quantidade,preco_unitario,custo_unitario,observacao_personalizada,grupo_personalizado,tipo_personalizacao,restricoes_personalizadas,quantidade_baixada,filtros_caixa) VALUES (?,?,?,?,?,?,?,?,?,?,?)")){
             for(PedidoItem item:pedido.getItens()){
                 long produtoId=item.getProduto().getId();BigDecimal custo=custos.get(produtoId);if(custo==null)throw new SQLException("Custo do produto não informado");
                 ps.setLong(1,id);ps.setLong(2,produtoId);ps.setBigDecimal(3,item.getQuantidade());ps.setBigDecimal(4,item.getPrecoUnitario());ps.setBigDecimal(5,custo);
@@ -141,6 +147,8 @@ public class PedidoDAOImpl implements PedidoDAO {
                 BigDecimal baixa=saldo.min(item.getQuantidade());
                 restante.put(produtoId,saldo.subtract(baixa));
                 ps.setBigDecimal(10,baixa);
+                ps.setString(11,personalizacao==null||personalizacao.tipo().orcamento()==null?null:
+                        JSON.toJson(new FiltrosCaixa(personalizacao.categoriasExcluidas(),personalizacao.produtosExcluidos())));
                 ps.addBatch();
             } ps.executeBatch();
         } return id;

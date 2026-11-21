@@ -34,6 +34,7 @@ database/  # Reúne o schema, as migrações e os modelos de dados que apoiam a 
 │   ├── etapa13_clube_gamificacao.sql  # Cria planos, assinaturas, mensalidades, conquistas e histórico da roleta; habilita cupons exclusivos.
 │   ├── etapa14_pix_roleta_vip.sql  # Migra estados de pagamento, referências PIX, cupons com validade e prêmios VIP.
 │   ├── etapa15_operacao_loja.sql  # Adiciona expediente da loja, bloqueio de venda, baixa física e saída para entrega.
+│   ├── etapa16_cadastro_caixa_clube_vip.sql  # Migra o cadastro por e-mail, os filtros da caixa e o plano VIP único.
 │   ├── etapa4_migracao.sql  # Migração de contatos, usuários e custos históricos.
 │   ├── etapa8_pdv.sql  # Colunas de origem e pagamento do PDV.
 │   ├── etapa9_descontos.sql  # Cupons e registro de descontos por pedido.

@@ -7,5 +7,6 @@ public interface UsuarioDAO {
     Optional<Usuario> buscarPorLogin(Connection conexao, String login) throws SQLException;
     Optional<Usuario> buscarPorId(Connection conexao, long id) throws SQLException;
     boolean bloquearClienteAtivo(Connection conexao,long id,long contatoId) throws SQLException;
+    void atualizarApelido(Connection c,long id,String nome) throws SQLException;
     void atualizarSenha(Connection conexao, long id, String senha) throws SQLException;
 }

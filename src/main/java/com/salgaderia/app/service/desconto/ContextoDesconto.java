@@ -18,6 +18,10 @@ public record ContextoDesconto(List<PedidoItem> itens, long pedidosEntregues, Cu
             throw new IllegalArgumentException("Percentual de assinante inválido");
         if(taxaEntrega==null||taxaEntrega.signum()<0)throw new IllegalArgumentException("Taxa de entrega inválida");
     }
+    public List<PedidoItem> itensElegiveis(){return itensElegiveis(itens);}
+    public static List<PedidoItem> itensElegiveis(List<PedidoItem> itens){
+        return itens.stream().filter(i->i.getPersonalizacao()==null||i.getPersonalizacao().tipo().orcamento()==null).toList();
+    }
     public BigDecimal subtotal() {
         return itens.stream().map(PedidoItem::calcularSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
     }

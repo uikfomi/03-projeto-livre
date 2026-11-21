@@ -5,6 +5,10 @@ import java.math.RoundingMode;
 
 public record PlanoAssinatura(Long id, String nome, String descricao, BigDecimal mensalidade,
                               BigDecimal descontoPercentual, boolean ativo) {
+    public static final String NOME_VIP="Clube VIP Ui K'Fomi";
+    public static final BigDecimal DESCONTO_VIP=new BigDecimal("15.00");
+    public static final BigDecimal MENSALIDADE_VIP=new BigDecimal("99.90");
+
     public PlanoAssinatura {
         Validacao.id(id);
         nome = Validacao.texto(nome, "nome do plano");

@@ -39,7 +39,7 @@ class OperacaoV162IntegracaoTest {
         var vendas=VendaTeste.vendas(new MovimentacaoEstoqueDAOImpl(),PixPagamentoService.demonstracao(),fechada);
         String chave=UUID.randomUUID().toString().replace("-","");
         var cliente=new Cliente(null,"Cliente "+chave,null,null,"85999999999","Rua das Flores",null);
-        var usuario=new AutenticacaoServiceImpl().cadastrar("Cliente teste","oper"+chave,"senha-teste",cliente);
+        var usuario=VendaTeste.cadastrar("Cliente teste","oper"+chave,"senha-teste",cliente);
         var produto=new Produto(null,null,"Coxinha "+chave,null,new BigDecimal("5.00"),BigDecimal.ONE,BigDecimal.ZERO,BigDecimal.ZERO,null);
         var admin=new UsuarioAdmin(2L,"Admin","admin","não utilizada",true);
         List<Long> pdvIds=new ArrayList<>();

@@ -23,21 +23,21 @@ Mantenha as responsabilidades desta camada separadas das demais e consulte os ar
 | [ConquistaCliente.java](ConquistaCliente.java) | Representa um selo e a data em que foi desbloqueado. |
 | [Contato.java](Contato.java) | Abstração comum de contatos. |
 | [CupomRoleta.java](CupomRoleta.java) | Projeção de código de resgate com benefício, mínimo e data de expiração. |
-| [FichaVitrine.java](FichaVitrine.java) | Dados confirmados no catálogo: tipo de combo, recheio, ingredientes e preparo assado. |
+| [FichaVitrine.java](FichaVitrine.java) | Preserva campos legados do catálogo e identifica categorias de salgados. |
 | [Fornecedor.java](Fornecedor.java) | Contato especializado em fornecedor. |
 | [MensalidadeClube.java](MensalidadeClube.java) | Cotação imutável de valor e desconto de uma mensalidade pendente. |
 | [MovimentacaoEstoque.java](MovimentacaoEstoque.java) | Registro de entrada ou saída de estoque. |
 | [Pedido.java](Pedido.java) | Mantém itens, total, frete, pagamento, status e liberação da roleta. |
 | [PedidoFila.java](PedidoFila.java) | Projeção de preparo com pagamento, modalidade, itens, entrega e agendamento. |
 | [PedidoItem.java](PedidoItem.java) | Registra produto, quantidade, preço histórico e eventual personalização do item. |
-| [PersonalizacaoItem.java](PersonalizacaoItem.java) | Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes. |
-| [PlanoAssinatura.java](PlanoAssinatura.java) | Valida nome, descrição, preço mensal e percentual do plano. |
+| [PersonalizacaoItem.java](PersonalizacaoItem.java) | Identifica o grupo, a faixa de orçamento e as exclusões da caixa; preserva os tipos antigos. |
+| [PlanoAssinatura.java](PlanoAssinatura.java) | Modela os termos de um plano e define o nome, a mensalidade e o desconto do VIP. |
 | [PremioRoleta.java](PremioRoleta.java) | Define fatias comuns/VIP e registra resultado, prazo e giro extra. |
 | [Produto.java](Produto.java) | Representa preço, custos, saldo físico, disponibilidade de venda e ficha do catálogo. |
 | [README.md](README.md) | Guia de navegação e explicações desta pasta. |
 | [Usuario.java](Usuario.java) | Abstração de usuário e permissões. |
 | [UsuarioAdmin.java](UsuarioAdmin.java) | Usuário administrativo. |
-| [UsuarioCliente.java](UsuarioCliente.java) | Usuário vinculado a um cliente. |
+| [UsuarioCliente.java](UsuarioCliente.java) | Representa a conta de cliente vinculada ao contato, com e-mail para novos cadastros. |
 | [Validacao.java](Validacao.java) | Validações compartilhadas das entidades. |
 
 ## Árvore estrutural comentada
@@ -74,21 +74,21 @@ src/main/java/com/salgaderia/app/model/  # Agrupa entidades, tipos de domínio e
 ├── ConquistaCliente.java  # Representa um selo e a data em que foi desbloqueado.
 ├── Contato.java  # Abstração comum de contatos.
 ├── CupomRoleta.java  # Projeção de código de resgate com benefício, mínimo e data de expiração.
-├── FichaVitrine.java  # Dados confirmados no catálogo: tipo de combo, recheio, ingredientes e preparo assado.
+├── FichaVitrine.java  # Preserva campos legados do catálogo e identifica categorias de salgados.
 ├── Fornecedor.java  # Contato especializado em fornecedor.
 ├── MensalidadeClube.java  # Cotação imutável de valor e desconto de uma mensalidade pendente.
 ├── MovimentacaoEstoque.java  # Registro de entrada ou saída de estoque.
 ├── Pedido.java  # Mantém itens, total, frete, pagamento, status e liberação da roleta.
 ├── PedidoFila.java  # Projeção de preparo com pagamento, modalidade, itens, entrega e agendamento.
 ├── PedidoItem.java  # Registra produto, quantidade, preço histórico e eventual personalização do item.
-├── PersonalizacaoItem.java  # Identifica grupos de combo ou caixa, tamanho e restrições de ingredientes.
-├── PlanoAssinatura.java  # Valida nome, descrição, preço mensal e percentual do plano.
+├── PersonalizacaoItem.java  # Identifica o grupo, a faixa de orçamento e as exclusões da caixa; preserva os tipos antigos.
+├── PlanoAssinatura.java  # Modela os termos de um plano e define o nome, a mensalidade e o desconto do VIP.
 ├── PremioRoleta.java  # Define fatias comuns/VIP e registra resultado, prazo e giro extra.
 ├── Produto.java  # Representa preço, custos, saldo físico, disponibilidade de venda e ficha do catálogo.
 ├── README.md  # Guia de navegação e explicações desta pasta.
 ├── Usuario.java  # Abstração de usuário e permissões.
 ├── UsuarioAdmin.java  # Usuário administrativo.
-├── UsuarioCliente.java  # Usuário vinculado a um cliente.
+├── UsuarioCliente.java  # Representa a conta de cliente vinculada ao contato, com e-mail para novos cadastros.
 └── Validacao.java  # Validações compartilhadas das entidades.
 ```
 

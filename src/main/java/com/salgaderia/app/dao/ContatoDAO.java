@@ -9,6 +9,7 @@ import java.util.Optional;
 /** O chamador é responsável pelo ciclo de vida e pelas transações da conexão. */
 public interface ContatoDAO {
     long inserir(Connection conexao, Contato contato) throws SQLException;
+    void atualizarPerfilCliente(Connection c,long id,String nome,String whatsapp,String endereco) throws SQLException;
     boolean atualizar(Connection conexao, Contato contato) throws SQLException;
     boolean excluir(Connection conexao, long id) throws SQLException;
     Optional<Contato> buscarPorId(Connection conexao, long id) throws SQLException;

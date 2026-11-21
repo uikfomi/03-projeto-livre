@@ -10,7 +10,6 @@ public interface ClubeService {
 
     Vitrine vitrine(UsuarioCliente cliente);
     Painel painel(UsuarioAdmin admin);
-    void salvarPlano(UsuarioAdmin admin,PlanoAssinatura plano);
     void solicitar(UsuarioCliente cliente,long planoId);
     void cancelar(UsuarioCliente cliente);
     void confirmar(UsuarioAdmin admin,long usuarioId,long mensalidadeId);

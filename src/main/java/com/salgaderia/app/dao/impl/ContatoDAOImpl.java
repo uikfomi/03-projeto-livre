@@ -24,6 +24,11 @@ public class ContatoDAOImpl implements ContatoDAO {
             }
         }
     }
+    @Override public void atualizarPerfilCliente(Connection c,long id,String nome,String whatsapp,String endereco) throws SQLException {
+        try(var ps=c.prepareStatement("UPDATE contatos SET nome=?,whatsapp=?,endereco=? WHERE id=? AND tipo='CLIENTE'")){
+            ps.setString(1,nome);ps.setString(2,whatsapp);ps.setString(3,endereco);ps.setLong(4,id);ps.executeUpdate();
+        }
+    }
     @Override public boolean atualizar(Connection conexao, Contato contato) throws SQLException {
         if (contato.getId() == null) throw new IllegalArgumentException("ID obrigatório");
         String sql = "UPDATE contatos SET tipo=?,nome=?,telefone=?,observacoes=?,whatsapp=?,endereco=?,ponto_referencia=?,nome_empresa=?,documento=?,categoria_insumo=?,prazo_entrega_dias=? WHERE id=? AND tipo=?";

@@ -29,6 +29,11 @@ class TelasJavaFXTest {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login.fxml"));
             Parent login = loader.load();
             assertNotNull(login);
+            var abas=(javafx.scene.control.TabPane)loader.getNamespace().get("abas");
+            var cadastro=(javafx.scene.layout.VBox)abas.getTabs().get(1).getContent();
+            assertEquals(2,cadastro.getChildren().stream().filter(javafx.scene.control.TextInputControl.class::isInstance).count());
+            assertInstanceOf(TextField.class,loader.getNamespace().get("cadastroEmail"));
+            assertInstanceOf(PasswordField.class,loader.getNamespace().get("cadastroSenha"));
             PasswordField senha = (PasswordField) loader.getNamespace().get("senha");
             TextField visivel = (TextField) loader.getNamespace().get("senhaVisivel");
             CheckBox mostrar = (CheckBox) loader.getNamespace().get("mostrarSenha");

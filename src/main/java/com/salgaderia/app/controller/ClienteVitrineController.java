@@ -3,8 +3,6 @@ package com.salgaderia.app.controller;
 import com.salgaderia.app.exception.AvaliacaoNaoPermitidaException;
 import com.salgaderia.app.exception.ProdutoIndisponivelException;
 import com.salgaderia.app.model.*;
-import com.salgaderia.app.model.FichaVitrine.TipoCombo;
-import com.salgaderia.app.model.PersonalizacaoItem.Restricao;
 import com.salgaderia.app.model.PersonalizacaoItem.Tipo;
 import com.salgaderia.app.model.enums.StatusPedido;
 import com.salgaderia.app.model.enums.TipoEntrega;
@@ -13,7 +11,9 @@ import com.salgaderia.app.model.enums.StatusPagamento;
 import com.salgaderia.app.service.*;
 import com.salgaderia.app.service.impl.*;
 import com.salgaderia.app.service.desconto.ResultadoDesconto;
-import com.salgaderia.app.service.desconto.DescontoCaixaMisteriosa;
+import com.salgaderia.app.service.desconto.DescontoCombo;
+import com.salgaderia.app.service.desconto.ContextoDesconto;
+import com.salgaderia.app.service.impl.AutenticacaoServiceImpl;
 import com.salgaderia.app.service.cozinha.EtapaCozinha;
 import com.salgaderia.app.service.pix.PixPagamentoService;
 import com.salgaderia.app.util.Navegacao;
@@ -75,6 +75,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     private final PedidoVendaService pedidosService;
     private final AvaliacaoService avaliacoesService;
     private final ClubeService clube;
+    private final AutenticacaoService autenticacao=new AutenticacaoServiceImpl();
     private final GamificacaoService gamificacao;
     private final PixPagamentoService pagamentosPix;
     private final OperacaoLojaService operacao = new OperacaoLojaService();
@@ -224,7 +225,7 @@ public class ClienteVitrineController implements TelaAutenticada {
     @FXML private void mostrarClube(){
         if(usuario==null)return;
         atualizacaoPedidos.stop();geracaoPedidos++;mostrarPainel(painelClube);
-        long geracao=++geracaoClube;conteudoClube.getChildren().setAll(textoClube("Carregando Clube da Fome…"));
+        long geracao=++geracaoClube;conteudoClube.getChildren().setAll(textoClube("Carregando Clube VIP…"));
         UsuarioCliente cliente=usuario;
         Task<DadosClube> tarefa=new Task<>(){@Override protected DadosClube call(){return new DadosClube(clube.vitrine(cliente),gamificacao.perfil(cliente));}};
         tarefa.setOnSucceeded(e->{if(geracao==geracaoClube&&painelClube.isVisible()){montarClube(tarefa.getValue());simularDesconto();}});
@@ -238,10 +239,10 @@ public class ClienteVitrineController implements TelaAutenticada {
         boolean ativa=assinatura!=null&&assinatura.ativa(visao.hoje());
         String status;
         if(ativa)status="Ativa · "+assinatura.plano()+" · "+percentual(assinatura.descontoVigente())+
-                " de desconto no checkout · válida até "+assinatura.validaAte().minusDays(1).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                " OFF nos itens elegíveis + frete grátis · válida até "+assinatura.validaAte().minusDays(1).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         else if(pendencia!=null)status="Aguardando confirmação do pagamento.";
         else if(assinatura==null)status="Você ainda não tem assinatura.";
-        else status=assinatura.cancelada()?"Assinatura cancelada.":"Assinatura vencida. Escolha um plano para reativar.";
+        else status=assinatura.cancelada()?"Assinatura cancelada.":"Assinatura vencida. Solicite a renovação para reativar.";
         Label estado=textoClube(status);estado.setId("clube-status");
         conteudoClube.getChildren().setAll(estado,textoClube("Vigência mensal. Não há débito automático: solicite a mensalidade e aguarde a confirmação da loja."));
         if(pendencia!=null){
@@ -259,13 +260,13 @@ public class ClienteVitrineController implements TelaAutenticada {
             conteudoClube.getChildren().add(cancelar);
         }
         if(ativa&&!assinatura.renovavel(visao.hoje()))conteudoClube.getChildren().add(textoClube("A renovação fica disponível nos sete dias anteriores ao vencimento."));
-        conteudoClube.getChildren().add(new Label("Planos disponíveis"));
-        if(visao.planos().isEmpty())conteudoClube.getChildren().add(textoClube("Nenhum plano disponível no momento."));
+        conteudoClube.getChildren().add(new Label("Plano único pré-pago"));
+        if(visao.planos().isEmpty())conteudoClube.getChildren().add(textoClube("Plano VIP indisponível no momento."));
         for(PlanoAssinatura plano:visao.planos()){
             Button assinar=new Button(ativa?"Solicitar renovação":"Assinar");
             assinar.setDisable(pendencia!=null||(ativa&&(assinatura.planoId()!=plano.id()||!assinatura.renovavel(visao.hoje()))));
             assinar.setOnAction(e->operarClube(()->clube.solicitar(usuario,plano.id())));
-            VBox cartao=new VBox(6,textoClube(plano.nome()+" · "+moeda(plano.mensalidade())+"/mês · "+percentual(plano.descontoPercentual())+" de desconto"),
+            VBox cartao=new VBox(6,textoClube(plano.nome()+" · "+moeda(plano.mensalidade())+"/mês · "+percentual(plano.descontoPercentual())+" OFF + Frete Grátis"),
                     textoClube(plano.descricao()),assinar);cartao.getStyleClass().add("pedido-card");conteudoClube.getChildren().add(cartao);
         }
         GamificacaoService.Perfil perfil=dados.gamificacao();
@@ -296,7 +297,7 @@ public class ClienteVitrineController implements TelaAutenticada {
         if(proximo.isEmpty()){ocultar(cupomUrgente);return;}
         CupomRoleta premio=proximo.get();
         long segundos=Math.max(1,java.time.Duration.between(agora,premio.validoAte()).toSeconds()+1);
-        exibir(cupomUrgente,String.format(BR,"⏳ %s expira em %dh %02dmin %02ds · veja em Clube da Fome",
+        exibir(cupomUrgente,String.format(BR,"⏳ %s expira em %dh %02dmin %02ds · veja em Clube VIP",
                 premio.descricao(),segundos/3600,(segundos/60)%60,segundos%60));
     }
     private void operarClube(Runnable operacao){
@@ -395,80 +396,96 @@ public class ClienteVitrineController implements TelaAutenticada {
 
     @FXML private void montarCombo(){
         List<Produto> disponiveis=produtosDisponiveis();
-        List<Produto> variantes=disponiveis.stream().filter(p->p.getFichaVitrine().recheio()!=null).toList();
-        if(variantes.isEmpty()){
-            avisar(Alert.AlertType.INFORMATION,"Monte seu Combo","Não há massas e recheios disponíveis para combo no momento.");return;
+        List<Produto> bebidas=disponiveis.stream().filter(PersonalizacaoService::bebida).toList();
+        List<Produto> comidas=disponiveis.stream().filter(p->!PersonalizacaoService.bebida(p)).toList();
+        if(bebidas.isEmpty()||comidas.size()<2){
+            avisar(Alert.AlertType.INFORMATION,"Monte seu Combo","O cardápio precisa de dois produtos diferentes e uma bebida disponíveis.");return;
         }
         ButtonType adicionar=new ButtonType("Adicionar ao carrinho",ButtonBar.ButtonData.OK_DONE);
         Dialog<ButtonType> dialog=personalizar("Monte seu Combo",adicionar);
-        ComboBox<TipoCombo> massa=new ComboBox<>();massa.setId("combo-massa");
-        massa.getItems().setAll(variantes.stream().map(p->p.getFichaVitrine().tipo()).distinct().sorted().toList());
-        massa.setPromptText("Escolha a massa");
-        ComboBox<Produto> recheio=new ComboBox<>();recheio.setId("combo-recheio");recheio.setPromptText("Escolha o recheio");
-        recheio.setConverter(rotulos(p->p.getFichaVitrine().recheio()+" — "+p.getNome()));
-        ComboBox<Optional<Produto>> acompanhamento=new ComboBox<>();acompanhamento.setId("combo-acompanhamento");
-        Optional<Produto> sem=Optional.empty();
-        acompanhamento.getItems().add(sem);
-        disponiveis.stream().filter(p->p.getFichaVitrine().tipo()==TipoCombo.ACOMPANHAMENTO)
-                .map(Optional::of).forEach(acompanhamento.getItems()::add);
-        acompanhamento.setConverter(rotulos(p->p.map(Produto::getNome).orElse("Sem acompanhamento")));
-        acompanhamento.setValue(sem);
-        Label previa=new Label("Escolha a massa e o recheio para ver o preço.");previa.setId("combo-previa");previa.setWrapText(true);
+        ComboBox<Produto> principal=seletorCombo("combo-principal",comidas);
+        ComboBox<Produto> acompanhamento=seletorCombo("combo-acompanhamento",comidas);
+        ComboBox<Produto> bebida=seletorCombo("combo-bebida",bebidas);
+        Label previa=new Label("Escolha um principal, um acompanhamento diferente e uma bebida.");
+        previa.setId("combo-previa");previa.setWrapText(true);
         Node botao=dialog.getDialogPane().lookupButton(adicionar);botao.setDisable(true);
-        java.util.function.Supplier<List<PedidoItem>> montar=()->new ComboBuilder().massa(massa.getValue()).recheio(recheio.getValue())
-                .acompanhamento(acompanhamento.getValue().orElse(null)).montar();
+        java.util.function.Supplier<List<PedidoItem>> montar=()->new ComboBuilder().principal(principal.getValue())
+                .acompanhamento(acompanhamento.getValue()).bebida(bebida.getValue()).montar();
         Runnable atualizar=()->{
-            boolean completo=massa.getValue()!=null&&recheio.getValue()!=null&&recheio.getValue().getFichaVitrine().tipo()==massa.getValue();
-            botao.setDisable(!completo);
-            if(!completo){previa.setText("Escolha a massa e o recheio para ver o preço.");return;}
-            var itens=montar.get();
-            previa.setText(itens.get(0).getObservacaoPersonalizada()+"\n"+moeda(subtotal(itens)));
+            try{
+                var itens=montar.get();
+                previa.setText(itens.get(0).getObservacaoPersonalizada()+"\n"+moeda(precoEstimado(itens))+" · 10% OFF no combo");
+                botao.setDisable(false);
+            }catch(IllegalArgumentException erro){previa.setText(erro.getMessage());botao.setDisable(true);}
         };
-        massa.valueProperty().addListener((o,a,n)->{
-            recheio.setValue(null);
-            recheio.getItems().setAll(variantes.stream().filter(p->p.getFichaVitrine().tipo()==n).toList());
-            atualizar.run();
-        });
-        recheio.valueProperty().addListener((o,a,n)->atualizar.run());
-        acompanhamento.valueProperty().addListener((o,a,n)->atualizar.run());
-        dialog.getDialogPane().setContent(new VBox(10,new Label("Base / massa"),massa,new Label("Recheio"),recheio,
-                new Label("Molho ou acompanhamento"),acompanhamento,previa));
-        if(dialog.showAndWait().orElse(ButtonType.CANCEL)==adicionar)adicionarPersonalizado(montar.get());
+        for(ComboBox<Produto> seletor:List.of(principal,acompanhamento,bebida))seletor.valueProperty().addListener((o,a,n)->atualizar.run());
+        dialog.getDialogPane().setContent(new VBox(10,new Label("Principal"),principal,new Label("Acompanhamento"),acompanhamento,
+                new Label("Bebida"),bebida,previa,textoClube("Ao finalizar, vale o melhor desconto não cumulativo.")));
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)==adicionar){
+            try{adicionarPersonalizado(montar.get());}
+            catch(IllegalArgumentException erro){avisar(Alert.AlertType.WARNING,"Combo indisponível",erro.getMessage());}
+        }
+    }
+    private ComboBox<Produto> seletorCombo(String id,List<Produto> opcoes){
+        ComboBox<Produto> seletor=new ComboBox<>();seletor.setId(id);seletor.getItems().setAll(opcoes);
+        seletor.setConverter(rotulos(p->p.getNome()+" · "+moeda(p.getPrecoVenda())));return seletor;
     }
 
     @FXML private void caixaMisteriosa(){
-        if(produtosDisponiveis().isEmpty()){
+        List<Produto> catalogo=produtosDisponiveis();
+        if(catalogo.isEmpty()){
             avisar(Alert.AlertType.INFORMATION,"Caixa Misteriosa","Não há produtos disponíveis para o sorteio no momento.");return;
         }
-        ButtonType sortear=new ButtonType("Sortear e ver preço",ButtonBar.ButtonData.OK_DONE);
+        ButtonType sortear=new ButtonType("Sortear caixa",ButtonBar.ButtonData.OK_DONE);
         Dialog<ButtonType> dialog=personalizar("Caixa Misteriosa Ui K'Fomi",sortear);
-        ComboBox<Tipo> tamanho=new ComboBox<>();tamanho.setId("caixa-tamanho");
-        tamanho.getItems().setAll(Tipo.FOME_LEVE,Tipo.FOME_DE_LEAO);tamanho.setValue(Tipo.FOME_LEVE);
-        Map<Restricao,CheckBox> filtros=new EnumMap<>(Restricao.class);
-        for(Restricao r:Restricao.values())filtros.put(r,new CheckBox(r.toString()));
-        Label aviso=new Label("15% de desconto, não cumulativo. As restrições consideram os ingredientes cadastrados; não há garantia contra contato cruzado.");
-        aviso.setWrapText(true);aviso.setMaxWidth(380);
-        Label erro=new Label();erro.setWrapText(true);erro.setMaxWidth(380);
-        VBox opcoes=new VBox(10,aviso,new Label("Tamanho da caixa"),tamanho,new Label("Restrições alimentares"));
-        opcoes.getChildren().addAll(filtros.values());opcoes.getChildren().add(erro);
-        dialog.getDialogPane().setContent(opcoes);
-        List<PedidoItem> sorteados=new ArrayList<>();
-        dialog.getDialogPane().lookupButton(sortear).addEventFilter(javafx.event.ActionEvent.ACTION,evento->{
-            Set<Restricao> restricoes=EnumSet.noneOf(Restricao.class);
-            filtros.forEach((r,caixa)->{if(caixa.isSelected())restricoes.add(r);});
-            try {
-                sorteados.addAll(personalizacoes.sortearCaixa(tamanho.getValue(),restricoes,produtos));
-            }catch(IllegalArgumentException falha){erro.setText(falha.getMessage());evento.consume();}
-        });
+        ComboBox<Tipo> orcamento=new ComboBox<>();orcamento.setId("caixa-orcamento");
+        orcamento.getItems().setAll(Tipo.CAIXA_25,Tipo.CAIXA_40,Tipo.CAIXA_60);orcamento.setValue(Tipo.CAIXA_25);
+        Map<Long,CheckBox> categoriasExcluidas=new LinkedHashMap<>(), produtosExcluidos=new LinkedHashMap<>();
+        VBox categoriasBox=new VBox(5), produtosBox=new VBox(5);
+        for(Produto produto:catalogo){
+            Categoria categoria=produto.getCategoria();
+            if(categoria!=null&&categoria.getId()!=null&&!categoriasExcluidas.containsKey(categoria.getId())){
+                CheckBox excluir=new CheckBox(categoria.getNome());excluir.setId("excluir-categoria-"+categoria.getId());
+                categoriasExcluidas.put(categoria.getId(),excluir);categoriasBox.getChildren().add(excluir);
+            }
+            CheckBox excluir=new CheckBox(produto.getNome());excluir.setId("excluir-produto-"+produto.getId());
+            produtosExcluidos.put(produto.getId(),excluir);produtosBox.getChildren().add(excluir);
+        }
+        if(categoriasExcluidas.isEmpty())categoriasBox.getChildren().add(textoClube("Nenhuma categoria disponível para excluir."));
+        var filtros=new ScrollPane(new VBox(10,new Label("Excluir categorias (opcional)"),categoriasBox,new Separator(),
+                new Label("Excluir itens (opcional)"),produtosBox));
+        filtros.setFitToWidth(true);filtros.setPrefViewportHeight(200);
+        Label aviso=textoClube("Preço fechado, com até 15% a mais em produtos. Excluir itens não garante ausência de ingredientes ou contato cruzado.");
+        aviso.setMaxWidth(380);
+        dialog.getDialogPane().setContent(new VBox(10,aviso,new Label("Orçamento da caixa"),orcamento,filtros));
         if(dialog.showAndWait().orElse(ButtonType.CANCEL)!=sortear)return;
-        ButtonType adicionar=new ButtonType("Adicionar ao carrinho",ButtonBar.ButtonData.OK_DONE);
-        Dialog<ButtonType> confirmar=personalizar("Confirme sua Caixa Misteriosa",adicionar);
-        Label previa=new Label(sorteados.get(0).getObservacaoPersonalizada()+"\n"+moeda(subtotal(sorteados)
-                .subtract(DescontoCaixaMisteriosa.calcularCaixas(sorteados)))+" com 15% de desconto.");
-        previa.setWrapText(true);previa.setMaxWidth(380);
-        confirmar.getDialogPane().setContent(previa);
-        if(confirmar.showAndWait().orElse(ButtonType.CANCEL)==adicionar)adicionarPersonalizado(sorteados);
+        Tipo tipo=orcamento.getValue();var categorias=marcados(categoriasExcluidas);var produtos=marcados(produtosExcluidos);
+        raiz.setDisable(true);
+        Task<List<PedidoItem>> tarefa=new Task<>(){
+            @Override protected List<PedidoItem> call(){return personalizacoes.sortearCaixa(tipo,catalogo,categorias,produtos);}
+        };
+        tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();
+            avisar(Alert.AlertType.INFORMATION,"Caixa não disponível",erro instanceof IllegalArgumentException?erro.getMessage():"Não foi possível sortear. Tente novamente.");});
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);var itens=tarefa.getValue();
+            ButtonType adicionar=new ButtonType("Adicionar ao carrinho",ButtonBar.ButtonData.OK_DONE);
+            Dialog<ButtonType> confirmar=personalizar("Confirme sua Caixa Misteriosa",adicionar);
+            confirmar.getDialogPane().setContent(textoClube("Preço fechado: "+moeda(tipo.orcamento())+
+                    "\nValor de catálogo: "+moeda(subtotal(itens))+"\nO conteúdo é revelado após a entrega do pedido."));
+            if(confirmar.showAndWait().orElse(ButtonType.CANCEL)==adicionar)adicionarPersonalizado(itens);
+        });
+        iniciar(tarefa);
     }
+    private static Set<Long> marcados(Map<Long,CheckBox> opcoes){
+        Set<Long> ids=new HashSet<>();opcoes.forEach((id,opcao)->{if(opcao.isSelected())ids.add(id);});return ids;
+    }
+    private static BigDecimal precoEstimado(List<PedidoItem> itens){
+        var grupo=itens.get(0).getPersonalizacao();
+        BigDecimal bruto=subtotal(itens);
+        if(grupo==null)return bruto;
+        if(grupo.tipo().orcamento()!=null)return grupo.tipo().orcamento();
+        return bruto.subtract(new DescontoCombo().calcular(new ContextoDesconto(itens,0,null)));
+    }
+
     private List<Produto> produtosDisponiveis(){
         return produtos.stream().filter(Produto::isDisponivelVenda).toList();
     }
@@ -495,10 +512,10 @@ public class ClienteVitrineController implements TelaAutenticada {
             List<PedidoItem> itens=entrada.getValue();
             PedidoItem primeiro=itens.get(0);Produto p=primeiro.getProduto();
             boolean personalizado=primeiro.getPersonalizacao()!=null;
-            BigDecimal bruto=subtotal(itens), desconto=DescontoCaixaMisteriosa.calcularCaixas(itens);
-            qtd+=personalizado?1:primeiro.getQuantidade().intValueExact();soma=soma.add(bruto);
+            BigDecimal preco=precoEstimado(itens);
+            qtd+=personalizado?1:primeiro.getQuantidade().intValueExact();soma=soma.add(preco);
             Label nome=new Label(personalizado?primeiro.getObservacaoPersonalizada():p.getNome());nome.setWrapText(true);nome.getStyleClass().add("carrinho-nome");
-            Label subtotal=new Label(moeda(bruto.subtract(desconto))+(desconto.signum()>0?" · −15%":""));subtotal.getStyleClass().add("subtitle");
+            Label subtotal=new Label(moeda(preco));subtotal.getStyleClass().add("subtitle");
             VBox detalhes=new VBox(4,nome,subtotal);HBox.setHgrow(detalhes,Priority.ALWAYS);
             HBox linha=new HBox(7,detalhes);
             if(personalizado){
@@ -512,7 +529,7 @@ public class ClienteVitrineController implements TelaAutenticada {
             linha.setAlignment(Pos.CENTER_LEFT);linha.getStyleClass().add("carrinho-item");itensCarrinho.getChildren().add(linha);
         }
         if(carrinho.isEmpty()){Label vazio=new Label("Seu carrinho está vazio. Escolha seus salgados favoritos.");vazio.setWrapText(true);vazio.getStyleClass().add("subtitle");itensCarrinho.getChildren().add(vazio);}
-        total.setText(moeda(soma.subtract(DescontoCaixaMisteriosa.calcularCaixas(itensDoCarrinho()))));contador.setText(qtd+ (qtd==1?" item":" itens"));
+        total.setText(moeda(soma));contador.setText(qtd+ (qtd==1?" item":" itens"));
         simularDesconto();
     }
     private static BigDecimal subtotal(List<PedidoItem> itens){
@@ -533,7 +550,8 @@ public class ClienteVitrineController implements TelaAutenticada {
         Pedido pedido=pedidoAtual();String codigo=cupom.getText();
         Task<ResultadoDesconto> tarefa=new Task<>(){@Override protected ResultadoDesconto call(){return pedidosService.simular(pedido,codigo);}};
         tarefa.setOnSucceeded(e->{if(geracao!=geracaoDesconto)return;descontoAtual=tarefa.getValue();total.setText(moeda(descontoAtual.total()));
-            if(descontoAtual.taxaEntrega().signum()>0)exibir(mensagemFrete,"Taxa de entrega: "+moeda(descontoAtual.taxaEntrega()));
+            if(descontoAtual.freteGratisVip())exibir(mensagemFrete,"Frete grátis · Clube VIP");
+            else if(descontoAtual.taxaEntrega().signum()>0)exibir(mensagemFrete,"Taxa de entrega: "+moeda(descontoAtual.taxaEntrega()));
             mensagemDesconto.setText(descontoAtual.brinde()!=null?"Brinde: "+descontoAtual.brinde():
                     "PONTOS_DOBRO".equals(descontoAtual.estrategia())?"Prêmio aplicado: pontos em dobro":
                     "Desconto: "+moeda(descontoAtual.desconto())+" ("+descontoAtual.estrategia()+")");
@@ -552,17 +570,37 @@ public class ClienteVitrineController implements TelaAutenticada {
                 new PixPayloadService(null,null,null).gerarPayload(valor,null),"Prévia PIX "+moeda(valor)+" · demonstração, não pague.");
         else pixCheckout.exibirCodigo(null,valor==null?"O código PIX aparece quando o total estiver disponível.":"Nenhum valor a pagar por PIX.");
     }
+    @FXML private void meuPerfil(){
+        UsuarioCliente atual=usuario;if(atual==null)return;
+        ButtonType salvar=new ButtonType("Salvar",ButtonBar.ButtonData.OK_DONE);
+        Dialog<ButtonType> dialog=personalizar("Meu perfil",salvar);
+        TextField apelido=new TextField(atual.getNome());apelido.setId("perfil-apelido");
+        TextField whatsapp=new TextField(atual.getCliente().getWhatsapp());whatsapp.setId("perfil-whatsapp");
+        TextField rua=new TextField(atual.getCliente().getEndereco());rua.setId("perfil-endereco");
+        dialog.getDialogPane().setContent(new VBox(8,textoClube(atual.getEmail()==null?"Login: "+atual.getLogin():"E-mail: "+atual.getEmail()),
+                new Label("Apelido (opcional)"),apelido,new Label("WhatsApp (opcional)"),whatsapp,new Label("Endereço para entrega"),rua));
+        if(dialog.showAndWait().orElse(ButtonType.CANCEL)!=salvar)return;
+        String nome=apelido.getText(), telefone=whatsapp.getText(), localEntrega=rua.getText();
+        raiz.setDisable(true);
+        Task<UsuarioCliente> tarefa=new Task<>(){
+            @Override protected UsuarioCliente call(){return autenticacao.atualizarPerfil(atual,nome,telefone,localEntrega);}
+        };
+        tarefa.setOnSucceeded(e->{raiz.setDisable(false);usuario=tarefa.getValue();saudacao.setText("Olá, "+usuario.getNome()+"!");atualizarEndereco();simularDesconto();});
+        tarefa.setOnFailed(e->{raiz.setDisable(false);Throwable erro=tarefa.getException();
+            avisar(Alert.AlertType.WARNING,"Perfil não salvo",erro instanceof IllegalArgumentException?erro.getMessage():"Verifique a conexão e tente novamente.");});
+        iniciar(tarefa);
+    }
     private void atualizarEndereco(){
         if(usuario==null)return;
         String valor=usuario.getCliente().getEndereco();
-        endereco.setText(entrega.isSelected()?(valor==null||valor.isBlank()?"Nenhum endereço cadastrado. Cadastre um endereço antes de pedir entrega.":valor):local.isSelected()?"Consuma seu pedido no local.":"Retire seu pedido no balcão.");
+        endereco.setText(entrega.isSelected()?(valor==null||valor.isBlank()?"Nenhum endereço cadastrado. Informe seu endereço em Meu perfil.":valor):local.isSelected()?"Consuma seu pedido no local.":"Retire seu pedido no balcão.");
     }
     private TipoEntrega modalidade(){return entrega.isSelected()?TipoEntrega.ENTREGA:local.isSelected()?TipoEntrega.LOCAL:TipoEntrega.RETIRADA;}
     @FXML private void finalizar(){
         if(carrinho.isEmpty()||usuario==null||descontoAtual==null||formaPagamento.getValue()==null)return;
         TipoEntrega tipo=modalidade();
         String enderecoEntrega=tipo==TipoEntrega.ENTREGA?usuario.getCliente().getEndereco():null;
-        if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())){avisar(Alert.AlertType.WARNING,"Endereço necessário","Seu cadastro não possui endereço. Escolha retirada ou atualize seu endereço antes de pedir entrega.");return;}
+        if(tipo==TipoEntrega.ENTREGA&&(enderecoEntrega==null||enderecoEntrega.isBlank())){avisar(Alert.AlertType.WARNING,"Endereço necessário","Seu cadastro não possui endereço. Escolha retirada ou informe o endereço em Meu perfil.");return;}
         Pedido pedido=new Pedido(null,usuario,usuario.getCliente(),StatusPedido.PENDENTE,tipo,enderecoEntrega,LocalDateTime.now(),itensDoCarrinho());
         pedido.setFormaPagamento(formaPagamento.getValue());
         if(pedido.getFormaPagamento()==FormaPagamento.PIX&&pagamentosPix.usaMercadoPago())

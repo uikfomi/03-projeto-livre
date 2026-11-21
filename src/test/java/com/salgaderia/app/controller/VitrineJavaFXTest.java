@@ -1,7 +1,6 @@
 package com.salgaderia.app.controller;
 
 import com.salgaderia.app.model.*;
-import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.service.*;
 import javafx.application.Platform;
@@ -215,9 +214,8 @@ class VitrineJavaFXTest {
     }
     @Test void comboRecalculaPrecoCaixaEscondeSorteioEGaleriaExibeFoto(@TempDir Path pasta) throws Exception {
         Produto empada=new Produto(1L,null,"Empada especial",null,new BigDecimal("8.00"),BigDecimal.ONE,new BigDecimal("12"),BigDecimal.ONE,null);
-        empada.setFichaVitrine(new FichaVitrine(TipoCombo.EMPADA,"Carne de Sol",false,false,true));
         Produto molho=new Produto(2L,null,"Molho da casa",null,new BigDecimal("2.00"),BigDecimal.ONE,BigDecimal.TEN,BigDecimal.ONE,null);
-        molho.setFichaVitrine(new FichaVitrine(TipoCombo.ACOMPANHAMENTO,null,null,null,false));
+        Produto suco=new Produto(3L,new Categoria(12L,"Bebidas",null),"Suco",null,new BigDecimal("5.00"),BigDecimal.ONE,BigDecimal.ZERO,BigDecimal.ZERO,null);
         Path original=pasta.resolve("foto.png");
         assertTrue(ImageIO.write(new BufferedImage(20,20,BufferedImage.TYPE_INT_RGB),"png",original.toFile()));
         var storage=new FotoAvaliacaoStorage();
@@ -229,7 +227,7 @@ class VitrineJavaFXTest {
         try {
             fx(()->{
                 FXMLLoader l=new FXMLLoader(getClass().getResource("/fxml/cliente-vitrine.fxml"));
-                l.setControllerFactory(c->vitrineTeste(new ProdutosTeste(List.of(empada,molho)),new PedidosTeste(List.of()),avaliacoes));
+                l.setControllerFactory(c->vitrineTeste(new ProdutosTeste(List.of(empada,molho,suco)),new PedidosTeste(List.of()),avaliacoes));
                 Stage s=new Stage();s.setScene(new Scene(l.load(),1100,800));s.show();stage.set(s);loader.set(l);
                 Cliente cliente=new Cliente(10L,"Ana",null,null,null,null,null);
                 ((ClienteVitrineController)l.getController()).definirUsuario(new UsuarioCliente(20L,"Ana","ana","senha",true,cliente));return null;
@@ -239,22 +237,29 @@ class VitrineJavaFXTest {
             aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.lookup("#combo-previa")!=null).orElse(false)));
             fx(()->{
                 DialogPane p=dialogoAberto(stage.get()).orElseThrow();
-                selecionar(p,"#combo-massa",0);selecionar(p,"#combo-recheio",0);selecionar(p,"#combo-acompanhamento",1);
+                selecionar(p,"#combo-principal",0);selecionar(p,"#combo-acompanhamento",1);selecionar(p,"#combo-bebida",0);
                 String previa=((Label)p.lookup("#combo-previa")).getText();
-                assertTrue(previa.contains("10,00")&&previa.contains("Carne de Sol + Molho da casa"));
+                assertTrue(previa.contains("13,50")&&previa.contains("Empada especial + Molho da casa + Suco"));
                 confirmar(p);return null;
             });
-            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("total")).getText().contains("10,00")));
+            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("total")).getText().contains("13,50")));
             fx(()->{Platform.runLater(()->((Button)loader.get().getNamespace().get("caixaMisteriosa")).fire());return null;});
-            aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.lookup("#caixa-tamanho")!=null).orElse(false)));
-            fx(()->{confirmar(dialogoAberto(stage.get()).orElseThrow());return null;});
+            aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.lookup("#caixa-orcamento")!=null).orElse(false)));
+            fx(()->{
+                DialogPane p=dialogoAberto(stage.get()).orElseThrow();
+                ((CheckBox)p.lookup("#excluir-categoria-12")).setSelected(true);
+                ((CheckBox)p.lookup("#excluir-produto-2")).setSelected(true);
+                // Sem o molho ou a bebida, R$ 40,00 é a primeira faixa preenchível apenas com empadas de R$ 8.
+                selecionar(p,"#caixa-orcamento",1);
+                confirmar(p);return null;
+            });
             aguardar(()->fx(()->dialogoAberto(stage.get()).map(p->p.getContent() instanceof Label).orElse(false)));
             fx(()->{
                 DialogPane p=dialogoAberto(stage.get()).orElseThrow();String previa=((Label)p.getContent()).getText();
-                assertTrue(previa.contains("68,00"));assertFalse(previa.contains(empada.getNome()));
+                assertTrue(previa.contains("Preço fechado: R$ 40,00")||previa.contains("Preço fechado: R$ 40,00"));assertFalse(previa.contains(empada.getNome()));
                 confirmar(p);return null;
             });
-            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("total")).getText().contains("78,00")));
+            aguardar(()->fx(()->((Label)loader.get().getNamespace().get("total")).getText().contains("53,50")));
         }finally{
             try{fx(()->{if(stage.get()!=null){dialogoAberto(stage.get()).ifPresent(p->p.getScene().getWindow().hide());stage.get().close();}return null;});}
             finally{storage.excluir(foto);}
@@ -270,10 +275,10 @@ class VitrineJavaFXTest {
         pedido.setRoletaLiberada(true);
         ClubeService clube=new ClubeService(){
             public Vitrine vitrine(UsuarioCliente u){
-                return new Vitrine(List.of(),new AssinaturaCliente(u.getId(),u.getNome(),1,"Fome Semanal",LocalDate.now().plusDays(10),new BigDecimal("5"),false),null,LocalDate.now());
+                return new Vitrine(List.of(new PlanoAssinatura(1L,PlanoAssinatura.NOME_VIP,"Plano pré-pago",PlanoAssinatura.MENSALIDADE_VIP,PlanoAssinatura.DESCONTO_VIP,true)),
+                        new AssinaturaCliente(u.getId(),u.getNome(),1,PlanoAssinatura.NOME_VIP,LocalDate.now().plusDays(10),PlanoAssinatura.DESCONTO_VIP,false),null,LocalDate.now());
             }
             public Painel painel(UsuarioAdmin u){throw new UnsupportedOperationException();}
-            public void salvarPlano(UsuarioAdmin u,PlanoAssinatura p){throw new UnsupportedOperationException();}
             public void solicitar(UsuarioCliente u,long p){throw new UnsupportedOperationException();}
             public void cancelar(UsuarioCliente u){throw new UnsupportedOperationException();}
             public void confirmar(UsuarioAdmin u,long c,long m){throw new UnsupportedOperationException();}

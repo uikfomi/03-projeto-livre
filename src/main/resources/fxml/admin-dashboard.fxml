@@ -14,7 +14,7 @@
             <Button fx:id="menuEstoque" text="Produtos e estoque" maxWidth="Infinity" onAction="#estoque" styleClass="admin-menu" />
             <Button fx:id="menuFinanceiro" text="Financeiro e lucro" maxWidth="Infinity" onAction="#financeiro" styleClass="admin-menu" />
             <Button fx:id="menuModeracao" text="Moderação" maxWidth="Infinity" onAction="#moderacao" styleClass="admin-menu" />
-            <Button fx:id="menuClube" text="Clube da Fome" maxWidth="Infinity" onAction="#clubeDaFome" styleClass="admin-menu" />
+            <Button fx:id="menuClube" text="Clube VIP" maxWidth="Infinity" onAction="#clubeDaFome" styleClass="admin-menu" />
             <Region VBox.vgrow="ALWAYS" />
             <Label fx:id="usuarioNome" styleClass="admin-sidebar-caption" />
             <Button fx:id="menuVoltar" text="Voltar aos módulos" maxWidth="Infinity" onAction="#voltar" styleClass="admin-menu" />

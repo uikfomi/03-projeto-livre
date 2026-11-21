@@ -6,7 +6,6 @@ import com.salgaderia.app.exception.EstoqueInsuficienteException;
 import com.salgaderia.app.exception.ProdutoIndisponivelException;
 import java.time.LocalTime;
 import com.salgaderia.app.model.*;
-import com.salgaderia.app.model.FichaVitrine.TipoCombo;
 import com.salgaderia.app.model.enums.*;
 import com.salgaderia.app.model.comanda.*;
 import com.salgaderia.app.service.*;
@@ -424,42 +423,16 @@ public class AdminDashboardController implements TelaAutenticada {
         Button escolher=botao("Selecionar imagem do computador",()->{FileChooser fc=new FileChooser();fc.setTitle("Selecionar imagem");fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagens","*.png","*.jpg","*.jpeg","*.gif"));File arquivo=fc.showOpenDialog(raiz.getScene().getWindow());if(arquivo!=null)imagem.setText(arquivo.toURI().toString());},"button-secondary");
         ComboBox<Categoria> categoria=new ComboBox<>();categoria.getItems().setAll(categorias);categoria.setPromptText("Categoria (opcional)");categoria.setConverter(new StringConverter<>(){public String toString(Categoria c){return c==null?"Sem categoria":c.getNome();}public Categoria fromString(String s){return null;}});
         if(atual!=null&&atual.getCategoria()!=null)categorias.stream().filter(c->Objects.equals(c.getId(),atual.getCategoria().getId())).findFirst().ifPresent(categoria::setValue);
-        FichaVitrine ficha=atual==null?FichaVitrine.VAZIA:atual.getFichaVitrine();
-        ComboBox<Optional<TipoCombo>> tipoCombo=new ComboBox<>();tipoCombo.getItems().add(Optional.empty());
-        Arrays.stream(TipoCombo.values()).map(Optional::of).forEach(tipoCombo.getItems()::add);
-        tipoCombo.setConverter(new StringConverter<>(){
-            public String toString(Optional<TipoCombo> tipo){return tipo==null?"":tipo.map(TipoCombo::toString).orElse("Não participa do combo");}
-            public Optional<TipoCombo> fromString(String texto){return Optional.empty();}
-        });
-        tipoCombo.setValue(Optional.ofNullable(ficha.tipo()));
-        TextField recheio=campo(ficha.recheio(),"Ex.: Frango c/ Catupiry");recheio.setDisable(!temRecheio(ficha.tipo()));
-        tipoCombo.valueProperty().addListener((o,a,n)->recheio.setDisable(n==null||!temRecheio(n.orElse(null))));
-        ComboBox<PresencaIngrediente> queijo=presenca(ficha.contemQueijo()), calabresa=presenca(ficha.contemCalabresa());
-        CheckBox assado=new CheckBox("Confirmado como assado");assado.setSelected(ficha.assado());
-        VBox campos=new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,new Label("Categoria"),categoria,new Label("Preço de venda"),preco,new Label("Custo de produção"),custo,new Label("Estoque físico (controle interno)"),estoqueInterno,new Label("Estoque mínimo"),minimo,new Label("Imagem"),escolher,new Label("URL ou caminho (opcional)"),imagem,
-                new Separator(),new Label("Ficha de personalização da vitrine"),new Label("Massa ou acompanhamento do combo"),tipoCombo,new Label("Recheio do produto"),recheio,
-                new Label("Contém queijo?"),queijo,new Label("Contém calabresa?"),calabresa,assado);campos.setPadding(new Insets(10));
+        VBox campos=new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,new Label("Categoria"),categoria,new Label("Preço de venda"),preco,new Label("Custo de produção"),custo,new Label("Estoque físico (controle interno)"),estoqueInterno,new Label("Estoque mínimo"),minimo,new Label("Imagem"),escolher,new Label("URL ou caminho (opcional)"),imagem);campos.setPadding(new Insets(10));
         ScrollPane scroll=new ScrollPane(campos);scroll.setFitToWidth(true);scroll.setPrefViewportHeight(470);dialog.getDialogPane().setContent(scroll);
         if(dialog.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
         try{
             Produto p=new Produto(atual==null?null:atual.getId(),categoria.getValue(),nome.getText(),descricao.getText(),decimal(preco.getText()),decimal(custo.getText()),atual==null?BigDecimal.ZERO:atual.getEstoqueAtual(),decimal(minimo.getText()),imagem.getText().isBlank()?null:imagem.getText());
-            p.setFichaVitrine(new FichaVitrine(tipoCombo.getValue().orElse(null),recheio.getText(),queijo.getValue().contem,calabresa.getValue().contem,assado.isSelected()));
+            if(atual!=null)p.setFichaVitrine(atual.getFichaVitrine());
             BigDecimal digitado=decimal(estoqueInterno.getText());
             BigDecimal ajuste=atual==null||digitado.compareTo(atual.getEstoqueAtual())==0?null:digitado;
             executar(()->{if(atual==null)produtos.cadastrar(p);else if(!produtos.atualizar(p,ajuste))throw new IllegalStateException("Produto não encontrado");return null;},x->estoque());
-        }catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Dados inválidos",e instanceof IllegalArgumentException&&e.getMessage()!=null?e.getMessage():"Confira nome, valores, estoque mínimo e a ficha de personalização.");}
-    }
-    private static boolean temRecheio(TipoCombo tipo){return tipo!=null&&tipo!=TipoCombo.ACOMPANHAMENTO;}
-    private enum PresencaIngrediente {
-        NAO_CONFERIDO("Não conferido",null), CONTEM("Contém",true), NAO_CONTEM("Não contém",false);
-        private final String rotulo;private final Boolean contem;
-        PresencaIngrediente(String rotulo,Boolean contem){this.rotulo=rotulo;this.contem=contem;}
-        @Override public String toString(){return rotulo;}
-    }
-    private static ComboBox<PresencaIngrediente> presenca(Boolean valor){
-        ComboBox<PresencaIngrediente> caixa=new ComboBox<>();caixa.getItems().setAll(PresencaIngrediente.values());
-        caixa.setValue(valor==null?PresencaIngrediente.NAO_CONFERIDO:valor?PresencaIngrediente.CONTEM:PresencaIngrediente.NAO_CONTEM);
-        return caixa;
+        }catch(RuntimeException e){avisar(Alert.AlertType.WARNING,"Dados inválidos",e instanceof IllegalArgumentException&&e.getMessage()!=null?e.getMessage():"Confira nome, preços, custo e estoque.");}
     }
     private void entradaLote(Produto produto,List<Contato> contatos){
         if(produto==null)return;List<Fornecedor> fornecedores=contatos.stream().filter(Fornecedor.class::isInstance).map(Fornecedor.class::cast).toList();
@@ -501,24 +474,20 @@ public class AdminDashboardController implements TelaAutenticada {
 
     @FXML private void clubeDaFome(){
         if(!(usuario instanceof UsuarioAdmin admin))return;
-        long versao=iniciarTela("Clube da Fome");
+        long versao=iniciarTela("Clube VIP");
         carregar(versao,()->clube.painel(admin),painel->montarClube(admin,painel));
     }
     private void montarClube(UsuarioAdmin admin,ClubeService.Painel painel){
         TableView<PlanoAssinatura> planos=new TableView<>();planos.setId("clube-planos");planos.setPrefHeight(190);
-        planos.setPlaceholder(estado("Nenhum plano cadastrado."));
+        planos.setPlaceholder(estado("Plano VIP indisponível."));
         coluna(planos,"Plano",PlanoAssinatura::nome,145);coluna(planos,"Descrição",PlanoAssinatura::descricao,265);
         coluna(planos,"Mensalidade",p->moeda(p.mensalidade()),110);coluna(planos,"Desconto",p->percentual(p.descontoPercentual()),100);
         coluna(planos,"Estado",p->p.ativo()?"Disponível":"Desativado",105);planos.getItems().setAll(painel.planos());
-        Button novo=botao("Novo plano",()->formularioPlano(admin,null),"button-primary");
-        Button editar=botao("Editar / ativar ou desativar",()->formularioPlano(admin,planos.getSelectionModel().getSelectedItem()),"button-secondary");
-        editar.disableProperty().bind(planos.getSelectionModel().selectedItemProperty().isNull());
-
         TableView<AssinaturaCliente> ativos=new TableView<>();ativos.setId("clube-ativos");ativos.setPrefHeight(180);
         ativos.setPlaceholder(estado("Nenhum assinante com vigência ativa."));
         DateTimeFormatter data=DateTimeFormatter.ofPattern("dd/MM/yyyy");
         coluna(ativos,"Cliente",AssinaturaCliente::cliente,190);coluna(ativos,"Plano",AssinaturaCliente::plano,150);
-        coluna(ativos,"Benefício",a->percentual(a.descontoVigente()),120);
+        coluna(ativos,"Benefício",a->"Frete grátis + "+percentual(a.descontoVigente()),170);
         coluna(ativos,"Válida até",a->a.validaAte().minusDays(1).format(data),140);
         ativos.getItems().setAll(painel.ativos());
 
@@ -534,26 +503,10 @@ public class AdminDashboardController implements TelaAutenticada {
                 executar(()->{clube.confirmar(admin,m.usuarioId(),m.id());return null;},x->clubeDaFome());
         },"button-primary");
         confirmar.disableProperty().bind(pendentes.getSelectionModel().selectedItemProperty().isNull());
-        conteudo.getChildren().setAll(texto("Planos mensais", "admin-subtitulo"),planos,new HBox(8,novo,editar),
+        conteudo.getChildren().setAll(texto("Plano único pré-pago", "admin-subtitulo"),planos,
                 texto("Assinantes ativos","admin-subtitulo"),ativos,
                 texto("Mensalidades a conferir","admin-subtitulo"),
                 texto("Valide cada recebimento no banco antes de confirmar. Não há cobrança ou confirmação automática.","subtitle"),pendentes,confirmar);
-    }
-    private void formularioPlano(UsuarioAdmin admin,PlanoAssinatura atual){
-        Dialog<ButtonType> dialog=dialog(atual==null?"Novo plano do Clube da Fome":"Editar plano do Clube da Fome");
-        TextField nome=campo(atual==null?"":atual.nome(),"Nome do plano");
-        TextArea descricao=new TextArea(atual==null?"":atual.descricao());descricao.setWrapText(true);descricao.setPrefRowCount(3);
-        TextField valor=campo(atual==null?"":atual.mensalidade().toPlainString(),"Mensalidade em R$");
-        TextField desconto=campo(atual==null?"":atual.descontoPercentual().toPlainString(),"Desconto em %");
-        CheckBox ativo=new CheckBox("Disponível para novas adesões ou renovações");ativo.setSelected(atual==null||atual.ativo());
-        dialog.getDialogPane().setContent(new VBox(8,new Label("Nome"),nome,new Label("Descrição"),descricao,
-                new Label("Mensalidade"),valor,new Label("Desconto no checkout"),desconto,ativo));
-        if(dialog.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
-        try{
-            PlanoAssinatura plano=new PlanoAssinatura(atual==null?null:atual.id(),nome.getText(),descricao.getText(),
-                    decimal(valor.getText()),decimal(desconto.getText()),ativo.isSelected());
-            executar(()->{clube.salvarPlano(admin,plano);return null;},x->clubeDaFome());
-        }catch(IllegalArgumentException e){avisar(Alert.AlertType.WARNING,"Plano inválido",e instanceof NumberFormatException?"Confira a mensalidade e o desconto.":e.getMessage());}
     }
     private static String percentual(BigDecimal valor){return NumberFormat.getNumberInstance(BR).format(valor)+"%";}
 

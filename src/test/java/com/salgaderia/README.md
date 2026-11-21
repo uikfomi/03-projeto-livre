@@ -24,8 +24,8 @@ src/test/java/com/salgaderia/  # Reúne testes automatizados dos componentes pre
 │   │   ├── AdminDashboardJavaFXTest.java  # Testa navegação administrativa, PDV, mesas, Pix e alertas de novos pedidos.
 │   │   ├── AgendaJavaFXTest.java  # Testes JavaFX da agenda.
 │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
-│   │   ├── TelasJavaFXTest.java  # Testes JavaFX de autenticação e navegação.
-│   │   └── VitrineJavaFXTest.java  # Verifica catálogo, checkout, expediente e atualização da entrega na vitrine.
+│   │   ├── TelasJavaFXTest.java  # Verifica cadastro com dois campos e navegação pelo perfil de acesso.
+│   │   └── VitrineJavaFXTest.java  # Verifica vitrine, combo simplificado, exclusões da caixa, Clube VIP e rastreio de entrega.
 │   ├── dao/  # Contratos de acesso a dados ou testes JDBC.
 │   │   └── AgendaJDBCTest.java  # Teste de integração JDBC da agenda.
 │   ├── model/  # Entidades de domínio ou testes dessas entidades.
@@ -38,21 +38,21 @@ src/test/java/com/salgaderia/  # Reúne testes automatizados dos componentes pre
 │   │   ├── pix/  # Testes HTTP em loopback para a integração PIX.
 │   │   │   ├── MercadoPagoPixGatewayTest.java  # Verifica a integração HTTP com um servidor local, sem emitir cobranças.
 │   │   │   └── README.md  # Guia dos testes HTTP locais.
-│   │   ├── ClubeGamificacaoIntegracaoTest.java  # Valida clube, cupons e roleta concorrentes e estados do pagamento PIX no MySQL.
+│   │   ├── ClubeGamificacaoIntegracaoTest.java  # Valida o VIP único, mensalidades antigas, frete, descontos, roleta e PIX no MySQL.
 │   │   ├── ComandaIntegracaoTest.java  # Valida operações de mesa, pagamentos concorrentes, baixa e fechamento no MySQL.
 │   │   ├── CozinhaStateTest.java  # Verifica mensagens e progresso dos estados da cozinha.
 │   │   ├── DescontoIntegracaoTest.java  # Integração de descontos e pagamentos no MySQL.
-│   │   ├── Etapa4IntegracaoTest.java  # Verifica transações de estoque, pedidos, PDV, avaliações com foto e financeiro no MySQL.
+│   │   ├── Etapa4IntegracaoTest.java  # Verifica cadastro por e-mail e transações de estoque, vendas, avaliações e financeiro no MySQL.
 │   │   ├── FotoAvaliacaoStorageTest.java  # Testa a cópia validada, limites, caminhos locais e remoção de anexos.
 │   │   ├── OperacaoLojaServiceTest.java  # Testa os limites do expediente e a combinação dos modos manual e automático.
 │   │   ├── OperacaoV162IntegracaoTest.java  # Valida configuração persistida, agendamento, venda sob demanda, bloqueio e despacho no MySQL.
 │   │   ├── PedidoAgendamentoTest.java  # Verifica rejeição de agendamento passado.
-│   │   ├── PersonalizacaoServiceTest.java  # Testa a composição do combo, sorteio com restrições e desconto não cumulativo.
+│   │   ├── PersonalizacaoServiceTest.java  # Verifica as três faixas da caixa, o teto de custo e a composição do combo.
 │   │   ├── PixPayloadServiceTest.java  # Valida valor, referência e CRC16 e decodifica a imagem QR que foi gerada.
 │   │   ├── README.md  # Guia de navegação e explicações desta pasta.
 │   │   ├── RelatorioCsvTest.java  # Verifica o balanço exportado em CSV.
-│   │   ├── VendaTeste.java  # Fornece relógio fixo e configuração isolada aos testes do fluxo de venda.
-│   │   ├── VitrineV150IntegracaoTest.java  # Verifica combos e caixas, restrições e cancelamento com devolução da baixa real.
+│   │   ├── VendaTeste.java  # Fornece cadastro isolado, relógio fixo e configuração de loja para testes de venda.
+│   │   ├── VitrineV150IntegracaoTest.java  # Valida persistência de exclusões e rechecagem de custos, preços e combos antes da venda.
 │   │   └── WhatsAppLinkServiceTest.java  # Testa links, mensagens e configuração WhatsApp.
 │   └── README.md  # Guia de navegação e explicações desta pasta.
 └── README.md  # Guia de navegação e explicações desta pasta.

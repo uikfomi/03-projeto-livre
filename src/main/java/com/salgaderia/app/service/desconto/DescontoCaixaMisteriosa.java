@@ -6,17 +6,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
-/** Garante o desconto da caixa como candidato não cumulativo, com arredondamento por caixa. */
-public final class DescontoCaixaMisteriosa implements EstrategiaDesconto {
-    @Override public BigDecimal calcular(ContextoDesconto contexto) { return calcularCaixas(contexto.itens()); }
-
-    public static BigDecimal calcularCaixas(List<PedidoItem> itens) {
+/** Ajuste obrigatório que transforma o valor de catálogo de cada caixa em seu preço fechado. */
+public final class DescontoCaixaMisteriosa {
+    private DescontoCaixaMisteriosa(){ }
+    public static BigDecimal calcularCaixas(List<PedidoItem> itens){
         return PersonalizacaoService.grupos(itens).values().stream()
-                .filter(grupo -> grupo.get(0).getPersonalizacao().tipo().caixa())
-                .map(grupo -> grupo.stream().map(PedidoItem::calcularSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add)
-                        .multiply(new BigDecimal("0.15")).setScale(2, RoundingMode.HALF_UP))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .filter(g->g.get(0).getPersonalizacao().tipo().orcamento()!=null)
+                .map(g->PersonalizacaoService.subtotal(g).subtract(g.get(0).getPersonalizacao().tipo().orcamento()))
+                .reduce(BigDecimal.ZERO,BigDecimal::add).setScale(2,RoundingMode.HALF_UP);
     }
-
-    @Override public String nome() { return "CAIXA_MISTERIOSA"; }
 }
